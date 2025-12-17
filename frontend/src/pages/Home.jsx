@@ -132,7 +132,7 @@ export default function Home() {
               key={src}
               src={src}
               alt={`Banner ${i + 1}`}
-              className={`absolute inset-0 h-full w-full object-contain sm:object-contain lg:object-cover shrink-0 grow-0 basis-full transition-opacity duration-700 ${
+              className={`absolute inset-0 h-full w-full object-cover sm:object-contain md:object-contain lg:object-cover shrink-0 grow-0 basis-full transition-opacity duration-700 ${
                 i === current ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -156,7 +156,7 @@ export default function Home() {
         </button>
 
         {/* Dots */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
           {banners.map((_, i) => (
             <button
               key={i}
