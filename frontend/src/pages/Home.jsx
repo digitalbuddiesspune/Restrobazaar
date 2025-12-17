@@ -3,11 +3,11 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 const AUTOPLAY_MS = 5000; // 5 seconds
 
 const customizedProduct =
-  "https://res.cloudinary.com/debhhnzgh/image/upload/v1765976391/Red_And_Orange_Elegant_Collection_Launch_Banner_1920_x_600_mm_2_lnesdy.svg";
+  "https://res.cloudinary.com/debhhnzgh/image/upload/v1765977603/Red_And_Orange_Elegant_Collection_Launch_Banner_1920_x_600_mm_3_hlv0eh.svg";
 
 // --------------------------------------------------------------------------------------------------------------
 const customizedProductMobile =
-  "https://res.cloudinary.com/debhhnzgh/image/upload/v1765976443/Red_And_Orange_Elegant_Collection_Launch_Banner_1920_x_600_mm_1080_x_1080_px_mghumh.svg";
+  "https://res.cloudinary.com/debhhnzgh/image/upload/v1765977544/Red_And_Orange_Elegant_Collection_Launch_Banner_1920_x_600_mm_1080_x_1080_px_1_zbleyf.svg";
 
 const MobileScreenBanners = [customizedProductMobile];
 
@@ -112,7 +112,7 @@ export default function Home() {
   return (
     <>
       <section
-        className="relative w-full overflow-hidden h-[55vh] lg:h-[70vh]"
+        className="relative w-full overflow-hidden bg-gray-50 h-[45vh] sm:h-[55vh] lg:h-[70vh] flex items-center justify-center"
         onMouseEnter={() => {
           setIsHovering(true);
           clearTimer();
@@ -126,13 +126,13 @@ export default function Home() {
         onTouchEnd={onTouchEnd}
       >
         {/* Slides */}
-        <div className="absolute inset-0 border-b border-b-[#D4D4D4]">
+        <div className="absolute inset-0">
           {banners.map((src, i) => (
             <img
               key={src}
               src={src}
               alt={`Banner ${i + 1}`}
-              className={`absolute inset-0 h-full w-full object-cover shrink-0 grow-0 basis-full transition-opacity duration-700 ${
+              className={`absolute inset-0 h-full w-full object-contain sm:object-contain lg:object-cover shrink-0 grow-0 basis-full transition-opacity duration-700 ${
                 i === current ? "opacity-100" : "opacity-0"
               }`}
             />
