@@ -6,6 +6,7 @@ import Contact from './pages/Contact'
 import SignIn from './pages/SignIn'
 import HomePage from './pages/HomePage'
 import Categories from './pages/Categories'
+import Applications from './pages/Applications'
 
 
 const router = createBrowserRouter(
@@ -13,6 +14,7 @@ const router = createBrowserRouter(
         <Route path='/' element={<App/>}>
             <Route index element={<HomePage/>} />
             <Route path='categories' element={<Categories/>} />
+            <Route path='applications' element={<Applications/>} />
             <Route path='about' element={<About/>} />
             <Route path='contact' element={<Contact/>} />
             <Route path='signin' element={<SignIn/>} />
