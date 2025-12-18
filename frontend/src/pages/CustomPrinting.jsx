@@ -1,0 +1,86 @@
+export default function CustomPrinting() {
+  const features = [
+    {
+      title: "Custom logo printing",
+      description: "Get your logo, brand colors, and messaging printed on containers, bags, cups, and more.",
+    },
+    {
+      title: "Food-grade ink & materials",
+      description: "All printing uses food-safe, non-toxic inks and materials that meet health standards.",
+    },
+    {
+      title: "Ideal for takeaway, delivery & dine-in branding",
+      description: "Perfect for building brand recognition across all customer touchpoints.",
+    },
+  ];
+
+  return (
+    <section className="bg-gradient-to-b from-gray-50 to-white py-20 px-4 sm:px-6 lg:px-12">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center max-w-4xl mx-auto mb-16">
+          <div className="inline-block mb-4">
+            <span className="text-xs uppercase tracking-wider font-semibold text-red-600 bg-red-50 px-4 py-2 rounded-full">
+              Brand Packaging
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold text-gray-900 mt-6 leading-tight">
+            Custom Printing &{" "}
+            <span className="text-red-600">Brand Packaging</span>
+          </h1>
+          <p className="mt-6 text-gray-600 text-2xl sm:text-3xl font-semibold leading-relaxed font-body">
+            Want your brand on every order?
+          </p>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="group bg-white rounded-2xl shadow-md hover:shadow-xl p-8 border border-gray-100 transition-all duration-300 hover:-translate-y-2"
+            >
+              <div className="w-14 h-14 rounded-xl bg-red-100 group-hover:bg-red-600 flex items-center justify-center mb-6 transition-colors duration-300">
+                <svg
+                  className="w-7 h-7 text-red-600 group-hover:text-white transition-colors duration-300"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-heading font-bold text-gray-900 mb-3">
+                {feature.title}
+              </h3>
+              <p className="text-gray-600 text-base leading-relaxed font-body">
+                {feature.description}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom CTA Section */}
+        <div className="bg-white rounded-3xl p-12 border border-gray-200 shadow-lg text-center">
+          <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900 mb-6">
+            Stand out and build brand recall with{" "}
+            <span className="text-red-600">professional packaging.</span>
+          </h2>
+          <p className="text-gray-600 text-lg mt-4 max-w-2xl mx-auto font-body">
+            Transform your packaging into a powerful marketing tool that reinforces your brand identity with every order.
+          </p>
+          <div className="mt-10 flex justify-center gap-4 flex-wrap">
+            <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
+              Request Custom Quote
+            </button>
+            <button className="bg-white hover:bg-gray-50 border-2 border-gray-300 hover:border-red-600 text-gray-800 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
+              View Samples
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+

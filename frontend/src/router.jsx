@@ -7,6 +7,8 @@ import SignIn from './pages/SignIn'
 import HomePage from './pages/HomePage'
 import Categories from './pages/Categories'
 import Applications from './pages/Applications'
+import CustomPrinting from './pages/CustomPrinting'
+
 
 
 const router = createBrowserRouter(
@@ -14,6 +16,7 @@ const router = createBrowserRouter(
         <Route path='/' element={<App/>}>
             <Route index element={<HomePage/>} />
             <Route path='categories' element={<Categories/>} />
+            <Route path='custom-printing' element={<CustomPrinting/>} />
             <Route path='applications' element={<Applications/>} />
             <Route path='about' element={<About/>} />
             <Route path='contact' element={<Contact/>} />
