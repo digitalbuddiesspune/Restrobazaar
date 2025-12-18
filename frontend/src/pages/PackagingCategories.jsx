@@ -62,36 +62,31 @@ export default function PackagingCategories() {
         {/* Bottom CTA Section */}
         <div
           style={{
-            backgroundImage: `url('https://res.cloudinary.com/debhhnzgh/image/upload/v1766041251/1467_oiy7co.jpg')`,
+            backgroundImage: `url('https://res.cloudinary.com/debhhnzgh/image/upload/v1766044565/ecofriendly-food-packaging-items-paper-cups-plates-containers-catering-street-fast_baydeb.jpg')`,
           }}
-          className="
-    bg-white
-    rounded-3xl
-    p-12
-    border
-    border-gray-200
-    shadow-lg
-    text-center
-    bg-no-repeat
-    bg-cover
-    lg:bg-fill
-  "
+          className="relative rounded-3xl p-12 border border-gray-200 shadow-lg text-center bg-no-repeat bg-cover bg-center overflow-hidden"
         >
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-gray-100 mb-4">
-            Whether you run a small cafe or a large food chain,{" "}
-            <span className="text-red-600">we've got you covered.</span>
-          </h2>
-          <p className="text-gray-100 text-base sm:text-lg mt-6 max-w-2xl mx-auto font-body">
-            From daily essentials to custom branding solutions, find everything
-            you need for your food business in one place.
-          </p>
-          <div className="mt-10 flex justify-center gap-4 flex-wrap">
-            <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
-              Explore Categories
-            </button>
-            <button className="bg-white hover:bg-gray-50 border-2 border-gray-300 hover:border-red-600 text-gray-800 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
-              Get Quote
-            </button>
+          {/* Overlay for text readability */}
+          <div className="absolute inset-0 bg-black/50 rounded-3xl"></div>
+
+          {/* Content */}
+          <div className="relative z-10">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-white mb-4">
+              Whether you run a small cafe or a large food chain,{" "}
+              <span className="text-red-600">we've got you covered.</span>
+            </h2>
+            <p className="text-white text-base sm:text-lg mt-6 max-w-2xl mx-auto font-body">
+              From daily essentials to custom branding solutions, find
+              everything you need for your food business in one place.
+            </p>
+            <div className="mt-10 flex justify-center gap-4 flex-wrap">
+              <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
+                Explore Categories
+              </button>
+              <button className="bg-white hover:bg-gray-50 border-2 border-white hover:border-red-600 text-gray-800 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
+                Get Quote
+              </button>
+            </div>
           </div>
         </div>
       </div>
