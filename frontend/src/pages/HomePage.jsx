@@ -5,6 +5,7 @@ import WhyChooseUs from './WhyChooseUs'
 import WhyChooseUs1 from './WhyChooseUs1'
 import PackagingCategories from './PackagingCategories'
 import CustomPrinting from './CustomPrinting'
+import IndustriesWeServe from '../components/IndustriesWeServe'
 
 
 const HomePage = () => {
@@ -12,6 +13,7 @@ const HomePage = () => {
     <div>
         <Home/>
         <Categories/>
+        <IndustriesWeServe/>
         {/* <WhyChooseUs/> */}
         <WhyChooseUs1/>
         <PackagingCategories/>
