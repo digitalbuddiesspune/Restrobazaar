@@ -85,10 +85,10 @@ const Categories = () => {
             <p className="text-sm uppercase tracking-wide text-red-600 font-semibold">
               Shop by Category
             </p>
-            <h2 className="text-3xl font-heading font-bold text-gray-900">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900">
               Explore our categories
             </h2>
-            <p className="mt-2 text-base font-inter text-gray-600 max-w-2xl">
+            <p className="mt-2 text-base sm:text-lg font-body text-gray-600 max-w-2xl">
               Quick access to all supply categories for your restaurant and
               catering needs.
             </p>
@@ -110,7 +110,7 @@ const Categories = () => {
                 />
               </div>
               <div className="p-4">
-                <h3 className="text-xs md:text-sm lg:text-sm font-heading font-semibold text-gray-900">
+                <h3 className="text-sm sm:text-base font-heading font-semibold text-gray-900">
                   {card.title}
                 </h3>
               </div>

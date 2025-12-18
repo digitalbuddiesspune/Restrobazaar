@@ -20,11 +20,11 @@ export default function PackagingCategories() {
               Our Products
             </span>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold text-gray-900 mt-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mt-6 leading-tight">
             Wide Range of{" "}
             <span className="text-red-600">Packaging Categories</span>
           </h1>
-          <p className="mt-6 text-gray-600 text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-body">
+          <p className="mt-6 text-gray-600 text-base sm:text-lg leading-relaxed max-w-3xl mx-auto font-body">
             We offer an extensive selection of high-quality food packaging and
             restaurant essentials
           </p>
@@ -50,7 +50,7 @@ export default function PackagingCategories() {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-heading font-semibold text-gray-900 leading-relaxed">
+                  <h3 className="text-xl sm:text-2xl font-heading font-semibold text-gray-900 leading-relaxed">
                     {category}
                   </h3>
                 </div>
@@ -77,11 +77,11 @@ export default function PackagingCategories() {
     lg:bg-fill
   "
         >
-          <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-100 mb-4">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-gray-100 mb-4">
             Whether you run a small cafe or a large food chain,{" "}
             <span className="text-red-600">we've got you covered.</span>
           </h2>
-          <p className="text-gray-100 text-lg mt-6 max-w-2xl mx-auto font-body">
+          <p className="text-gray-100 text-base sm:text-lg mt-6 max-w-2xl mx-auto font-body">
             From daily essentials to custom branding solutions, find everything
             you need for your food business in one place.
           </p>

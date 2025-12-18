@@ -64,10 +64,10 @@ const Applications = () => {
             <p className="text-sm uppercase tracking-wide text-red-600 font-semibold">
               Product Applications
             </p>
-            <h1 className="text-3xl font-heading font-bold text-gray-900">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900">
               Where our products excel
             </h1>
-            <p className="mt-2 text-base font-inter text-gray-600 max-w-3xl">
+            <p className="mt-2 text-base sm:text-lg font-body text-gray-600 max-w-3xl">
               Explore the most common use-cases for our packaging, hygiene, and service products across food and retail businesses.
             </p>
           </div>
@@ -88,10 +88,10 @@ const Applications = () => {
                 />
               </div>
               <div className="p-4 space-y-2">
-                <h3 className="text-lg font-heading font-semibold text-gray-900">
+                <h3 className="text-lg sm:text-xl font-heading font-semibold text-gray-900">
                   {item.title}
                 </h3>
-                <p className="text-sm font-inter text-gray-700 leading-relaxed">
+                <p className="text-sm sm:text-base font-body text-gray-700 leading-relaxed">
                   {item.description}
                 </p>
               </div>

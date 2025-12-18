@@ -24,11 +24,11 @@ export default function CustomPrinting() {
               Brand Packaging
             </span>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold text-gray-900 mt-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mt-6 leading-tight">
             Custom Printing &{" "}
             <span className="text-red-600">Brand Packaging</span>
           </h1>
-          <p className="mt-6 text-gray-600 text-2xl sm:text-3xl font-semibold leading-relaxed font-body">
+          <p className="mt-6 text-gray-600 text-base sm:text-lg font-semibold leading-relaxed font-body">
             Want your brand on every order?
           </p>
         </div>
@@ -51,10 +51,10 @@ export default function CustomPrinting() {
                   <path d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                 </svg>
               </div>
-              <h3 className="text-xl font-heading font-bold text-gray-900 mb-3">
+              <h3 className="text-xl sm:text-2xl font-heading font-bold text-gray-900 mb-3">
                 {feature.title}
               </h3>
-              <p className="text-gray-600 text-base leading-relaxed font-body">
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed font-body">
                 {feature.description}
               </p>
             </div>
@@ -63,11 +63,11 @@ export default function CustomPrinting() {
 
         {/* Bottom CTA Section */}
         <div className="bg-white rounded-3xl p-12 border border-gray-200 shadow-lg text-center">
-          <h2 className="text-3xl sm:text-4xl font-heading font-bold text-gray-900 mb-6">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-6">
             Stand out and build brand recall with{" "}
             <span className="text-red-600">professional packaging.</span>
           </h2>
-          <p className="text-gray-600 text-lg mt-4 max-w-2xl mx-auto font-body">
+          <p className="text-gray-600 text-base sm:text-lg mt-4 max-w-2xl mx-auto font-body">
             Transform your packaging into a powerful marketing tool that reinforces your brand identity with every order.
           </p>
           <div className="mt-10 flex justify-center gap-4 flex-wrap">
