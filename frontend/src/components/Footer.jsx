@@ -1,6 +1,13 @@
 import { NavLink } from "react-router-dom";
 
 const Footer = () => {
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
   const quickLinks = [
     { to: "/", label: "Home" },
     { to: "/about", label: "About Us" },
@@ -71,7 +78,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {/* Company Info */}
           <div className="lg:col-span-1">
-            <NavLink to="/" className="inline-block mb-4">
+            <NavLink to="/" className="inline-block mb-4" onClick={scrollToTop}>
               <h2 className="text-2xl font-heading font-bold text-white">
                 RestroBazaar
               </h2>
@@ -96,46 +103,51 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h3 className="text-lg font-heading font-semibold text-white mb-4">
-              Quick Links
-            </h3>
-            <ul className="space-y-3">
-              {quickLinks.map((link) => (
-                <li key={link.to}>
-                  <NavLink
-                    to={link.to}
-                    className="text-sm text-gray-400 hover:text-red-600 transition-colors duration-200 inline-block"
-                  >
-                    {link.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Quick Links and Legal - Side by side on mobile only */}
+          <div className="grid grid-cols-2 md:contents gap-6">
+            {/* Quick Links */}
+            <div className="md:col-span-1">
+              <h3 className="text-lg font-heading font-semibold text-white mb-4">
+                Quick Links
+              </h3>
+              <ul className="space-y-3">
+                {quickLinks.map((link) => (
+                  <li key={link.to}>
+                    <NavLink
+                      to={link.to}
+                      onClick={scrollToTop}
+                      className="text-sm text-gray-400 hover:text-red-600 transition-colors duration-200 inline-block"
+                    >
+                      {link.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Legal Pages */}
-          <div>
-            <h3 className="text-lg font-heading font-semibold text-white mb-4">
-              Legal
-            </h3>
-            <ul className="space-y-3">
-              {legalLinks.map((link) => (
-                <li key={link.to}>
-                  <NavLink
-                    to={link.to}
-                    className="text-sm text-gray-400 hover:text-red-600 transition-colors duration-200 inline-block"
-                  >
-                    {link.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
+            {/* Legal Pages - Right side on mobile */}
+            <div className="md:col-span-1">
+              <h3 className="text-lg font-heading font-semibold text-white mb-4">
+                Legal
+              </h3>
+              <ul className="space-y-3">
+                {legalLinks.map((link) => (
+                  <li key={link.to}>
+                    <NavLink
+                      to={link.to}
+                      onClick={scrollToTop}
+                      className="text-sm text-gray-400 hover:text-red-600 transition-colors duration-200 inline-block"
+                    >
+                      {link.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {/* Contact Info */}
-          <div>
+          <div className="col-span-1">
             <h3 className="text-lg font-heading font-semibold text-white mb-4">
               Get in Touch
             </h3>
@@ -230,4 +242,5 @@ const Footer = () => {
 };
 
 export default Footer;
+
 
