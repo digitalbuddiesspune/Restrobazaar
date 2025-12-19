@@ -85,7 +85,7 @@ const Categories = () => {
             <p className="text-sm uppercase tracking-wide text-red-600 font-semibold mb-2">
               Shop by Category
             </p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-poppins text-gray-900">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-bold font-poppins text-gray-900">
               Explore our categories
             </h2>
             <p className="mt-2 text-sm sm:text-base md:text-lg font-body text-gray-600 max-w-2xl">

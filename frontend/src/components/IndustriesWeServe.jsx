@@ -114,7 +114,7 @@ const IndustriesWeServe = () => {
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Title and Description */}
         <div className="text-center mb-8 md:mb-10">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-3 md:mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-heading font-bold text-gray-900 mb-3 md:mb-4">
             Industries We Serve
           </h2>
           
