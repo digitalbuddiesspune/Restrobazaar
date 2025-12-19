@@ -11,27 +11,27 @@ export default function PackagingCategories() {
   ];
 
   return (
-    <section className="bg-gradient-to-b from-gray-50 to-white py-20 px-4 sm:px-6 lg:px-12">
-      <div className="max-w-7xl mx-auto">
+    <section className="bg-gradient-to-b from-gray-50 to-white py-8 md:py-12 lg:py-16">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center max-w-4xl mx-auto mb-16">
-          <div className="inline-block mb-4">
+        <div className="text-center max-w-4xl mx-auto mb-10 md:mb-12 lg:mb-16">
+          <div className="inline-block mb-3 md:mb-4">
             <span className="text-xs uppercase tracking-wider font-semibold text-red-600 bg-red-50 px-4 py-2 rounded-full">
               Our Products
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mt-6 leading-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mt-4 md:mt-6 leading-tight">
             Wide Range of{" "}
             <span className="text-red-600">Packaging Categories</span>
           </h1>
-          <p className="mt-6 text-gray-600 text-base sm:text-lg leading-relaxed max-w-3xl mx-auto font-body">
+          <p className="mt-4 md:mt-6 text-sm sm:text-base md:text-lg text-gray-600 leading-relaxed max-w-3xl mx-auto font-body">
             We offer an extensive selection of high-quality food packaging and
             restaurant essentials
           </p>
         </div>
 
         {/* Categories Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-10 md:mb-12 lg:mb-16">
           {categories.map((category, index) => (
             <div
               key={index}
@@ -64,26 +64,26 @@ export default function PackagingCategories() {
           style={{
             backgroundImage: `url('https://res.cloudinary.com/debhhnzgh/image/upload/v1766044565/ecofriendly-food-packaging-items-paper-cups-plates-containers-catering-street-fast_baydeb.jpg')`,
           }}
-          className="relative rounded-3xl p-12 border border-gray-200 shadow-lg text-center bg-no-repeat bg-cover bg-center overflow-hidden"
+          className="relative rounded-2xl md:rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12 border border-gray-200 shadow-lg text-center bg-no-repeat bg-cover bg-center overflow-hidden"
         >
           {/* Overlay for text readability */}
-          <div className="absolute inset-0 bg-black/50 rounded-3xl"></div>
+          <div className="absolute inset-0 bg-black/50 rounded-2xl md:rounded-3xl"></div>
 
           {/* Content */}
           <div className="relative z-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-white mb-4">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-white mb-3 md:mb-4">
               Whether you run a small cafe or a large food chain,{" "}
               <span className="text-red-600">we've got you covered.</span>
             </h2>
-            <p className="text-white text-base sm:text-lg mt-6 max-w-2xl mx-auto font-body">
+            <p className="text-white text-sm sm:text-base md:text-lg mt-4 md:mt-6 max-w-2xl mx-auto font-body">
               From daily essentials to custom branding solutions, find
               everything you need for your food business in one place.
             </p>
-            <div className="mt-10 flex justify-center gap-4 flex-wrap">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
+            <div className="mt-6 sm:mt-8 md:mt-10 flex justify-center gap-3 sm:gap-4 flex-wrap">
+              <button className="bg-red-600 hover:bg-red-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
                 Explore Categories
               </button>
-              <button className="bg-white hover:bg-gray-50 border-2 border-white hover:border-red-600 text-gray-800 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
+              <button className="bg-white hover:bg-gray-50 border-2 border-white hover:border-red-600 text-gray-800 px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
                 Get Quote
               </button>
             </div>
@@ -93,3 +93,4 @@ export default function PackagingCategories() {
     </section>
   );
 }
+

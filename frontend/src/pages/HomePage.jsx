@@ -1,16 +1,16 @@
 import React from 'react'
-import Home from './Home'
-import Categories from './Categories'
-import WhyChooseUs from './WhyChooseUs'
-import WhyChooseUs1 from './WhyChooseUs1'
-import PackagingCategories from './PackagingCategories'
-import CustomPrinting from './CustomPrinting'
+import Home from '../components/Home'
+import Categories from '../components/Categories'
+import WhyChooseUs from '../components/WhyChooseUs'
+import WhyChooseUs1 from '../components/WhyChooseUs1'
+import PackagingCategories from '../components/PackagingCategories'
+import CustomPrinting from '../components/CustomPrinting'
 import IndustriesWeServe from '../components/IndustriesWeServe'
 
 
 const HomePage = () => {
   return (
-    <div>
+    <div className="w-full">
         <Home/>
         <Categories/>
         <IndustriesWeServe/>

@@ -78,24 +78,24 @@ const categoryCards = [
 
 const Categories = () => {
   return (
-    <section className="bg-white">
-      <div className="px-6 py-14">
-        <div className="flex items-start justify-between gap-4 mb-6">
+    <section className="bg-white py-8 md:py-12 lg:py-16">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="flex items-start justify-between gap-4 mb-6 md:mb-8">
           <div>
-            <p className="text-sm uppercase tracking-wide text-red-600 font-semibold">
+            <p className="text-sm uppercase tracking-wide text-red-600 font-semibold mb-2">
               Shop by Category
             </p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-gray-900">
               Explore our categories
             </h2>
-            <p className="mt-2 text-base sm:text-lg font-body text-gray-600 max-w-2xl">
+            <p className="mt-2 text-sm sm:text-base md:text-lg font-body text-gray-600 max-w-2xl">
               Quick access to all supply categories for your restaurant and
               catering needs.
             </p>
           </div>
         </div>
 
-        <div className="grid gap-6 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid gap-4 sm:gap-5 md:gap-6 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           {categoryCards.map((card) => (
             <div
               key={card.title}
@@ -123,3 +123,4 @@ const Categories = () => {
 };
 
 export default Categories;
+

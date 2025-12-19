@@ -40,6 +40,7 @@ const industries = [
 
 const IndustriesWeServe = () => {
   const carouselRef = useRef(null);
+  const containerRef = useRef(null);
   const [itemsPerView, setItemsPerView] = useState(6);
 
   // Calculate items per view based on screen size
@@ -64,37 +65,41 @@ const IndustriesWeServe = () => {
   // Continuous scrolling animation
   useEffect(() => {
     const carousel = carouselRef.current;
-    if (!carousel) return;
+    const container = containerRef.current;
+    if (!carousel || !container) return;
 
     let animationId;
     let position = 0;
     const speed = 1; // Adjust speed (pixels per frame)
 
     const animate = () => {
-      position -= speed;
-      
-      // Get the first item to calculate width
-      const firstItem = carousel.querySelector('.carousel-item');
-      if (!firstItem) {
-        animationId = requestAnimationFrame(animate);
-        return;
-      }
-      
-      const itemWidth = firstItem.offsetWidth;
+      // Get container width and calculate item width
+      const containerWidth = container.offsetWidth;
+      const itemWidth = containerWidth / itemsPerView;
       const totalWidth = itemWidth * industries.length;
       
-      // Reset position when we've scrolled one full set of items
-      if (Math.abs(position) >= totalWidth) {
-        position = 0;
+      // Only animate if we have valid dimensions
+      if (itemWidth > 0 && totalWidth > 0) {
+        position -= speed;
+        
+        // Reset position when we've scrolled one full set of items
+        if (Math.abs(position) >= totalWidth) {
+          position = 0;
+        }
+        
+        carousel.style.transform = `translateX(${position}px)`;
       }
       
-      carousel.style.transform = `translateX(${position}px)`;
       animationId = requestAnimationFrame(animate);
     };
 
-    animationId = requestAnimationFrame(animate);
+    // Small delay to ensure DOM is ready, especially on mobile
+    const timeoutId = setTimeout(() => {
+      animationId = requestAnimationFrame(animate);
+    }, 150);
 
     return () => {
+      clearTimeout(timeoutId);
       if (animationId) {
         cancelAnimationFrame(animationId);
       }
@@ -105,14 +110,14 @@ const IndustriesWeServe = () => {
   const duplicatedIndustries = [...industries, ...industries, ...industries];
 
   return (
-    <section className="bg-white py-14 px-6">
-      <div className="container mx-auto">
+    <section className="bg-white py-8 md:py-12 lg:py-16">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Title and Description */}
-        <div className="text-center mb-10">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-4">
+        <div className="text-center mb-8 md:mb-10">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-3 md:mb-4">
             Industries we Serve
           </h2>
-          <p className="text-base sm:text-lg text-gray-600 max-w-4xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-4xl mx-auto">
             RestroBazaar caters to a wide range of industries, which include brands from the{' '}
             <strong>Cloud Kitchen</strong>, <strong>Restaurants</strong>, <strong>Bakeries</strong>,{' '}
             <strong>Sweet Shops</strong>, <strong>Catering Services</strong>,{' '}
@@ -123,7 +128,7 @@ const IndustriesWeServe = () => {
         </div>
 
         {/* Industries Carousel */}
-        <div className="relative overflow-hidden">
+        <div ref={containerRef} className="relative overflow-hidden w-full">
           <div
             ref={carouselRef}
             className="flex"
@@ -142,7 +147,7 @@ const IndustriesWeServe = () => {
               >
                 <div className="flex flex-col items-center justify-center p-3">
                   {/* Industry Image */}
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-52 lg:h-52 mb-3 flex items-center justify-center">
+                  <div className="w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52 lg:w-56 lg:h-56 mb-3 flex items-center justify-center">
                     <img
                       src={industry.image}
                       alt={industry.name}

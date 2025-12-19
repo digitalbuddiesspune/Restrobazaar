@@ -15,26 +15,26 @@ export default function CustomPrinting() {
   ];
 
   return (
-    <section className="bg-gradient-to-b from-gray-50 to-white py-20 px-4 sm:px-6 lg:px-12">
-      <div className="max-w-7xl mx-auto">
+    <section className="bg-gradient-to-b from-gray-50 to-white py-8 md:py-12 lg:py-16">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center max-w-4xl mx-auto mb-16">
-          <div className="inline-block mb-4">
+        <div className="text-center max-w-4xl mx-auto mb-10 md:mb-12 lg:mb-16">
+          <div className="inline-block mb-3 md:mb-4">
             <span className="text-xs uppercase tracking-wider font-semibold text-red-600 bg-red-50 px-4 py-2 rounded-full">
               Brand Packaging
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mt-6 leading-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mt-4 md:mt-6 leading-tight">
             Custom Printing &{" "}
             <span className="text-red-600">Brand Packaging</span>
           </h1>
-          <p className="mt-6 text-gray-600 text-base sm:text-lg font-semibold leading-relaxed font-body">
+          <p className="mt-4 md:mt-6 text-sm sm:text-base md:text-lg text-gray-600 font-semibold leading-relaxed font-body">
             Want your brand on every order?
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 lg:gap-8 mb-10 md:mb-12 lg:mb-16">
           {features.map((feature, index) => (
             <div
               key={index}
@@ -62,12 +62,12 @@ export default function CustomPrinting() {
         </div>
 
         {/* Bottom CTA Section */}
-        <div className="bg-white rounded-3xl p-12 border border-gray-200 shadow-lg text-center">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-6">
+        <div className="bg-white rounded-2xl md:rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12 border border-gray-200 shadow-lg text-center">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4 md:mb-6">
             Stand out and build brand recall with{" "}
             <span className="text-red-600">professional packaging.</span>
           </h2>
-          <p className="text-gray-600 text-base sm:text-lg mt-4 max-w-2xl mx-auto font-body">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 mt-3 md:mt-4 max-w-2xl mx-auto font-body">
             Transform your packaging into a powerful marketing tool that reinforces your brand identity with every order.
           </p>
           <div className="mt-10 flex justify-center gap-4 flex-wrap">

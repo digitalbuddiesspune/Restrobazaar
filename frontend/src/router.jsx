@@ -5,9 +5,9 @@ import Contact from './pages/Contact'
 
 import SignIn from './pages/SignIn'
 import HomePage from './pages/HomePage'
-import Categories from './pages/Categories'
+import Categories from './components/Categories'
 import Applications from './pages/Applications'
-import CustomPrinting from './pages/CustomPrinting'
+import CustomPrinting from './components/CustomPrinting'
 
 
 
