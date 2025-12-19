@@ -1,7 +1,6 @@
 import React from 'react'
 import Home from '../components/Home'
 import Categories from '../components/Categories'
-import WhyChooseUs from '../components/WhyChooseUs'
 import WhyChooseUs1 from '../components/WhyChooseUs1'
 import PackagingCategories from '../components/PackagingCategories'
 import CustomPrinting from '../components/CustomPrinting'
@@ -14,7 +13,6 @@ const HomePage = () => {
         <Home/>
         <Categories/>
         <IndustriesWeServe/>
-        {/* <WhyChooseUs/> */}
         <WhyChooseUs1/>
         <PackagingCategories/>
         <CustomPrinting/>

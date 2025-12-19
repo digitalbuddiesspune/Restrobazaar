@@ -12,7 +12,7 @@ const Home = () => {
             alt: 'TickNTrack - Premium Shoes & Watches Collection',
           },
           {
-            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1765977603/Red_And_Orange_Elegant_Collection_Launch_Banner_1920_x_600_mm_3_hlv0eh.svg',
+            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766126874/RestoBazaar-all_products_npuqtv.png',
             alt: 'TickNTrack - Premium Collection',
           },
           {
