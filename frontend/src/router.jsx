@@ -3,11 +3,10 @@ import App from './App'
 import About from './pages/About'
 import Contact from './pages/Contact'
 
-import SignIn from './pages/SignIn'
-import HomePage from './pages/HomePage'
 import Categories from './components/Categories'
-import Applications from './pages/Applications'
 import CustomPrinting from './components/CustomPrinting'
+import HomePage from './pages/HomePage'
+import SignIn from './pages/SignIn'
 
 
 
@@ -17,7 +16,7 @@ const router = createBrowserRouter(
             <Route index element={<HomePage/>} />
             <Route path='categories' element={<Categories/>} />
             <Route path='custom-printing' element={<CustomPrinting/>} />
-            <Route path='applications' element={<Applications/>} />
+           
             <Route path='about' element={<About/>} />
             <Route path='contact' element={<Contact/>} />
             <Route path='signin' element={<SignIn/>} />

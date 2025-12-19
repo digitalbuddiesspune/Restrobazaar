@@ -2,15 +2,18 @@ export default function CustomPrinting() {
   const features = [
     {
       title: "Custom logo printing",
-      description: "Get your logo, brand colors, and messaging printed on containers, bags, cups, and more.",
+      description:
+        "Get your logo, brand colors, and messaging printed on containers, bags, cups, and more.",
     },
     {
       title: "Food-grade ink & materials",
-      description: "All printing uses food-safe, non-toxic inks and materials that meet health standards.",
+      description:
+        "All printing uses food-safe, non-toxic inks and materials that meet health standards.",
     },
     {
       title: "Ideal for takeaway, delivery & dine-in branding",
-      description: "Perfect for building brand recognition across all customer touchpoints.",
+      description:
+        "Perfect for building brand recognition across all customer touchpoints.",
     },
   ];
 
@@ -62,25 +65,37 @@ export default function CustomPrinting() {
         </div>
 
         {/* Bottom CTA Section */}
-        <div className="bg-white rounded-2xl md:rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12 border border-gray-200 shadow-lg text-center">
-          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4 md:mb-6">
-            Stand out and build brand recall with{" "}
-            <span className="text-red-600">professional packaging.</span>
-          </h2>
-          <p className="text-sm sm:text-base md:text-lg text-gray-600 mt-3 md:mt-4 max-w-2xl mx-auto font-body">
-            Transform your packaging into a powerful marketing tool that reinforces your brand identity with every order.
-          </p>
-          <div className="mt-10 flex justify-center gap-4 flex-wrap">
-            <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
-              Request Custom Quote
-            </button>
-            <button className="bg-white hover:bg-gray-50 border-2 border-gray-300 hover:border-red-600 text-gray-800 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
-              View Samples
-            </button>
+       
+        <div
+          style={{
+            backgroundImage: `url('https://res.cloudinary.com/debhhnzgh/image/upload/v1766044565/ecofriendly-food-packaging-items-paper-cups-plates-containers-catering-street-fast_baydeb.jpg')`,
+          }}
+          className="relative rounded-2xl md:rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12 border border-gray-200 shadow-lg text-center bg-no-repeat bg-cover bg-center overflow-hidden"
+        >
+          {/* Overlay for text readability */}
+          <div className="absolute inset-0 bg-black/50 rounded-2xl md:rounded-3xl"></div>
+
+          {/* Content */}
+          <div className="relative z-10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-gray-100 mb-4 md:mb-6">
+              Stand out and build brand recall with{" "}
+              <span className="text-red-500">professional packaging.</span>
+            </h2>
+            <p className="text-white text-sm sm:text-base md:text-lg mt-4 md:mt-6 max-w-2xl mx-auto font-body">
+              Transform your packaging into a powerful marketing tool that
+              reinforces your brand identity with every order.
+            </p>
+            <div className="mt-6 sm:mt-8 md:mt-10 flex justify-center gap-3 sm:gap-4 flex-wrap">
+              <button className="bg-red-600 hover:bg-red-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
+                Explore Categories
+              </button>
+              <button className="bg-white hover:bg-gray-50 border-2 border-white hover:border-red-600 text-gray-800 px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
+                Get Quote
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </section>
   );
 }
-

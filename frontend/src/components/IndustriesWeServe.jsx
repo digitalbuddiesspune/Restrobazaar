@@ -117,7 +117,7 @@ const IndustriesWeServe = () => {
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-3 md:mb-4">
             Industries we Serve
           </h2>
-          <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-4xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-4xl mx-auto font-body">
             RestroBazaar caters to a wide range of industries, which include brands from the{' '}
             <strong>Cloud Kitchen</strong>, <strong>Restaurants</strong>, <strong>Bakeries</strong>,{' '}
             <strong>Sweet Shops</strong>, <strong>Catering Services</strong>,{' '}
