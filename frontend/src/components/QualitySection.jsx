@@ -115,11 +115,11 @@ const QualitySection = () => {
           <span className="inline-block px-3 py-1 text-xs font-semibold text-red-600 uppercase tracking-wider bg-red-50 rounded-full mb-4 font-heading">
             Quality Features
           </span>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 font-heading">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-poppins text-gray-900">
             Why Choose <span className="text-red-600">RestroBazaar</span>{" "}
             Packaging
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto font-body">
+          <p className="mt-2 text-sm sm:text-base md:text-lg font-body text-gray-600 max-w-2xl mx-auto">
             High-quality, hygienic, and reliable food packaging solutions
             trusted by food businesses across all scales.
           </p>
