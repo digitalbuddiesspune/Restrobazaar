@@ -5,6 +5,7 @@ import WhyChooseUs1 from '../components/WhyChooseUs1'
 import PackagingCategories from '../components/PackagingCategories'
 import CustomPrinting from '../components/CustomPrinting'
 import IndustriesWeServe from '../components/IndustriesWeServe'
+import QualitySection from '../components/QualitySection'
 
 
 const HomePage = () => {
@@ -14,6 +15,7 @@ const HomePage = () => {
         <Categories/>
         <IndustriesWeServe/>
         <WhyChooseUs1/>
+        <QualitySection/>
         <PackagingCategories/>
         <CustomPrinting/>
     </div>
