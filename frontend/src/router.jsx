@@ -13,6 +13,8 @@ import HomePage from './pages/HomePage'
 import SignIn from './pages/SignIn'
 import CategoryDetail from './pages/CategoryDetail'
 import AllProducts from './pages/AllProducts'
+import Wishlist from './pages/Wishlist'
+import Cart from './pages/Cart'
 
 
 
@@ -29,6 +31,8 @@ const router = createBrowserRouter(
             <Route path='about' element={<About/>} />
             <Route path='contact' element={<Contact/>} />
             <Route path='signin' element={<SignIn/>} />
+            <Route path='wishlist' element={<Wishlist/>} />
+            <Route path='cart' element={<Cart/>} />
             <Route path='privacy-policy' element={<PrivacyPolicy/>} />
             <Route path='terms-of-service' element={<TermsOfService/>} />
             <Route path='refund-policy' element={<RefundPolicy/>} />
