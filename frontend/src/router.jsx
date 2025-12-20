@@ -11,6 +11,8 @@ import Categories from './components/Categories'
 import CustomPrinting from './components/CustomPrinting'
 import HomePage from './pages/HomePage'
 import SignIn from './pages/SignIn'
+import CategoryDetail from './pages/CategoryDetail'
+import AllProducts from './pages/AllProducts'
 
 
 
@@ -19,6 +21,9 @@ const router = createBrowserRouter(
         <Route path='/' element={<App/>}>
             <Route index element={<HomePage/>} />
             <Route path='categories' element={<Categories/>} />
+            <Route path='all-products' element={<AllProducts/>} />
+            <Route path='category/:categorySlug' element={<CategoryDetail/>} />
+            <Route path='category/:categorySlug/:subcategorySlug' element={<CategoryDetail/>} />
             <Route path='custom-printing' element={<CustomPrinting/>} />
            
             <Route path='about' element={<About/>} />

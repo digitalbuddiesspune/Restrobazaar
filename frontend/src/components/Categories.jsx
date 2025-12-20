@@ -1,4 +1,6 @@
-const categoryCards = [
+import { Link } from 'react-router-dom';
+
+export const categoryCards = [
   {
     title: "Containers",
     image:
@@ -76,6 +78,14 @@ const categoryCards = [
   },
 ];
 
+// Helper function to convert title to URL slug
+export const titleToSlug = (title) => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
 const Categories = () => {
   return (
     <section className="bg-white py-8 md:py-12 lg:py-16">
@@ -97,9 +107,10 @@ const Categories = () => {
 
         <div className="grid gap-4 sm:gap-5 md:gap-6 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           {categoryCards.map((card) => (
-            <div
+            <Link
               key={card.title}
-              className="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              to={`/category/${titleToSlug(card.title)}`}
+              className="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="aspect-[4/3] overflow-hidden bg-gray-100">
                 <img
@@ -110,11 +121,11 @@ const Categories = () => {
                 />
               </div>
               <div className="p-4">
-                <h3 className="text-sm sm:text-base font-heading font-semibold text-gray-900">
+                <h3 className="text-sm sm:text-base font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
                   {card.title}
                 </h3>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

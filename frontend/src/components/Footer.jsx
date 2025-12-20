@@ -10,11 +10,9 @@ const Footer = () => {
 
   const quickLinks = [
     { to: "/", label: "Home" },
-    { to: "/about", label: "About Us" },
+    { to: "/about", label: "About" },
     { to: "/contact", label: "Contact" },
     { to: "/categories", label: "Categories" },
-    { to: "/custom-printing", label: "Custom Printing" },
-    { to: "/signin", label: "Sign In" },
   ];
 
   const legalLinks = [

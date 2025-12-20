@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { categoryCards, titleToSlug } from "./Categories";
 
 const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = [
     { to: "/", label: "Home" },
+    { to: "/all-products", label: "Categories" },
     { to: "/about", label: "About" },
     { to: "/contact", label: "Contact" },
   ];
@@ -83,25 +85,64 @@ const Header = () => {
         <div
           className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
             mobileOpen
-              ? "max-h-64 opacity-100 mt-3"
+              ? "max-h-[calc(100vh-80px)] opacity-100 mt-3"
               : "max-h-0 opacity-0 mt-0"
           }`}
         >
-          <div className="pt-3 pb-2 border-t border-gray-200 flex flex-col space-y-2">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `${linkClass({ isActive })} py-2 px-2 rounded-lg hover:bg-gray-50 ${
-                    isActive ? "bg-gray-50" : ""
-                  }`
-                }
-                onClick={() => setMobileOpen(false)}
-              >
-                {item.label}
-              </NavLink>
-            ))}
+          <div className="pt-3 pb-2 border-t border-gray-200 flex flex-col">
+            {/* Navigation Items */}
+            <div className="space-y-2 mb-4">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `${linkClass({ isActive })} py-2 px-2 rounded-lg hover:bg-gray-50 ${
+                      isActive ? "bg-gray-50" : ""
+                    }`
+                  }
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+
+            {/* Categories Section */}
+            <div className="border-t border-gray-200 pt-4 mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 px-2">
+                Categories
+              </h3>
+              <div className="max-h-[60vh] overflow-y-auto space-y-1">
+                {categoryCards.map((category) => (
+                  <NavLink
+                    key={category.title}
+                    to={`/category/${titleToSlug(category.title)}`}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 py-2 px-2 rounded-lg transition-colors ${
+                        isActive
+                          ? "bg-red-50 text-red-600 font-semibold"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`
+                    }
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <div className="w-8 h-8 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
+                      <img
+                        src={category.image}
+                        alt={category.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="text-sm font-medium flex-1">
+                      {category.title}
+                    </span>
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+
+            {/* Sign In Button */}
             <NavLink
               to="/signin"
               className="sm:hidden mt-2 px-4 py-2 bg-red-600 text-white text-sm font-inter font-medium rounded-lg hover:bg-red-700 transition-colors text-center"
