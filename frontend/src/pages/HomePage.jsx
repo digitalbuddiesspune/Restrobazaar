@@ -3,6 +3,7 @@ import CustomPrinting from '../components/CustomPrinting'
 import Home from '../components/Home'
 import IndustriesWeServe from '../components/IndustriesWeServe'
 import QualitySection from '../components/QualitySection'
+import Testimonials from '../components/Testimonials'
 
 
 const HomePage = () => {
@@ -13,6 +14,7 @@ const HomePage = () => {
         <QualitySection/>
         <IndustriesWeServe/>
         <CustomPrinting/>
+        <Testimonials/>
     </div>
   )
 }
