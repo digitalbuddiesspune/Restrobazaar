@@ -377,7 +377,7 @@ const CategoryDetail = () => {
               </div>
               
               {/* Placeholder for products - You can replace this with actual product data */}
-              <div className="grid gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-8 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
+              <div className="grid gap-2 sm:gap-3 md:gap-4 lg:gap-4 xl:gap-5 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
                   <div
                     key={item}
