@@ -12,11 +12,11 @@ const Home = () => {
             alt: 'TickNTrack - Premium Shoes & Watches Collection',
           },
           {
-            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766126874/RestoBazaar-all_products_npuqtv.png',
+            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766408022/33772651-2581-4408-bd07-e03a3741673c.png',
             alt: 'TickNTrack - Premium Collection',
           },
           {
-            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766391341/40649214-b196-4f07-8ca6-b365bfc3096f.png',
+            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766126874/RestoBazaar-all_products_npuqtv.png',
             alt: 'Festive Offer - TickNTrack',
           },
         ]}
