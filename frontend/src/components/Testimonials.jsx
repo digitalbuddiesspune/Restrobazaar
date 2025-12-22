@@ -8,7 +8,8 @@ const Testimonials = () => {
       name: "Rajesh Kumar",
       role: "Restaurant Owner",
       location: "Mumbai, Maharashtra",
-      image: "https://ui-avatars.com/api/?name=Rajesh+Kumar&background=ef4444&color=fff&size=128",
+      image:
+        "https://ui-avatars.com/api/?name=Rajesh+Kumar&background=ef4444&color=fff&size=128",
       rating: 5,
       text: "RestroBazaar has been a game-changer for my restaurant. The quality of products is exceptional and delivery is always on time. Highly recommended!",
     },
@@ -16,7 +17,8 @@ const Testimonials = () => {
       name: "Priya Sharma",
       role: "Catering Manager",
       location: "Delhi, NCR",
-      image: "https://ui-avatars.com/api/?name=Priya+Sharma&background=ef4444&color=fff&size=128",
+      image:
+        "https://ui-avatars.com/api/?name=Priya+Sharma&background=ef4444&color=fff&size=128",
       rating: 5,
       text: "The variety of products available is amazing. From containers to custom printing, everything we need is in one place with top-notch customer service!",
     },
@@ -24,7 +26,8 @@ const Testimonials = () => {
       name: "Amit Patel",
       role: "Cafe Owner",
       location: "Ahmedabad, Gujarat",
-      image: "https://ui-avatars.com/api/?name=Amit+Patel&background=ef4444&color=fff&size=128",
+      image:
+        "https://ui-avatars.com/api/?name=Amit+Patel&background=ef4444&color=fff&size=128",
       rating: 5,
       text: "Best supplier we've worked with! The prices are competitive and quality never disappoints. Our customers absolutely love the eco-friendly packaging options.",
     },
@@ -32,7 +35,8 @@ const Testimonials = () => {
       name: "Kavita Reddy",
       role: "Hotel Manager",
       location: "Bangalore, Karnataka",
-      image: "https://ui-avatars.com/api/?name=Kavita+Reddy&background=ef4444&color=fff&size=128",
+      image:
+        "https://ui-avatars.com/api/?name=Kavita+Reddy&background=ef4444&color=fff&size=128",
       rating: 5,
       text: "RestroBazaar understands the needs of the hospitality industry perfectly. Their products are reliable and the bulk ordering process is completely seamless.",
     },
@@ -40,7 +44,8 @@ const Testimonials = () => {
       name: "Vikram Singh",
       role: "Food Truck Owner",
       location: "Pune, Maharashtra",
-      image: "https://ui-avatars.com/api/?name=Vikram+Singh&background=ef4444&color=fff&size=128",
+      image:
+        "https://ui-avatars.com/api/?name=Vikram+Singh&background=ef4444&color=fff&size=128",
       rating: 5,
       text: "As a food truck owner, I need quality supplies at affordable prices. RestroBazaar delivers exactly that and the custom printing feature is a great bonus!",
     },
@@ -48,7 +53,8 @@ const Testimonials = () => {
       name: "Anjali Desai",
       role: "Event Caterer",
       location: "Surat, Gujarat",
-      image: "https://ui-avatars.com/api/?name=Anjali+Desai&background=ef4444&color=fff&size=128",
+      image:
+        "https://ui-avatars.com/api/?name=Anjali+Desai&background=ef4444&color=fff&size=128",
       rating: 5,
       text: "The packaging solutions are perfect for our events with professional appearance and great quality. RestroBazaar has become our trusted go-to supplier!",
     },
@@ -145,6 +151,18 @@ const Testimonials = () => {
     ],
   };
 
+  const settingsMobile = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 3000,
+    pauseOnHover: true,
+   
+  };
+
   return (
     <section className="bg-gray-50 py-12 md:py-16 lg:py-20">
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -157,13 +175,14 @@ const Testimonials = () => {
             Customer Testimonials
           </h2>
           <p className="text-sm sm:text-base md:text-lg font-body text-gray-600 max-w-2xl mx-auto">
-            Hear from restaurant owners and catering professionals who trust RestroBazaar for their supply needs.
+            Hear from restaurant owners and catering professionals who trust
+            RestroBazaar for their supply needs.
           </p>
         </div>
 
         {/* Testimonials Carousel */}
-        <div className="relative px-8 lg:px-16">
-          <Slider {...settings}>
+        <div className="relative px-4 md:px-8">
+          <Slider {...(window.innerWidth < 768 ? settingsMobile : settings)}>
             {testimonials.map((testimonial, index) => (
               <div key={index} className="px-3">
                 <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 md:p-8 h-full flex flex-col">
@@ -251,4 +270,3 @@ const Testimonials = () => {
 };
 
 export default Testimonials;
-
