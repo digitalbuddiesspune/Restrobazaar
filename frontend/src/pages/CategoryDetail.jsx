@@ -408,10 +408,10 @@ const CategoryDetail = () => {
                         High-quality {selectedSubcategory ? selectedSubcategory.toLowerCase() : category.title.toLowerCase()} product
                       </p>
                       <div className="flex flex-col sm:flex-col md:flex-row items-start md:items-center justify-between gap-1.5 sm:gap-2 md:gap-0">
-                        <span className="text-sm sm:text-base md:text-lg font-bold text-red-600">
+                        <span className="text-sm sm:text-base md:text-lg font-bold text-black">
                           ₹{Math.floor(Math.random() * 500) + 50}
                         </span>
-                        <button className="w-full md:w-auto px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-xs md:text-sm font-semibold whitespace-nowrap">
+                        <button className="w-full md:w-auto px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-red-50 text-red-600 border border-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors text-xs sm:text-xs md:text-sm font-semibold whitespace-nowrap">
                           Add to Cart
                         </button>
                       </div>

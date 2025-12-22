@@ -107,7 +107,7 @@ const AllProducts = () => {
             </div>
 
             {/* Products from All Categories */}
-            <div className="grid gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-8 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
+            <div className="grid gap-2 sm:gap-3 md:gap-4 lg:gap-4 xl:gap-5 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
           {categoryCards.flatMap((category) => 
             // Generate 4 products per category
             [1, 2, 3, 4].map((item) => (
@@ -132,18 +132,18 @@ const AllProducts = () => {
                     </svg>
                   </div>
                 </div>
-                <div className="p-2.5 sm:p-3 md:p-4">
-                  <h3 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 mb-1 sm:mb-1.5 md:mb-2 line-clamp-2">
+                <div className="p-2 sm:p-2.5 md:p-3">
+                  <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
                     {category.title} - Product {item}
                   </h3>
-                  <p className="text-xs sm:text-xs md:text-sm text-gray-600 mb-2 sm:mb-2.5 md:mb-3 line-clamp-2">
+                  <p className="text-xs text-gray-600 mb-1.5 sm:mb-2 line-clamp-2">
                     High-quality {category.title.toLowerCase()} product
                   </p>
-                  <div className="flex flex-col sm:flex-col md:flex-row items-start md:items-center justify-between gap-1.5 sm:gap-2 md:gap-0">
-                    <span className="text-sm sm:text-base md:text-lg font-bold text-red-600">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2">
+                    <span className="text-sm sm:text-base font-bold text-black">
                       ₹{Math.floor(Math.random() * 500) + 50}
                     </span>
-                    <button className="w-full md:w-auto px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-xs md:text-sm font-semibold whitespace-nowrap">
+                    <button className="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 sm:py-2 bg-red-50 text-red-600 border border-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors text-xs sm:text-sm font-semibold whitespace-nowrap">
                       Add to Cart
                     </button>
                   </div>
