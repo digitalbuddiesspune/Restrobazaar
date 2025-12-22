@@ -160,7 +160,7 @@ const Testimonials = () => {
     autoplay: true,
     autoplaySpeed: 3000,
     pauseOnHover: true,
-   
+    arrows: false,
   };
 
   return (
@@ -181,10 +181,10 @@ const Testimonials = () => {
         </div>
 
         {/* Testimonials Carousel */}
-        <div className="relative px-4 md:px-8">
+        <div className="relative  md:px-8 ">
           <Slider {...(window.innerWidth < 768 ? settingsMobile : settings)}>
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="px-3">
+              <div key={index} className="px-3 mb-2">
                 <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 md:p-8 h-full flex flex-col">
                   {/* Quote Icon */}
                   <div className="mb-4">
