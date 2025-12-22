@@ -16,7 +16,7 @@ const Home = () => {
             alt: 'TickNTrack - Premium Collection',
           },
           {
-            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1765977603/Red_And_Orange_Elegant_Collection_Launch_Banner_1920_x_600_mm_3_hlv0eh.svg',
+            desktop: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766391341/40649214-b196-4f07-8ca6-b365bfc3096f.png',
             alt: 'Festive Offer - TickNTrack',
           },
         ]}
