@@ -1,9 +1,23 @@
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { categoryCards, titleToSlug } from "./Categories";
+import { isAuthenticated, removeToken } from "../utils/auth";
 
 const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setAuthenticated(isAuthenticated());
+  }, []);
+
+  const handleSignOut = () => {
+    removeToken();
+    setAuthenticated(false);
+    navigate('/');
+    window.location.reload();
+  };
 
   const navItems = [
     { to: "/", label: "Home" },
@@ -39,18 +53,37 @@ const Header = () => {
 
           {/* Sign In/Sign Up Button + Mobile Toggle */}
           <div className="flex items-center space-x-3 sm:space-x-4">
-            <NavLink
-              to="/signin"
-              className="hidden sm:inline-block px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white text-sm sm:text-base font-inter font-medium rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Sign In / Sign Up
-            </NavLink>
-            <NavLink
-              to="/signin"
-              className="sm:hidden px-3 py-1.5 bg-red-600 text-white text-xs font-inter font-medium rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Sign In
-            </NavLink>
+            {authenticated ? (
+              <>
+                <button
+                  onClick={handleSignOut}
+                  className="hidden sm:inline-block px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white text-sm sm:text-base font-inter font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Sign Out
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="sm:hidden px-3 py-1.5 bg-red-600 text-white text-xs font-inter font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink
+                  to="/signin"
+                  className="hidden sm:inline-block px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white text-sm sm:text-base font-inter font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Sign In / Sign Up
+                </NavLink>
+                <NavLink
+                  to="/signin"
+                  className="sm:hidden px-3 py-1.5 bg-red-600 text-white text-xs font-inter font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Sign In
+                </NavLink>
+              </>
+            )}
             <button
               type="button"
               className="md:hidden relative h-9 w-9 sm:h-10 sm:w-10 inline-flex flex-col items-center justify-center rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
@@ -142,14 +175,26 @@ const Header = () => {
               </div>
             </div>
 
-            {/* Sign In Button */}
-            <NavLink
-              to="/signin"
-              className="sm:hidden mt-2 px-4 py-2 bg-red-600 text-white text-sm font-inter font-medium rounded-lg hover:bg-red-700 transition-colors text-center"
-              onClick={() => setMobileOpen(false)}
-            >
-              Sign In / Sign Up
-            </NavLink>
+            {/* Sign In/Sign Out Button */}
+            {authenticated ? (
+              <button
+                onClick={() => {
+                  handleSignOut();
+                  setMobileOpen(false);
+                }}
+                className="sm:hidden mt-2 px-4 py-2 bg-red-600 text-white text-sm font-inter font-medium rounded-lg hover:bg-red-700 transition-colors text-center w-full"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <NavLink
+                to="/signin"
+                className="sm:hidden mt-2 px-4 py-2 bg-red-600 text-white text-sm font-inter font-medium rounded-lg hover:bg-red-700 transition-colors text-center"
+                onClick={() => setMobileOpen(false)}
+              >
+                Sign In / Sign Up
+              </NavLink>
+            )}
           </div>
         </div>
       </nav>

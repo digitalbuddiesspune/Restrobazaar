@@ -11,6 +11,7 @@ import Categories from './components/Categories'
 import CustomPrinting from './components/CustomPrinting'
 import HomePage from './pages/HomePage'
 import SignIn from './pages/SignIn'
+import SignUp from './pages/SignUp'
 import CategoryDetail from './pages/CategoryDetail'
 import AllProducts from './pages/AllProducts'
 import Wishlist from './pages/Wishlist'
@@ -31,6 +32,7 @@ const router = createBrowserRouter(
             <Route path='about' element={<About/>} />
             <Route path='contact' element={<Contact/>} />
             <Route path='signin' element={<SignIn/>} />
+            <Route path='signup' element={<SignUp/>} />
             <Route path='wishlist' element={<Wishlist/>} />
             <Route path='cart' element={<Cart/>} />
             <Route path='privacy-policy' element={<PrivacyPolicy/>} />
