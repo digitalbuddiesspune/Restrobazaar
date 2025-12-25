@@ -19,7 +19,7 @@ const Home = () => {
           },
           {
             desktop:
-              "https://res.cloudinary.com/debhhnzgh/image/upload/v1766408022/33772651-2581-4408-bd07-e03a3741673c.png",
+              "https://res.cloudinary.com/debhhnzgh/image/upload/v1766658673/Brown_and_Beige_Scrapbook_Collage_India_Video_1920_x_600_px_6_tgp3ti.png",
             alt: "TickNTrack - Premium Collection",
           },
         
