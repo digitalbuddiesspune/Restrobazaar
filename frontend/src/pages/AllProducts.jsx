@@ -1,7 +1,33 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { categoryCards, titleToSlug } from '../components/Categories';
+import { productAPI } from '../utils/api';
 
 const AllProducts = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await productAPI.getAllProducts({ limit: 100 });
+        if (response.success) {
+          setProducts(response.data.products);
+        } else {
+          setError('Failed to fetch products');
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to fetch products');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Breadcrumb */}
@@ -107,51 +133,97 @@ const AllProducts = () => {
             </div>
 
             {/* Products from All Categories */}
-            <div className="grid gap-2 sm:gap-3 md:gap-4 lg:gap-4 xl:gap-5 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
-          {categoryCards.flatMap((category) => 
-            // Generate 4 products per category
-            [1, 2, 3, 4].map((item) => (
-              <div
-                key={`${category.title}-${item}`}
-                className="bg-white rounded-lg sm:rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 overflow-hidden"
-              >
-                <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
-                  <div className="h-full w-full flex items-center justify-center text-gray-400">
-                    <svg
-                      className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <div className="p-2 sm:p-2.5 md:p-3">
-                  <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
-                    {category.title} - Product {item}
-                  </h3>
-                  <p className="text-xs text-gray-600 mb-1.5 sm:mb-2 line-clamp-2">
-                    High-quality {category.title.toLowerCase()} product
-                  </p>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2">
-                    <span className="text-sm sm:text-base font-bold text-black">
-                      ₹{Math.floor(Math.random() * 500) + 50}
-                    </span>
-                    <button className="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 sm:py-2 bg-red-50 text-red-600 border border-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors text-xs sm:text-sm font-semibold whitespace-nowrap">
-                      Add to Cart
-                    </button>
-                  </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                  <p className="mt-4 text-gray-600">Loading products...</p>
                 </div>
               </div>
-            ))
-          )}
-            </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <p className="text-gray-600">No products found</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-2 sm:gap-3 md:gap-4 lg:gap-4 xl:gap-5 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
+                {products.map((product) => (
+                  <Link
+                    key={product._id}
+                    to={`/product/${product.slug}`}
+                    className="bg-white rounded-lg sm:rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 overflow-hidden"
+                  >
+                    <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
+                      {product.images && product.images.length > 0 ? (
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className="h-full w-full flex items-center justify-center text-gray-400" style={{ display: product.images && product.images.length > 0 ? 'none' : 'flex' }}>
+                        <svg
+                          className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="p-2 sm:p-2.5 md:p-3">
+                      <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
+                        {product.name}
+                      </h3>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2">
+                        <div className="flex flex-col">
+                          <span className="text-sm sm:text-base font-bold text-black">
+                            ₹{product.price}
+                          </span>
+                          {product.originalPrice && product.originalPrice > product.price && (
+                            <span className="text-xs text-gray-500 line-through">
+                              ₹{product.originalPrice}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Add to cart logic here
+                          }}
+                          className="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 sm:py-2 bg-red-50 text-red-600 border border-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors text-xs sm:text-sm font-semibold whitespace-nowrap"
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

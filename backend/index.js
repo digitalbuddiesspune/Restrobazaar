@@ -15,6 +15,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use("/api/v1", signInRouter);
 app.use("/api/v1", signUpRouter);
+
+// Product routes
+import productRouter from './routes/productRoute.js';
+app.use("/api/v1", productRouter);
+
+// Category routes
+import categoryRouter from './routes/categoryRoute.js';
+app.use("/api/v1", categoryRouter);
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

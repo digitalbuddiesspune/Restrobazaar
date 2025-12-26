@@ -36,5 +36,90 @@ export const authAPI = {
   },
 };
 
+// Category API functions
+export const categoryAPI = {
+  // Get all categories
+  getAllCategories: async () => {
+    const response = await api.get('/categories');
+    return response.data;
+  },
+  
+  // Get category by slug
+  getCategoryBySlug: async (slug) => {
+    const response = await api.get(`/categories/slug/${slug}`);
+    return response.data;
+  },
+  
+  // Seed categories (Admin only)
+  seedCategories: async () => {
+    const response = await api.post('/categories/seed');
+    return response.data;
+  },
+  
+  // Create category (Admin only)
+  createCategory: async (categoryData) => {
+    const response = await api.post('/categories', categoryData);
+    return response.data;
+  },
+  
+  // Update category (Admin only)
+  updateCategory: async (id, categoryData) => {
+    const response = await api.put(`/categories/${id}`, categoryData);
+    return response.data;
+  },
+  
+  // Delete category (Admin only)
+  deleteCategory: async (id) => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  },
+};
+
+// Product API functions
+export const productAPI = {
+  // Get all products with optional filters
+  getAllProducts: async (params = {}) => {
+    const response = await api.get('/products', { params });
+    return response.data;
+  },
+  
+  // Get product by slug
+  getProductBySlug: async (slug) => {
+    const response = await api.get(`/products/slug/${slug}`);
+    return response.data;
+  },
+  
+  // Get product by ID
+  getProductById: async (id) => {
+    const response = await api.get(`/products/${id}`);
+    return response.data;
+  },
+  
+  // Get products by category slug
+  getProductsByCategory: async (categorySlug, params = {}) => {
+    const response = await api.get(`/products/category/${categorySlug}`, { params });
+    return response.data;
+  },
+  
+  // Create product (Admin only)
+  createProduct: async (productData) => {
+    const response = await api.post('/products', productData);
+    return response.data;
+  },
+  
+  // Update product (Admin only)
+  updateProduct: async (id, productData) => {
+    const response = await api.put(`/products/${id}`, productData);
+    return response.data;
+  },
+  
+  // Delete product (Admin only)
+  deleteProduct: async (id) => {
+    const response = await api.delete(`/products/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
+
 

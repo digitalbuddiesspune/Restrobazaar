@@ -14,8 +14,15 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import CategoryDetail from './pages/CategoryDetail'
 import AllProducts from './pages/AllProducts'
+import ProductDetail from './pages/ProductDetail'
 import Wishlist from './pages/Wishlist'
 import Cart from './pages/Cart'
+import AdminLayout from './components/admin/AdminLayout'
+import AdminDashboard from './pages/admin/Dashboard'
+import AdminProducts from './pages/admin/Products'
+import AdminCategories from './pages/admin/Categories'
+import ProductForm from './pages/admin/ProductForm'
+import ProtectedRoute from './components/ProtectedRoute'
 
 
 
@@ -25,6 +32,7 @@ const router = createBrowserRouter(
             <Route index element={<HomePage/>} />
             <Route path='categories' element={<Categories/>} />
             <Route path='all-products' element={<AllProducts/>} />
+            <Route path='product/:slug' element={<ProductDetail/>} />
             <Route path='category/:categorySlug' element={<CategoryDetail/>} />
             <Route path='category/:categorySlug/:subcategorySlug' element={<CategoryDetail/>} />
             <Route path='custom-printing' element={<CustomPrinting/>} />
@@ -39,6 +47,19 @@ const router = createBrowserRouter(
             <Route path='terms-of-service' element={<TermsOfService/>} />
             <Route path='refund-policy' element={<RefundPolicy/>} />
             <Route path='shipping-policy' element={<ShippingPolicy/>} />
+            
+            {/* Admin Routes */}
+            <Route path='admin' element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<AdminDashboard />} />
+              <Route path='products' element={<AdminProducts />} />
+              <Route path='products/new' element={<ProductForm />} />
+              <Route path='products/:id/edit' element={<ProductForm />} />
+              <Route path='categories' element={<AdminCategories />} />
+            </Route>
         </Route>
     )
 )
