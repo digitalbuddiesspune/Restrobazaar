@@ -321,7 +321,7 @@ const ProductForm = () => {
           })),
         subcategory: formData.subcategory && formData.subcategory.trim() !== '' ? formData.subcategory.trim() : undefined,
         otherCategory: formData.otherCategory && formData.otherCategory.trim() !== '' ? formData.otherCategory.trim() : undefined,
-        city: formData.city && formData.city.trim() !== '' ? formData.city.trim() : undefined,
+        city: formData.city && formData.city.trim() !== '' ? formData.city.trim() : 'Other',
         productPurchaseFrom: formData.productPurchaseFrom && formData.productPurchaseFrom.trim() !== '' ? formData.productPurchaseFrom.trim() : undefined,
         hsnCode: formData.hsnCode && formData.hsnCode.trim() !== '' ? formData.hsnCode.trim() : undefined,
       };
@@ -563,16 +563,29 @@ const ProductForm = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select City
+                  City <span className="text-gray-500 text-xs">(Default: Other - shows all products)</span>
                 </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="Enter city"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="Enter city name (e.g., Pune, Mumbai, Nagpur, Ahmedabad) or 'Other' for all cities"
+                    list="city-suggestions"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                  <datalist id="city-suggestions">
+                    <option value="Other">Other (All cities)</option>
+                    <option value="Pune">Pune</option>
+                    <option value="Nagpur">Nagpur</option>
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Ahmedabad">Ahmedabad</option>
+                  </datalist>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Tip: Type "Other" to show products in all cities, or enter a specific city name
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

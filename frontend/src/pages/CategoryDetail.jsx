@@ -1,6 +1,7 @@
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { productAPI } from '../utils/api';
+import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 
 const categoryCards = [
   {
@@ -205,6 +206,13 @@ const CategoryDetail = () => {
         const params = {};
         if (selectedSubcategory) {
           params.subcategory = selectedSubcategory;
+        }
+        
+        // Get selected city from localStorage
+        const selectedCity = localStorage.getItem(CITY_STORAGE_KEY);
+        // Add city filter if city is selected and not "Other"
+        if (selectedCity && selectedCity !== 'Other') {
+          params.city = selectedCity;
         }
         
         const response = await productAPI.getProductsByCategory(categorySlug, params);

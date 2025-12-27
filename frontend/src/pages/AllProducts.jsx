@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { categoryCards, titleToSlug } from '../components/Categories';
 import { productAPI } from '../utils/api';
+import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 
 const AllProducts = () => {
   const [products, setProducts] = useState([]);
@@ -12,7 +13,16 @@ const AllProducts = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await productAPI.getAllProducts({ limit: 100 });
+        // Get selected city from localStorage
+        const selectedCity = localStorage.getItem(CITY_STORAGE_KEY);
+        const params = { limit: 100 };
+        
+        // Add city filter if city is selected and not "Other"
+        if (selectedCity && selectedCity !== 'Other') {
+          params.city = selectedCity;
+        }
+        
+        const response = await productAPI.getAllProducts(params);
         if (response.success) {
           setProducts(response.data.products);
         } else {

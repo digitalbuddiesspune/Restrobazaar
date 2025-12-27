@@ -12,6 +12,7 @@ const getAllProducts = async (req, res) => {
       search,
       minPrice,
       maxPrice,
+      city,
       page = 1,
       limit = 20,
       sortBy = "createdAt",
@@ -45,11 +46,30 @@ const getAllProducts = async (req, res) => {
     }
 
     // Search by name or description
+    const searchConditions = [];
     if (search) {
-      query.$or = [
+      searchConditions.push(
         { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } }
+      );
+    }
+
+    // City filter - if city is "Other" or not provided, show all products
+    // If specific city is selected, show only products for that city (not "Other")
+    if (city && city !== 'Other' && city !== '') {
+      query.city = city;
+    }
+
+    // Combine search and city conditions with $and if both exist
+    if (searchConditions.length > 0 && cityConditions.length > 0) {
+      query.$and = [
+        { $or: searchConditions },
+        { $or: cityConditions }
       ];
+    } else if (searchConditions.length > 0) {
+      query.$or = searchConditions;
+    } else if (cityConditions.length > 0) {
+      query.$or = cityConditions;
     }
 
     // Price range filter
@@ -358,6 +378,13 @@ const getProductsByCategory = async (req, res) => {
     if (subcategory) {
       // Use the subcategory field directly from the product model
       query.subcategory = subcategory;
+    }
+
+    // Filter by city - if city is "Other" or not provided, show all products
+    // If specific city is selected, show only products for that city (not "Other")
+    const { city } = req.query;
+    if (city && city !== 'Other' && city !== '') {
+      query.city = city;
     }
 
     const skip = (Number(page) - 1) * Number(limit);
