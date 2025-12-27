@@ -42,33 +42,33 @@ const CitySelectionPopup = ({ onCitySelect }) => {
   if (!showPopup) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 md:p-8">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+    <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-xs w-full p-4">
+        <div className="text-center mb-4">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">
             Select Your City
           </h2>
-          <p className="text-gray-600 text-sm md:text-base">
+          <p className="text-gray-600 text-xs">
             Choose your city to see products available in your area
           </p>
         </div>
 
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2 mb-4">
           {CITIES.map((city) => (
             <button
               key={city}
               onClick={() => handleCitySelect(city)}
-              className={`w-full py-3 px-4 rounded-lg border-2 transition-all duration-200 text-left ${
+              className={`w-full py-2 px-3 rounded-lg border-2 transition-all duration-200 text-left ${
                 selectedCity === city
                   ? 'border-red-600 bg-red-50 text-red-700 font-semibold'
                   : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-base md:text-lg">{city}</span>
+                <span className="text-sm">{city}</span>
                 {selectedCity === city && (
                   <svg
-                    className="w-5 h-5 text-red-600"
+                    className="w-4 h-4 text-red-600"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -86,13 +86,13 @@ const CitySelectionPopup = ({ onCitySelect }) => {
 
         <button
           onClick={handleSubmit}
-          className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors duration-200 shadow-lg hover:shadow-xl"
+          className="w-full py-2 bg-red-600 text-white rounded-lg font-semibold text-sm hover:bg-red-700 transition-colors duration-200 shadow-md hover:shadow-lg"
         >
           Continue
         </button>
 
         {selectedCity === 'Other' && (
-          <p className="mt-4 text-center text-sm text-gray-500">
+          <p className="mt-3 text-center text-xs text-gray-500">
             Selecting "Other" will show all available products
           </p>
         )}
@@ -103,4 +103,5 @@ const CitySelectionPopup = ({ onCitySelect }) => {
 
 export default CitySelectionPopup;
 export { CITY_STORAGE_KEY, CITIES };
+
 
