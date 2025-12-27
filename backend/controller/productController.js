@@ -60,16 +60,9 @@ const getAllProducts = async (req, res) => {
       query.city = city;
     }
 
-    // Combine search and city conditions with $and if both exist
-    if (searchConditions.length > 0 && cityConditions.length > 0) {
-      query.$and = [
-        { $or: searchConditions },
-        { $or: cityConditions }
-      ];
-    } else if (searchConditions.length > 0) {
+    // Apply search conditions if they exist
+    if (searchConditions.length > 0) {
       query.$or = searchConditions;
-    } else if (cityConditions.length > 0) {
-      query.$or = cityConditions;
     }
 
     // Price range filter
