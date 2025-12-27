@@ -186,3 +186,5 @@ const seedCategories = async () => {
 
 seedCategories();
 
+
+

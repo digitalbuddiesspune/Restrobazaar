@@ -7,7 +7,6 @@ import signUpRouter from './routes/signUpRoute.js';
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
-import conectDB from './config/databaseConnection.js';
 connectDB();
 
 app.use(express.json());

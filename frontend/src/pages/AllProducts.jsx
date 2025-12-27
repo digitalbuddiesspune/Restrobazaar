@@ -160,18 +160,27 @@ const AllProducts = () => {
               </div>
             ) : (
               <div className="grid gap-2 sm:gap-3 md:gap-4 lg:gap-4 xl:gap-5 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
-                {products.map((product) => (
+                {products.map((product) => {
+                  const discount = product.originalPrice && product.originalPrice > product.price 
+                    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+                    : 0;
+                  return (
                   <Link
                     key={product._id}
                     to={`/product/${product.slug}`}
-                    className="bg-white rounded-lg sm:rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 overflow-hidden"
+                    className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden transform hover:-translate-y-1"
                   >
-                    <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
+                    <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden relative">
+                      {discount > 0 && (
+                        <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-10 bg-red-50 text-red-600 border border-red-200 text-[10px] sm:text-xs font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-lg">
+                          {discount}% OFF
+                        </div>
+                      )}
                       {product.images && product.images.length > 0 ? (
                         <img
                           src={product.images[0]}
                           alt={product.name}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
@@ -194,19 +203,21 @@ const AllProducts = () => {
                         </svg>
                       </div>
                     </div>
-                    <div className="p-2 sm:p-2.5 md:p-3">
-                      <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
+                    <div className="p-2.5 sm:p-3">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-1.5 line-clamp-2 group-hover:text-red-600 transition-colors">
                         {product.name}
                       </h3>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2">
-                        <div className="flex flex-col">
-                          <span className="text-sm sm:text-base font-bold text-black">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-lg sm:text-xl font-bold text-gray-900">
                             ₹{product.price}
                           </span>
                           {product.originalPrice && product.originalPrice > product.price && (
-                            <span className="text-xs text-gray-500 line-through">
-                              ₹{product.originalPrice}
-                            </span>
+                            <>
+                              <span className="text-sm text-gray-400 line-through">
+                                ₹{product.originalPrice}
+                              </span>
+                            </>
                           )}
                         </div>
                         <button
@@ -214,14 +225,14 @@ const AllProducts = () => {
                             e.preventDefault();
                             // Add to cart logic here
                           }}
-                          className="w-full sm:w-auto px-2.5 sm:px-3 py-1.5 sm:py-2 bg-red-50 text-red-600 border border-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors text-xs sm:text-sm font-semibold whitespace-nowrap"
+                          className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
                         >
                           Add to Cart
                         </button>
                       </div>
                     </div>
                   </Link>
-                ))}
+                )})}
               </div>
             )}
           </div>

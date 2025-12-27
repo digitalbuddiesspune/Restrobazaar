@@ -108,3 +108,5 @@ const addDetailedProduct = async () => {
 
 addDetailedProduct();
 
+
+
