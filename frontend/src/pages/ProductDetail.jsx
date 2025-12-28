@@ -275,12 +275,12 @@ const ProductDetail = () => {
             {/* Product Images - Sticky on desktop */}
             <div className="space-y-3 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:pr-2 lg:pb-4 max-w-full lg:max-w-sm mx-auto lg:mx-0">
               {/* Main Image */}
-              <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden relative shadow-inner border border-gray-200 transition-all hover:shadow-md flex-shrink-0 group">
+              <div className="relative w-full aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden shadow-inner border border-gray-200 transition-all hover:shadow-md flex-shrink-0 group">
                 {product.images && product.images.length > 0 ? (
                   <img
                     src={product.images[selectedImage]}
                     alt={product.name}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    className="w-full h-full object-contain sm:object-cover transition-transform duration-300 hover:scale-105"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}
@@ -355,7 +355,7 @@ const ProductDetail = () => {
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
-                      className={`aspect-square rounded-md overflow-hidden border-2 bg-gray-50 flex items-center justify-center p-1 transition-all duration-200 ${
+                      className={`relative w-full aspect-square rounded-md overflow-hidden border-2 bg-gray-50 flex items-center justify-center p-1 transition-all duration-200 ${
                         selectedImage === index
                           ? 'border-red-600 ring-1 ring-red-200 shadow-sm'
                           : 'border-gray-200 hover:border-red-300'
@@ -365,6 +365,7 @@ const ProductDetail = () => {
                         src={image}
                         alt={`${product.name} ${index + 1}`}
                         className="w-full h-full object-contain"
+                        loading="lazy"
                       />
                     </button>
                   ))}
