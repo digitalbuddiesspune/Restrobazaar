@@ -8,6 +8,7 @@ const categorySchema = new mongoose.Schema(
     description: { type: String },
     subcategories: [{ type: String }],
     isActive: { type: Boolean, default: true },
+    order: { type: Number, default: 0 }, // For controlling display order in sidebar
   },
   { timestamps: true }
 );

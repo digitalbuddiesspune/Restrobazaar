@@ -88,7 +88,7 @@ export const titleToSlug = (title) => {
 
 const Categories = () => {
   return (
-    <section className="bg-white py-8 md:py-12 lg:py-16">
+    <section className="bg-gray-50 py-8 md:py-12 lg:py-16">
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="flex items-start justify-between gap-4 mb-6 md:mb-8">
           <div>

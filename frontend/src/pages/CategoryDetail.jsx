@@ -1,160 +1,7 @@
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { productAPI } from '../utils/api';
+import { productAPI, categoryAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
-
-const categoryCards = [
-  {
-    title: "Containers",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765968834/fb302d74-dfe2-437a-811b-293e1f117d70.png",
-    subcategories: [
-      "Round Containers",
-      "Rectangle Containers",
-      "Aluminum Containers",
-      "Paper Containers",
-      "Premium Containers",
-      "Hinged Containers",
-      "Buckets with handle"
-    ]
-  },
-  {
-    title: "Plates & Bowls",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765969490/35ea9123-90d9-408e-98c3-09dbbd553dfa.png",
-    subcategories: [
-      "Meal Tray",
-      "Plates",
-      "Bowls"
-    ]
-  },
-  {
-    title: "Bags (Paper)",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765969647/bb944066-f0bb-4b1d-91ae-2449d78fafce.png",
-    subcategories: [
-      "Handle Paper Bags",
-      "Paper Square Bags",
-      "Plastic LD Bags",
-      "Silver Pouch",
-      "Zip Lock Bags"
-    ]
-  },
-  {
-    title: "Spoon & Straw",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765969936/9cb72c90-349a-4925-9043-d198c085f055.png",
-    subcategories: [
-      "Spoon/Fork",
-      "Straw",
-      "Wooden Sticks"
-    ]
-  },
-  {
-    title: "Wrappers & Papers",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765970120/f53f7fcf-99a2-497a-9467-080ee54ae876.png",
-    subcategories: [
-      "Food Wrapping"
-    ]
-  },
-  {
-    title: "Glasses & Bottles",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765972166/770db29a-4788-425a-b128-7c8b0a127401.png",
-    subcategories: [
-      "Paper Glass",
-      "Ripple Glass",
-      "Takeaway Glass",
-      "Freyo Tower",
-      "Glass Jars",
-      "Pet Bottles",
-      "Tray For Glass Takeaway"
-    ]
-  },
-  {
-    title: "House Keeping",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765972358/4369232f-0a83-430e-ac92-4465abb9d1c7.png",
-    subcategories: [
-      "Garbage Bag",
-      "Chemicals",
-      "Cleaning Products"
-    ]
-  },
-  {
-    title: "Takeaway Boxes",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765972626/79aebae9-492c-4bf6-b270-ee8c15a2ad9d.png",
-    subcategories: [
-      "Pizza Box",
-      "Snacks Box",
-      "Burger/Sandwich Box",
-      "Dosa/Roll Box",
-      "Kraft Lunch box"
-    ]
-  },
-  {
-    title: "Gloves & Caps",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765972744/e17c9bba-8cc6-4f2d-8b3d-b1e988b21855.png",
-    subcategories: [
-      "Hand Gloves",
-      "Caps"
-    ]
-  },
-  {
-    title: "Tissue Papers & Rolls",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765972776/95ccdc6f-d560-4256-8a4e-70d101a990fd.png",
-    subcategories: [
-      "Paper Napkins",
-      "HRT/Kitchen Rolls"
-    ]
-  },
-  {
-    title: "Veg/Non-Veg Taps",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765973873/d1d0ad8e-9b12-4528-94cd-a3f6aa4d6291.png",
-    subcategories: [
-      "Veg/Nonveg Tap"
-    ]
-  },
-  {
-    title: "Bakery",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765973212/3b4ce4e3-8f26-4774-a5fd-d1f799997cc8.png",
-    subcategories: [
-      "Box & Tray",
-      "Cake Base",
-      "Dessert Cups",
-      "Glass Jars",
-      "Cups & Liners",
-      "Bake & Serve"
-    ]
-  },
-  {
-    title: "Handi & Kulhads",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765973695/5d210c26-e213-4328-9509-bd36ccddfc01.png",
-    subcategories: [
-      "Biryani Handi",
-      "Tea/Lassi Kulhad"
-    ]
-  },
-  {
-    title: "Sachet",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765973749/71f88642-1956-4bd6-97be-df4ccea0217d.png",
-    subcategories: []
-  },
-  {
-    title: "Customize Printing Products",
-    image:
-      "https://res.cloudinary.com/debhhnzgh/image/upload/v1765974091/d7a83287-839b-4dc1-887f-8f37121c22d8.png",
-    subcategories: []
-  },
-];
 
 // Helper function to convert title to URL slug
 const titleToSlug = (title) => {
@@ -168,34 +15,63 @@ const CategoryDetail = () => {
   const { categorySlug, subcategorySlug } = useParams();
   const location = useLocation();
   const [category, setCategory] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState(null);
   const isAllProductsPage = location.pathname === '/all-products';
 
+  // Fetch all categories for sidebar
   useEffect(() => {
-    // Find the category by matching the slug
-    const foundCategory = categoryCards.find(
-      (cat) => titleToSlug(cat.title) === categorySlug
-    );
-    
-    if (foundCategory) {
-      setCategory(foundCategory);
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await categoryAPI.getAllCategories();
+        if (response.success) {
+          // Filter only active categories and sort by order
+          const activeCategories = (response.data || [])
+            .filter(cat => cat.isActive !== false)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+          setCategories(activeCategories);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Find and set the current category by slug
+  useEffect(() => {
+    if (categories.length > 0 && categorySlug) {
+      const foundCategory = categories.find(
+        (cat) => cat.slug === categorySlug
+      );
       
-      // If subcategory slug exists, find and set it
-      if (subcategorySlug && foundCategory.subcategories && foundCategory.subcategories.length > 0) {
-        const foundSubcategory = foundCategory.subcategories.find(
-          (sub) => titleToSlug(sub) === subcategorySlug
-        );
-        if (foundSubcategory) {
-          setSelectedSubcategory(foundSubcategory);
+      if (foundCategory) {
+        setCategory(foundCategory);
+        
+        // If subcategory slug exists, find and set it
+        if (subcategorySlug && foundCategory.subcategories && foundCategory.subcategories.length > 0) {
+          const foundSubcategory = foundCategory.subcategories.find(
+            (sub) => titleToSlug(sub) === subcategorySlug
+          );
+          if (foundSubcategory) {
+            setSelectedSubcategory(foundSubcategory);
+          }
+        } else {
+          setSelectedSubcategory(null);
         }
       } else {
-        setSelectedSubcategory(null);
+        setCategory(null);
       }
     }
-  }, [categorySlug, subcategorySlug]);
+  }, [categorySlug, subcategorySlug, categories]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -231,7 +107,20 @@ const CategoryDetail = () => {
     fetchProducts();
   }, [categorySlug, selectedSubcategory]);
 
-  if (!category) {
+  // Show loading while fetching categories
+  if (categoriesLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          <p className="mt-4 text-gray-600">Loading category...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if category not found after categories are loaded
+  if (!categoriesLoading && !category) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -245,6 +134,11 @@ const CategoryDetail = () => {
         </div>
       </div>
     );
+  }
+
+  // Don't render if category is still null
+  if (!category) {
+    return null;
   }
 
   return (
@@ -265,7 +159,7 @@ const CategoryDetail = () => {
               to={`/category/${categorySlug}`} 
               className="text-gray-500 hover:text-gray-700 truncate max-w-[120px] sm:max-w-none"
             >
-              {category.title}
+              {category.name}
             </Link>
             {selectedSubcategory && (
               <>
@@ -337,31 +231,45 @@ const CategoryDetail = () => {
                     </span>
                   </Link>
                   
-                  {categoryCards.map((cat) => {
-                    const isActive = titleToSlug(cat.title) === categorySlug;
-                    return (
-                      <Link
-                        key={cat.title}
-                        to={`/category/${titleToSlug(cat.title)}`}
-                        className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-colors ${
-                          isActive
-                            ? 'bg-red-50 text-red-600 font-semibold border border-red-200'
-                            : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                      >
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
-                          <img
-                            src={cat.image}
-                            alt={cat.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span className="text-xs sm:text-sm font-medium flex-1 line-clamp-2">
-                          {cat.title}
-                        </span>
-                      </Link>
-                    );
-                  })}
+                  {categoriesLoading ? (
+                    <div className="text-center py-4">
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
+                    </div>
+                  ) : (
+                    categories.map((cat) => {
+                      const isActive = cat.slug === categorySlug;
+                      return (
+                        <Link
+                          key={cat._id}
+                          to={`/category/${cat.slug}`}
+                          className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-colors ${
+                            isActive
+                              ? 'bg-red-50 text-red-600 font-semibold border border-red-200'
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                        >
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
+                            {cat.image ? (
+                              <img
+                                src={cat.image}
+                                alt={cat.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs sm:text-sm font-medium flex-1 line-clamp-2">
+                            {cat.name}
+                          </span>
+                        </Link>
+                      );
+                    })
+                  )}
                 </nav>
               </div>
             </div>
@@ -410,7 +318,7 @@ const CategoryDetail = () => {
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
                   {selectedSubcategory
                     ? `Products in ${selectedSubcategory}` 
-                    : `Products in ${category.title}`
+                    : `Products in ${category.name}`
                   }
                 </h2>
               </div>

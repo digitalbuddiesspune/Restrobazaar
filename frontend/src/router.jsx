@@ -21,6 +21,7 @@ import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminProducts from './pages/admin/Products'
 import AdminCategories from './pages/admin/Categories'
+import CategoryForm from './pages/admin/CategoryForm'
 import ProductForm from './pages/admin/ProductForm'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -59,6 +60,8 @@ const router = createBrowserRouter(
               <Route path='products/new' element={<ProductForm />} />
               <Route path='products/:id/edit' element={<ProductForm />} />
               <Route path='categories' element={<AdminCategories />} />
+              <Route path='categories/new' element={<CategoryForm />} />
+              <Route path='categories/:id/edit' element={<CategoryForm />} />
             </Route>
         </Route>
     )

@@ -1,13 +1,37 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { categoryCards, titleToSlug } from '../components/Categories';
-import { productAPI } from '../utils/api';
+import { categoryAPI, productAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 
 const AllProducts = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Fetch categories for sidebar
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await categoryAPI.getAllCategories();
+        if (response.success) {
+          // Filter only active categories and sort by order
+          const activeCategories = (response.data || [])
+            .filter(cat => cat.isActive !== false)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+          setCategories(activeCategories);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -107,24 +131,38 @@ const AllProducts = () => {
                     </span>
                   </Link>
                   
-                  {categoryCards.map((cat) => (
-                    <Link
-                      key={cat.title}
-                      to={`/category/${titleToSlug(cat.title)}`}
-                      className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
-                        <img
-                          src={cat.image}
-                          alt={cat.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-xs sm:text-sm font-medium flex-1 line-clamp-2">
-                        {cat.title}
-                      </span>
-                    </Link>
-                  ))}
+                  {categoriesLoading ? (
+                    <div className="text-center py-4">
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
+                    </div>
+                  ) : (
+                    categories.map((cat) => (
+                      <Link
+                        key={cat._id}
+                        to={`/category/${cat.slug}`}
+                        className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      >
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-md overflow-hidden bg-gray-100">
+                          {cat.image ? (
+                            <img
+                              src={cat.image}
+                              alt={cat.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs sm:text-sm font-medium flex-1 line-clamp-2">
+                          {cat.name}
+                        </span>
+                      </Link>
+                    ))
+                  )}
                 </nav>
               </div>
             </div>

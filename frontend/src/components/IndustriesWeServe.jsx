@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 const industries = [
   {
     id: 1,
-    name: 'Household Supply',
-    image: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766063975/6dd07844-262c-48ab-849d-2260f03bf7b9.png',
+    name: 'Salons & Spas',
+    image: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766919318/1226cfc1-2f62-4335-b9a5-13f24a59c63d.png',
   },
+ 
   {
     id: 2,
     name: 'Cloud Kitchen',
@@ -18,8 +19,8 @@ const industries = [
   },
   {
     id: 4,
-    name: 'Catering Services',
-    image: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766061568/5e8cc28a-e115-411f-96b5-76c55dabda45.png',
+    name: 'Events & Party',
+    image: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766918991/4d7a93e0-f603-41e3-8c06-43b04a976d57.png',
   },
   {
     id: 5,
@@ -34,8 +35,14 @@ const industries = [
   {
     id: 7,
     name: 'Food Corner',
-    image: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766063692/84dc9dca-2913-4ec3-9818-a0850ae69de0.png',
+    image: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766919600/c21f5119-0a53-4bae-813d-46357f59ea4a.png',
   },
+  {
+    id: 8,
+    name: 'Catering Services',
+    image: 'https://res.cloudinary.com/debhhnzgh/image/upload/v1766061568/5e8cc28a-e115-411f-96b5-76c55dabda45.png',
+  },
+ 
 ];
 
 const IndustriesWeServe = () => {
