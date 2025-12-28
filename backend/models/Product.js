@@ -63,6 +63,7 @@ const productSchema = new mongoose.Schema(
     // Product settings
     isReturnable: { type: Boolean, default: false },
     sequenceListing: { type: Number, default: 0 },
+    allProductsOrder: { type: Number, default: 0 }, // Order for All Products page
     isActive: { type: Boolean, default: true },
 
     // Images

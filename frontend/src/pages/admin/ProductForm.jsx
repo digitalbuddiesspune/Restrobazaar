@@ -40,6 +40,7 @@ const ProductForm = () => {
     sgst: '',
     isReturnable: false,
     sequenceListing: 0,
+    allProductsOrder: 0,
     isActive: true,
     images: [''],
     galleryImages: [''],
@@ -152,6 +153,7 @@ const ProductForm = () => {
           sgst: product.sgst || '',
           isReturnable: product.isReturnable !== undefined ? product.isReturnable : false,
           sequenceListing: product.sequenceListing || 0,
+          allProductsOrder: product.allProductsOrder || 0,
           isActive: product.isActive !== undefined ? product.isActive : true,
           images: product.images && product.images.length > 0 ? product.images : [''],
           galleryImages: product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages : [''],
@@ -353,6 +355,7 @@ const ProductForm = () => {
         cgst: formData.cgst ? parseFloat(formData.cgst) : undefined,
         sgst: formData.sgst ? parseFloat(formData.sgst) : undefined,
         sequenceListing: parseInt(formData.sequenceListing) || 0,
+        allProductsOrder: parseInt(formData.allProductsOrder) || 0,
         images: formData.images.filter(img => img.trim() !== ''),
         galleryImages: formData.galleryImages.filter(img => img.trim() !== ''),
         features: formData.features.filter(f => f.trim() !== ''),
@@ -445,103 +448,102 @@ const ProductForm = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
+        <div className="mb-3 sm:mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
             {isEdit ? 'Edit Product' : 'Add New Product'}
           </h1>
-          <p className="mt-2 text-gray-600">
+          <p className="mt-1 text-xs sm:text-sm text-gray-600">
             {isEdit ? 'Update product information' : 'Create a new product'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 sm:p-4 space-y-3 sm:space-y-4">
           {/* Basic Information */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Name *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleNameChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Basic Information</h2>
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleNameChange}
+                    required
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Slug *
+                  </label>
+                  <input
+                    type="text"
+                    name="slug"
+                    value={formData.slug}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Slug *
-                </label>
-                <input
-                  type="text"
-                  name="slug"
-                  value={formData.slug}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category *
-                </label>
-                {categoriesLoading ? (
-                  <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
-                    Loading categories...
-                  </div>
-                ) : (
-                  <>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="">Select Category</option>
-                      {categories.length > 0 ? (
-                        categories.map(cat => (
-                          <option key={cat._id} value={cat._id}>{cat.name}</option>
-                        ))
-                      ) : (
-                        <option value="" disabled>No categories available</option>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Category *
+                  </label>
+                  {categoriesLoading ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
+                      Loading categories...
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        name="category"
+                        value={formData.category}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="">Select Category</option>
+                        {categories.length > 0 ? (
+                          categories.map(cat => (
+                            <option key={cat._id} value={cat._id}>{cat.name}</option>
+                          ))
+                        ) : (
+                          <option value="" disabled>No categories available</option>
+                        )}
+                      </select>
+                      {categories.length === 0 && !categoriesLoading && (
+                        <div className="mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <p className="text-xs text-yellow-800 font-medium">No categories found!</p>
+                          <p className="text-xs text-yellow-700 mt-0.5">
+                            Please seed categories or create from admin panel.
+                          </p>
+                        </div>
                       )}
-                    </select>
-                    {categories.length === 0 && !categoriesLoading && (
-                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-yellow-800 font-medium">No categories found!</p>
-                        <p className="text-xs text-yellow-700 mt-1">
-                          Please seed categories by running: <code className="bg-yellow-100 px-1 rounded">node backend/scripts/seedCategories.js</code>
-                        </p>
-                        <p className="text-xs text-yellow-700 mt-1">
-                          Or create a category from the Categories page in the admin panel.
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                    </>
+                  )}
+                </div>
 
-              {formData.category && (() => {
-                const currentCategory = categories.find(cat => cat._id === formData.category);
-                return currentCategory ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Subcategory (Optional)
-                    </label>
-                    {currentCategory.subcategories && currentCategory.subcategories.length > 0 ? (
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Subcategory (Optional)
+                  </label>
+                  {formData.category ? (() => {
+                    const currentCategory = categories.find(cat => cat._id === formData.category);
+                    return currentCategory && currentCategory.subcategories && currentCategory.subcategories.length > 0 ? (
                       <select
                         name="subcategory"
                         value={formData.subcategory}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="">Select Subcategory (Optional)</option>
                         {currentCategory.subcategories.map((subcat, index) => (
@@ -549,32 +551,37 @@ const ProductForm = () => {
                         ))}
                       </select>
                     ) : (
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
-                        No subcategories available for this category
+                      <div className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                        No subcategories available
                       </div>
-                    )}
-                  </div>
-                ) : null;
-              })()}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Other Category (Optional)
-                </label>
-                <input
-                  type="text"
-                  name="otherCategory"
-                  value={formData.otherCategory}
-                  onChange={handleChange}
-                  placeholder="Enter other category"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
+                    );
+                  })() : (
+                    <div className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                      Select category first
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Search Tags
-                </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Other Category (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    name="otherCategory"
+                    value={formData.otherCategory}
+                    onChange={handleChange}
+                    placeholder="Enter other category"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Search Tags
+                  </label>
                 {formData.searchTags.map((tag, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <input
@@ -588,7 +595,7 @@ const ProductForm = () => {
                       <button
                         type="button"
                         onClick={() => removeArrayItem('searchTags', index)}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        className="px-2 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
                       >
                         Remove
                       </button>
@@ -598,14 +605,15 @@ const ProductForm = () => {
                 <button
                   type="button"
                   onClick={() => addArrayItem('searchTags')}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                 >
                   + Add Search Tag
                 </button>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">
                   City <span className="text-gray-500 text-xs">(Default: Other - shows all products)</span>
                 </label>
                 <div className="relative">
@@ -616,7 +624,7 @@ const ProductForm = () => {
                     onChange={handleChange}
                     placeholder="Enter city name (e.g., Pune, Mumbai, Nagpur, Ahmedabad) or 'Other' for all cities"
                     list="city-suggestions"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                   <datalist id="city-suggestions">
                     <option value="Other">Other (All cities)</option>
@@ -631,9 +639,9 @@ const ProductForm = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
                     Price *
                   </label>
                   <input
@@ -643,12 +651,12 @@ const ProductForm = () => {
                     value={formData.price}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
                     Original Price
                   </label>
                   <input
@@ -657,22 +665,36 @@ const ProductForm = () => {
                     name="originalPrice"
                     value={formData.originalPrice}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Purchase Amount
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="purchaseAmount"
+                    value={formData.purchaseAmount}
+                    onChange={handleChange}
+                    placeholder="Purchase amount"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
               </div>
 
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
                     Units
                   </label>
                   <select
                     name="units"
                     value={formData.units}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   >
                     <option value="Kg">Kg</option>
                     <option value="g">g</option>
@@ -689,58 +711,44 @@ const ProductForm = () => {
                     <option value="Roll">Roll</option>
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Purchase Amount
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Purchase Mode
+                  </label>
+                  <select
+                    name="purchaseMode"
+                    value={formData.purchaseMode}
+                    onChange={handleChange}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Online">Online</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cash & Online">Cash & Online</option>
+                    <option value="Cash & Bank Transfer">Cash & Bank Transfer</option>
+                    <option value="Online & Bank Transfer">Online & Bank Transfer</option>
+                    <option value="Cash & Online & Bank Transfer">Cash & Online & Bank Transfer</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    Product Purchase From
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    name="purchaseAmount"
-                    value={formData.purchaseAmount}
+                    type="text"
+                    name="productPurchaseFrom"
+                    value={formData.productPurchaseFrom}
                     onChange={handleChange}
-                    placeholder="Add information about price"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Enter purchase source"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Purchase Mode
-                </label>
-                <select
-                  name="purchaseMode"
-                  value={formData.purchaseMode}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Online">Online</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="Cash & Online">Cash & Online</option>
-                  <option value="Cash & Bank Transfer">Cash & Bank Transfer</option>
-                  <option value="Online & Bank Transfer">Online & Bank Transfer</option>
-                  <option value="Cash & Online & Bank Transfer">Cash & Online & Bank Transfer</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Purchase From
-                </label>
-                <input
-                  type="text"
-                  name="productPurchaseFrom"
-                  value={formData.productPurchaseFrom}
-                  onChange={handleChange}
-                  placeholder="Enter purchase source"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">
                   Description
                 </label>
                 <textarea
@@ -748,12 +756,12 @@ const ProductForm = () => {
                   value={formData.description}
                   onChange={handleChange}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">
                   Images (URLs)
                 </label>
                 {formData.images.map((image, index) => (
@@ -769,7 +777,7 @@ const ProductForm = () => {
                       <button
                         type="button"
                         onClick={() => removeArrayItem('images', index)}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        className="px-2 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
                       >
                         Remove
                       </button>
@@ -785,7 +793,7 @@ const ProductForm = () => {
                 </button>
               </div>
 
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -794,7 +802,7 @@ const ProductForm = () => {
                     onChange={handleChange}
                     className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                   />
-                  <label className="ml-2 text-sm text-gray-700">Product Returnable</label>
+                  <label className="ml-2 text-sm text-gray-900">Product Returnable</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -804,13 +812,13 @@ const ProductForm = () => {
                     onChange={handleChange}
                     className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                   />
-                  <label className="ml-2 text-sm text-gray-700">Status: Active</label>
+                  <label className="ml-2 text-sm text-gray-900">Status: Active</label>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
                     Sequence Listing
                   </label>
                   <input
@@ -818,18 +826,34 @@ const ProductForm = () => {
                     name="sequenceListing"
                     value={formData.sequenceListing}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Category order"
                   />
+                  <p className="text-xs text-gray-500 mt-1">For category pages</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    For all product page sequence number
+                  </label>
+                  <input
+                    type="number"
+                    name="allProductsOrder"
+                    value={formData.allProductsOrder}
+                    onChange={handleChange}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Sequence number for all products page"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Controls order on all products page</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
                     Stock Status
                   </label>
                   <select
                     name="stockStatus"
                     value={formData.stockStatus}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   >
                     <option value="instock">In Stock</option>
                     <option value="outofstock">Out of Stock</option>
@@ -842,10 +866,10 @@ const ProductForm = () => {
 
           {/* Stock Management */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Stock Management</h2>
-            <div className="space-y-4">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Stock Management</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">
                   Available Stock
                 </label>
                 <input
@@ -853,28 +877,26 @@ const ProductForm = () => {
                   name="availableStock"
                   value={formData.availableStock}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Minimum Orderable Quantity
-                  </label>
-                  <input
-                    type="number"
-                    name="minimumOrderableQuantity"
-                    value={formData.minimumOrderableQuantity}
-                    onChange={handleChange}
-                    placeholder="Orderable Quantity"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                  Minimum Orderable Quantity
+                </label>
+                <input
+                  type="number"
+                  name="minimumOrderableQuantity"
+                  value={formData.minimumOrderableQuantity}
+                  onChange={handleChange}
+                  placeholder="Orderable Quantity"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">
                   Incrementor (Optional)
                 </label>
                 <input
@@ -884,7 +906,7 @@ const ProductForm = () => {
                   value={formData.incrementor}
                   onChange={handleChange}
                   placeholder="Incrementor (Optional)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
             </div>
@@ -892,49 +914,50 @@ const ProductForm = () => {
 
           {/* Tax & GST Information */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Tax & GST Information</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  HSN CODE
-                </label>
-                <input
-                  type="text"
-                  name="hsnCode"
-                  value={formData.hsnCode}
-                  onChange={handleChange}
-                  placeholder="HSN CODE"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Tax & GST Information</h2>
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    HSN CODE
+                  </label>
+                  <input
+                    type="text"
+                    name="hsnCode"
+                    value={formData.hsnCode}
+                    onChange={handleChange}
+                    placeholder="HSN CODE"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    GST Rate (%) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="gstOrTaxPercent"
+                    value={formData.gstOrTaxPercent}
+                    onChange={handleChange}
+                    placeholder="Enter GST Rate (e.g., 18 for 18%)"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <p className="text-xs text-blue-800 mb-2">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-2">
+                <p className="text-xs text-blue-800">
                   <strong>Note:</strong> Enter GST Rate %. For Intra-state (same state), CGST and SGST will be auto-calculated (each = GST/2). For Inter-state, use IGST field.
                 </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  GST Rate (%) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="gstOrTaxPercent"
-                  value={formData.gstOrTaxPercent}
-                  onChange={handleChange}
-                  placeholder="Enter GST Rate (e.g., 18 for 18%)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
                 <p className="text-xs text-gray-500 mt-1">
                   Common GST rates: 0%, 5%, 12%, 18%, 28%
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
                     CGST (%) - Intra-state
                   </label>
                   <input
@@ -943,13 +966,13 @@ const ProductForm = () => {
                     name="cgst"
                     value={formData.cgst}
                     onChange={handleChange}
-                    placeholder="Auto-calculated or enter manually"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Auto-calculated"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">For same state sales</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Same state</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
                     SGST (%) - Intra-state
                   </label>
                   <input
@@ -958,147 +981,146 @@ const ProductForm = () => {
                     name="sgst"
                     value={formData.sgst}
                     onChange={handleChange}
-                    placeholder="Auto-calculated or enter manually"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Auto-calculated"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">For same state sales</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Same state</p>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  IGST (%) - Inter-state
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="igst"
-                  value={formData.igst}
-                  onChange={handleChange}
-                  placeholder="Enter IGST for inter-state sales"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">For different state sales (usually same as GST Rate)</p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                    IGST (%) - Inter-state
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="igst"
+                    value={formData.igst}
+                    onChange={handleChange}
+                    placeholder="Enter IGST for inter-state sales"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-0.5">Different state</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Specifications */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Specifications</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Specifications</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">Material</label>
                 <input
                   type="text"
                   name="specifications.material"
                   value={formData.specifications.material}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lid</label>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">Lid</label>
                 <input
                   type="text"
                   name="specifications.lid"
                   value={formData.specifications.lid}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">Color</label>
                 <input
                   type="text"
                   name="specifications.color"
                   value={formData.specifications.color}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">Type</label>
                 <input
                   type="text"
                   name="specifications.type"
                   value={formData.specifications.type}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">Capacity</label>
                 <input
                   type="text"
                   name="specifications.capacity"
                   value={formData.specifications.capacity}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Shape</label>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">Shape</label>
                 <input
                   type="text"
                   name="specifications.shape"
                   value={formData.specifications.shape}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">Weight</label>
                 <input
                   type="text"
                   name="specifications.weight"
                   value={formData.specifications.weight}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
               </div>
             </div>
 
-            <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Size (In cm)</h3>
-              <div className="grid grid-cols-3 gap-4">
+            <div className="mt-2">
+              <h3 className="text-sm font-medium text-gray-700 mb-1">Size (In cm)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Height</label>
+                  <label className="block text-sm text-gray-900 mb-1">Height</label>
                   <input
                     type="text"
                     name="specifications.size.height"
                     value={formData.specifications.size.height}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Width</label>
+                  <label className="block text-sm text-gray-900 mb-1">Width</label>
                   <input
                     type="text"
                     name="specifications.size.width"
                     value={formData.specifications.size.width}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Base</label>
+                  <label className="block text-sm text-gray-900 mb-1">Base</label>
                   <input
                     type="text"
                     name="specifications.size.base"
                     value={formData.specifications.size.base}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg"
                   />
                 </div>
               </div>
             </div>
 
             {/* Custom Specification Fields */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Custom Specification Fields</h3>
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-gray-900">Custom Specification Fields</h3>
                 <button
                   type="button"
                   onClick={() => addArrayItem('customSpecFields')}
@@ -1136,7 +1158,7 @@ const ProductForm = () => {
                       <button
                         type="button"
                         onClick={() => removeArrayItem('customSpecFields', index)}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        className="px-2 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
                       >
                         Remove
                       </button>
@@ -1152,7 +1174,7 @@ const ProductForm = () => {
 
           {/* Features */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Features</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Features</h2>
             {formData.features.map((feature, index) => (
               <div key={index} className="flex gap-2 mb-2">
                 <input
@@ -1176,7 +1198,7 @@ const ProductForm = () => {
             <button
               type="button"
               onClick={() => addArrayItem('features')}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
             >
               + Add Feature
             </button>
@@ -1184,7 +1206,7 @@ const ProductForm = () => {
 
           {/* Bulk Offers */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Bulk Offers</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Bulk Offers</h2>
             {formData.bulkOffers.map((offer, index) => (
               <div key={index} className="flex gap-2 mb-2">
                 <input
@@ -1216,25 +1238,25 @@ const ProductForm = () => {
             <button
               type="button"
               onClick={() => addArrayItem('bulkOffers')}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
             >
               + Add Bulk Offer
             </button>
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex gap-4 pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 border-t border-gray-200">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 text-sm"
             >
               {loading ? 'Saving...' : (isEdit ? 'Update Product' : 'Create Product')}
             </button>
             <button
               type="button"
               onClick={() => navigate('/admin/products')}
-              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium text-sm"
             >
               Cancel
             </button>

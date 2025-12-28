@@ -74,7 +74,32 @@ const getAllProducts = async (req, res) => {
 
     const skip = (Number(page) - 1) * Number(limit);
     const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
+    
+    // Check if this is for "All Products" page (no category filter)
+    const isAllProductsPage = !category && !categorySlug;
+    
+    // Default sort by allProductsOrder for All Products page, sequenceListing for category pages
+    if (sortBy === "createdAt" && !req.query.sortBy) {
+      if (isAllProductsPage) {
+        // For All Products page, use allProductsOrder
+        sortOptions.allProductsOrder = 1; // Ascending - lower numbers first
+        sortOptions.createdAt = -1; // Then by createdAt descending
+      } else {
+        // For category pages, use sequenceListing
+        sortOptions.sequenceListing = 1; // Ascending - lower numbers first
+        sortOptions.createdAt = -1; // Then by createdAt descending
+      }
+    } else {
+      sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
+      // If sorting by something other than sequenceListing/allProductsOrder, add as secondary sort
+      if (sortBy !== "sequenceListing" && sortBy !== "allProductsOrder") {
+        if (isAllProductsPage) {
+          sortOptions.allProductsOrder = 1; // Secondary sort by allProductsOrder
+        } else {
+          sortOptions.sequenceListing = 1; // Secondary sort by sequenceListing
+        }
+      }
+    }
 
     const products = await Product.find(query)
       .populate("category", "name slug image")
@@ -384,7 +409,7 @@ const getProductsByCategory = async (req, res) => {
 
     const products = await Product.find(query)
       .populate("category", "name slug image")
-      .sort({ createdAt: -1 })
+      .sort({ sequenceListing: 1, createdAt: -1 }) // Sort by sequenceListing first (ascending), then by createdAt
       .skip(skip)
       .limit(Number(limit));
 
