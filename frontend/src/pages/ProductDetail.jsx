@@ -397,6 +397,11 @@ const ProductDetail = () => {
                   <span className="text-3xl sm:text-4xl font-bold text-gray-900">
                     ₹{product.price}
                   </span>
+                  {product.units && (
+                    <span className="text-sm text-gray-600 font-medium">
+                      / {product.units}
+                    </span>
+                  )}
                   {product.originalPrice && product.originalPrice > product.price && (
                     <>
                       <span className="text-xl text-gray-400 line-through">
@@ -433,10 +438,10 @@ const ProductDetail = () => {
                             >
                               <p className={`text-xs ${isActive ? 'text-green-900' : 'text-gray-700'}`}>
                                 <span className="font-semibold">
-                                  Buy {offer.minQty} Pieces or more
+                                  Buy {offer.minQty} {product.units || 'Pieces'} or more
                                 </span>
                                 {' at '}
-                                <span className="font-bold">₹{offer.pricePerPiece}/Piece</span>
+                                <span className="font-bold">₹{offer.pricePerPiece}/{product.units || 'Piece'}</span>
                               </p>
                             </div>
                           );
@@ -664,7 +669,7 @@ const ProductDetail = () => {
                       </svg>
                     </button>
                   </div>
-                  <span className="text-xs text-gray-600 font-medium">Pieces</span>
+                  <span className="text-xs text-gray-600 font-medium">{product.units || 'Pieces'}</span>
                 </div>
 
                 {/* Incrementor Info */}

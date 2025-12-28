@@ -25,6 +25,7 @@ const ProductForm = () => {
     purchaseMode: 'Cash & Online & Bank Transfer',
     shortDescription: '',
     description: '',
+    units: 'Kg',
     quantity: 0,
     availableStock: 10,
     maintainQtyForNotification: '',
@@ -137,6 +138,7 @@ const ProductForm = () => {
           purchaseMode: product.purchaseMode || 'Cash & Online & Bank Transfer',
           shortDescription: product.shortDescription || '',
           description: product.description || '',
+          units: product.units || 'Kg',
           quantity: product.quantity || 0,
           availableStock: product.availableStock || 10,
           maintainQtyForNotification: product.maintainQtyForNotification || '',
@@ -664,6 +666,31 @@ const ProductForm = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Units
+                  </label>
+                  <select
+                    name="units"
+                    value={formData.units}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="Kg">Kg</option>
+                    <option value="g">g</option>
+                    <option value="L">L</option>
+                    <option value="ml">ml</option>
+                    <option value="Piece">Piece</option>
+                    <option value="Pieces">Pieces</option>
+                    <option value="Box">Box</option>
+                    <option value="Pack">Pack</option>
+                    <option value="Pkt">Pkt</option>
+                    <option value="Jar">Jar</option>
+                    <option value="Bottle">Bottle</option>
+                    <option value="Tray">Tray</option>
+                    <option value="Roll">Roll</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Purchase Amount
                   </label>
                   <input
@@ -676,25 +703,26 @@ const ProductForm = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Purchase Mode
-                  </label>
-                  <select
-                    name="purchaseMode"
-                    value={formData.purchaseMode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  >
-                    <option value="Cash">Cash</option>
-                    <option value="Online">Online</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cash & Online">Cash & Online</option>
-                    <option value="Cash & Bank Transfer">Cash & Bank Transfer</option>
-                    <option value="Online & Bank Transfer">Online & Bank Transfer</option>
-                    <option value="Cash & Online & Bank Transfer">Cash & Online & Bank Transfer</option>
-                  </select>
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Purchase Mode
+                </label>
+                <select
+                  name="purchaseMode"
+                  value={formData.purchaseMode}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Online">Online</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cash & Online">Cash & Online</option>
+                  <option value="Cash & Bank Transfer">Cash & Bank Transfer</option>
+                  <option value="Online & Bank Transfer">Online & Bank Transfer</option>
+                  <option value="Cash & Online & Bank Transfer">Cash & Online & Bank Transfer</option>
+                </select>
               </div>
 
               <div>
