@@ -178,9 +178,9 @@ const AllProducts = () => {
                   <Link
                     key={product._id}
                     to={`/product/${product.slug}`}
-                    className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden transform hover:-translate-y-1"
+                    className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden transform hover:-translate-y-1 flex flex-col h-full"
                   >
-                    <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden relative">
+                    <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden relative flex-shrink-0">
                       {discount > 0 && (
                         <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-10 bg-red-50 text-red-600 border border-red-200 text-[10px] sm:text-xs font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-lg">
                           {discount}% OFF
@@ -213,7 +213,7 @@ const AllProducts = () => {
                         </svg>
                       </div>
                     </div>
-                    <div className="p-2.5 sm:p-3">
+                    <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-end bg-gradient-to-b from-gray-100 to-gray-50">
                       <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-1.5 line-clamp-2 group-hover:text-red-600 transition-colors">
                         {product.name}
                       </h3>

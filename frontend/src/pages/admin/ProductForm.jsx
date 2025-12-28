@@ -11,6 +11,7 @@ const ProductForm = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -125,6 +126,8 @@ const ProductForm = () => {
       const response = await productAPI.getProductById(id);
       if (response.success) {
         const product = response.data;
+        // Reset slug manual edit flag when loading existing product
+        setSlugManuallyEdited(false);
         setFormData({
           name: product.name || '',
           slug: product.slug || '',
@@ -241,6 +244,16 @@ const ProductForm = () => {
       return;
     }
     
+    // Track manual slug edits
+    if (name === 'slug') {
+      setSlugManuallyEdited(true);
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+      return;
+    }
+    
     // Auto-calculate CGST and SGST when GST rate changes (for intra-state)
     if (name === 'gstOrTaxPercent') {
       const gstRate = parseFloat(value) || 0;
@@ -320,7 +333,8 @@ const ProductForm = () => {
     setFormData(prev => ({
       ...prev,
       name,
-      slug: prev.slug || generateSlug(name)
+      // Auto-generate slug from name only if slug hasn't been manually edited
+      slug: slugManuallyEdited ? prev.slug : generateSlug(name)
     }));
   };
 
