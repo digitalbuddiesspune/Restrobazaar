@@ -21,6 +21,9 @@ const ProductDetail = () => {
           console.log('Specifications:', response.data.specifications);
           setProduct(response.data);
           setSelectedImage(0);
+          // Set initial quantity based on minimumOrderableQuantity
+          const minQty = response.data.minimumOrderableQuantity || 1;
+          setQuantity(minQty);
         } else {
           setError('Product not found');
         }
@@ -42,9 +45,28 @@ const ProductDetail = () => {
   };
 
   const handleQuantityChange = (change) => {
+    if (!product) return;
+    
+    const incrementor = product.incrementor || 1;
+    const minQty = product.minimumOrderableQuantity || 1;
+    
     setQuantity((prev) => {
-      const newQty = prev + change;
-      return newQty < 1 ? 1 : newQty;
+      // Calculate change based on incrementor
+      const changeAmount = change * incrementor;
+      let newQty = prev + changeAmount;
+      
+      // Ensure quantity is at least minimumOrderableQuantity
+      if (newQty < minQty) {
+        newQty = minQty;
+      }
+      
+      // Ensure quantity is a multiple of incrementor (if incrementor > 1)
+      if (incrementor > 1) {
+        // Round to nearest multiple of incrementor
+        newQty = Math.max(minQty, Math.round(newQty / incrementor) * incrementor);
+      }
+      
+      return newQty;
     });
   };
 
@@ -77,8 +99,10 @@ const ProductDetail = () => {
     }
   };
 
-  const minQuantity = 1;
+  // Calculate minimum quantity and check if at minimum
+  const minQuantity = product?.minimumOrderableQuantity || 1;
   const isMinQuantity = quantity <= minQuantity;
+  const incrementor = product?.incrementor || 1;
 
   if (loading) {
     return (
@@ -112,6 +136,107 @@ const ProductDetail = () => {
   const bulkOffer = product.bulkOffers
     ?.filter((offer) => quantity >= offer.minQty)
     .sort((a, b) => b.minQty - a.minQty)[0];
+
+  // Calculate total price with tax
+  const calculateTotalPrice = () => {
+    if (!product) return { basePrice: 0, tax: 0, total: 0, taxDetails: { type: '', rate: 0, breakdown: '', cgstAmount: 0, sgstAmount: 0, igstAmount: 0 } };
+    
+    // Calculate base price (with bulk offer if available)
+    let basePrice = 0;
+    if (bulkOffer && quantity >= bulkOffer.minQty) {
+      basePrice = bulkOffer.pricePerPiece * quantity;
+    } else {
+      basePrice = product.price * quantity;
+    }
+    
+    // Calculate tax according to Indian GST system
+    let tax = 0;
+    let taxDetails = {
+      type: '',
+      rate: 0,
+      breakdown: '',
+      cgstAmount: 0,
+      sgstAmount: 0,
+      igstAmount: 0
+    };
+    
+    // Priority 1: If IGST is set (for inter-state sales)
+    if (product.igst && parseFloat(product.igst) > 0) {
+      const igstRate = parseFloat(product.igst);
+      tax = (basePrice * igstRate) / 100;
+      taxDetails = {
+        type: 'IGST',
+        rate: igstRate,
+        breakdown: `IGST ${igstRate}%`,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        igstAmount: tax
+      };
+    }
+    // Priority 2: If CGST and SGST are set (for intra-state sales)
+    else if (product.cgst && product.sgst && (parseFloat(product.cgst) > 0 || parseFloat(product.sgst) > 0)) {
+      const cgstRate = parseFloat(product.cgst) || 0;
+      const sgstRate = parseFloat(product.sgst) || 0;
+      const cgstAmount = (basePrice * cgstRate) / 100;
+      const sgstAmount = (basePrice * sgstRate) / 100;
+      tax = cgstAmount + sgstAmount;
+      const totalGstRate = cgstRate + sgstRate;
+      taxDetails = {
+        type: 'CGST+SGST',
+        rate: totalGstRate,
+        breakdown: `CGST ${cgstRate}% + SGST ${sgstRate}%`,
+        cgstAmount: cgstAmount,
+        sgstAmount: sgstAmount,
+        igstAmount: 0
+      };
+    }
+    // Priority 3: If only CGST is set
+    else if (product.cgst && parseFloat(product.cgst) > 0) {
+      const cgstRate = parseFloat(product.cgst);
+      tax = (basePrice * cgstRate) / 100;
+      taxDetails = {
+        type: 'CGST',
+        rate: cgstRate,
+        breakdown: `CGST ${cgstRate}%`,
+        cgstAmount: tax,
+        sgstAmount: 0,
+        igstAmount: 0
+      };
+    }
+    // Priority 4: If only SGST is set
+    else if (product.sgst && parseFloat(product.sgst) > 0) {
+      const sgstRate = parseFloat(product.sgst);
+      tax = (basePrice * sgstRate) / 100;
+      taxDetails = {
+        type: 'SGST',
+        rate: sgstRate,
+        breakdown: `SGST ${sgstRate}%`,
+        cgstAmount: 0,
+        sgstAmount: tax,
+        igstAmount: 0
+      };
+    }
+    // Priority 5: If gstOrTaxPercent is set (general GST)
+    else if (product.gstOrTaxPercent && parseFloat(product.gstOrTaxPercent) > 0) {
+      const gstRate = parseFloat(product.gstOrTaxPercent);
+      tax = (basePrice * gstRate) / 100;
+      taxDetails = {
+        type: 'GST',
+        rate: gstRate,
+        breakdown: `GST ${gstRate}%`,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        igstAmount: 0
+      };
+    }
+    
+    const total = basePrice + tax;
+    
+    return { basePrice, tax, total, taxDetails };
+  };
+
+  const priceDetails = calculateTotalPrice();
+  const totalPrice = priceDetails.total;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -472,23 +597,42 @@ const ProductDetail = () => {
               {/* Quantity and Add to Cart */}
               <div className="space-y-4 pt-4 border-t border-gray-200">
                 {/* Stock Status */}
-                {product.quantity !== undefined && (
+                {(product.availableStock !== undefined || product.stockStatus !== undefined || product.quantity !== undefined) && (
                   <div className="flex items-center gap-2">
-                    {product.quantity > 0 ? (
-                      <>
-                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-green-600 font-semibold text-sm">In Stock ({product.quantity} available)</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-red-600 font-semibold text-sm">Out of Stock</span>
-                      </>
-                    )}
+                    {(() => {
+                      // Determine stock status: check stockStatus first, then availableStock, then quantity
+                      let isInStock = false;
+                      let stockCount = 0;
+                      
+                      if (product.stockStatus === 'outofstock') {
+                        isInStock = false;
+                      } else if (product.stockStatus === 'instock') {
+                        isInStock = true;
+                        stockCount = product.availableStock !== undefined ? product.availableStock : (product.quantity || 0);
+                      } else {
+                        // If stockStatus is not set, check availableStock or quantity
+                        stockCount = product.availableStock !== undefined ? product.availableStock : (product.quantity || 0);
+                        isInStock = stockCount > 0;
+                      }
+                      
+                      return isInStock ? (
+                        <>
+                          <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-green-600 font-semibold text-sm">
+                            In Stock{stockCount > 0 ? ` (${stockCount} available)` : ''}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-red-600 font-semibold text-sm">Out of Stock</span>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -523,11 +667,59 @@ const ProductDetail = () => {
                   <span className="text-xs text-gray-600 font-medium">Pieces</span>
                 </div>
 
+                {/* Incrementor Info */}
+                {incrementor > 1 && (
+                  <p className="text-xs text-gray-500 italic">
+                    * This product can only be ordered in multiples of {incrementor}
+                  </p>
+                )}
+
                 {/* Total Price */}
                 <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-3 border border-red-100">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-gray-700">Total Price:</span>
-                    <span className="text-2xl font-bold text-red-600">₹{bulkOffer ? (bulkOffer.pricePerPiece * quantity).toFixed(2) : (product.price * quantity).toFixed(2)}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">Subtotal (Excluding Tax):</span>
+                      <span className="text-base font-semibold text-gray-900">₹{priceDetails.basePrice.toFixed(2)}</span>
+                    </div>
+                    {priceDetails.tax > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-red-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-700">
+                            Tax ({priceDetails.taxDetails.breakdown}):
+                          </span>
+                          <span className="text-sm font-semibold text-gray-700">₹{priceDetails.tax.toFixed(2)}</span>
+                        </div>
+                        {priceDetails.taxDetails.type === 'CGST+SGST' && (
+                          <div className="pl-4 space-y-0.5 text-xs text-gray-600">
+                            <div className="flex items-center justify-between">
+                              <span>CGST ({parseFloat(product.cgst || 0)}%):</span>
+                              <span>₹{priceDetails.taxDetails.cgstAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>SGST ({parseFloat(product.sgst || 0)}%):</span>
+                              <span>₹{priceDetails.taxDetails.sgstAmount.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        )}
+                        {priceDetails.taxDetails.type === 'IGST' && (
+                          <div className="pl-4 text-xs text-gray-600">
+                            <div className="flex items-center justify-between">
+                              <span>IGST ({priceDetails.taxDetails.rate}%):</span>
+                              <span>₹{priceDetails.taxDetails.igstAmount.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t-2 border-red-300">
+                      <span className="text-base font-bold text-gray-900">Total Price (Including Tax):</span>
+                      <span className="text-2xl font-bold text-red-600">₹{totalPrice.toFixed(2)}</span>
+                    </div>
+                    {bulkOffer && quantity >= bulkOffer.minQty && (
+                      <p className="text-xs text-green-700 mt-1 font-medium">
+                        ✓ Bulk offer applied: ₹{bulkOffer.pricePerPiece}/piece
+                      </p>
+                    )}
                   </div>
                 </div>
 

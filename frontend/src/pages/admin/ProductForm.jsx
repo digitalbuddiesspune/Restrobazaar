@@ -25,8 +25,6 @@ const ProductForm = () => {
     purchaseMode: 'Cash & Online & Bank Transfer',
     shortDescription: '',
     description: '',
-    weight: '',
-    units: 'Kg',
     quantity: 0,
     availableStock: 10,
     maintainQtyForNotification: '',
@@ -35,6 +33,7 @@ const ProductForm = () => {
     incrementor: '',
     hsnCode: '',
     gstOrTaxPercent: '',
+    taxType: '', // 'intrastate' or 'interstate' - auto-determined
     igst: '',
     cgst: '',
     sgst: '',
@@ -51,6 +50,7 @@ const ProductForm = () => {
       type: '',
       capacity: '',
       shape: '',
+      weight: '',
       size: {
         height: '',
         width: '',
@@ -137,8 +137,6 @@ const ProductForm = () => {
           purchaseMode: product.purchaseMode || 'Cash & Online & Bank Transfer',
           shortDescription: product.shortDescription || '',
           description: product.description || '',
-          weight: product.weight || '',
-          units: product.units || 'Kg',
           quantity: product.quantity || 0,
           availableStock: product.availableStock || 10,
           maintainQtyForNotification: product.maintainQtyForNotification || '',
@@ -163,7 +161,7 @@ const ProductForm = () => {
             type: product.specifications?.type || '',
             capacity: product.specifications?.capacity || '',
             shape: product.specifications?.shape || '',
-            weight: product.specifications?.weight || '',
+            weight: product.specifications?.weight || product.weight || '',
             size: {
               height: product.specifications?.size?.height || '',
               width: product.specifications?.size?.width || '',
@@ -215,6 +213,50 @@ const ProductForm = () => {
         [name]: value,
         subcategory: '' // Reset subcategory when category changes
       }));
+      return;
+    }
+    
+    // Auto-update stockStatus when availableStock changes
+    if (name === 'availableStock') {
+      const stockValue = parseInt(value) || 0;
+      let newStockStatus = formData.stockStatus;
+      
+      if (stockValue <= 0) {
+        newStockStatus = 'outofstock';
+      } else if (stockValue > 0 && stockValue <= 5) {
+        newStockStatus = 'lowstock';
+      } else {
+        newStockStatus = 'instock';
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        stockStatus: newStockStatus
+      }));
+      return;
+    }
+    
+    // Auto-calculate CGST and SGST when GST rate changes (for intra-state)
+    if (name === 'gstOrTaxPercent') {
+      const gstRate = parseFloat(value) || 0;
+      setFormData(prev => {
+        const newData = { ...prev, [name]: value };
+        // Auto-calculate CGST and SGST when GST rate is entered
+        // For intra-state: CGST = SGST = GST/2
+        if (gstRate > 0) {
+          const halfRate = parseFloat((gstRate / 2).toFixed(2));
+          // Always auto-calculate CGST and SGST
+          // User can manually override if needed
+          newData.cgst = halfRate.toString();
+          newData.sgst = halfRate.toString();
+        } else {
+          // Clear CGST and SGST if GST rate is cleared
+          newData.cgst = '';
+          newData.sgst = '';
+        }
+        return newData;
+      });
       return;
     }
     
@@ -299,10 +341,9 @@ const ProductForm = () => {
         price: parseFloat(formData.price),
         originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
         purchaseAmount: formData.purchaseAmount ? parseFloat(formData.purchaseAmount) : undefined,
-        weight: formData.weight ? parseFloat(formData.weight) : undefined,
         quantity: parseInt(formData.quantity) || 0,
         availableStock: parseInt(formData.availableStock) || 0,
-        maintainQtyForNotification: formData.maintainQtyForNotification ? parseInt(formData.maintainQtyForNotification) : undefined,
+        stockStatus: formData.stockStatus || 'instock',
         minimumOrderableQuantity: parseInt(formData.minimumOrderableQuantity) || 1,
         incrementor: formData.incrementor ? parseFloat(formData.incrementor) : undefined,
         gstOrTaxPercent: formData.gstOrTaxPercent ? parseFloat(formData.gstOrTaxPercent) : undefined,
@@ -619,41 +660,6 @@ const ProductForm = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Weight (Kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="weight"
-                    value={formData.weight}
-                    onChange={handleChange}
-                    placeholder="Enter weight in Kg"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Units
-                  </label>
-                  <select
-                    name="units"
-                    value={formData.units}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  >
-                    <option value="Kg">Kg</option>
-                    <option value="g">g</option>
-                    <option value="L">L</option>
-                    <option value="ml">ml</option>
-                    <option value="Piece">Piece</option>
-                    <option value="Box">Box</option>
-                    <option value="Pack">Pack</option>
-                  </select>
-                </div>
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -810,47 +816,20 @@ const ProductForm = () => {
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Stock Management</h2>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Available Stock
-                  </label>
-                  <input
-                    type="number"
-                    name="availableStock"
-                    value={formData.availableStock}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Available Stock
+                </label>
+                <input
+                  type="number"
+                  name="availableStock"
+                  value={formData.availableStock}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Maintain Qty for Notification
-                  </label>
-                  <input
-                    type="number"
-                    name="maintainQtyForNotification"
-                    value={formData.maintainQtyForNotification}
-                    onChange={handleChange}
-                    placeholder="Maintain Qty for notification"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Minimum Orderable Quantity
@@ -901,41 +880,34 @@ const ProductForm = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    GST or Tax %
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="gstOrTaxPercent"
-                    value={formData.gstOrTaxPercent}
-                    onChange={handleChange}
-                    placeholder="GST or Tax %"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    IGST
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="igst"
-                    value={formData.igst}
-                    onChange={handleChange}
-                    placeholder="IGST"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-xs text-blue-800 mb-2">
+                  <strong>Note:</strong> Enter GST Rate %. For Intra-state (same state), CGST and SGST will be auto-calculated (each = GST/2). For Inter-state, use IGST field.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  GST Rate (%) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="gstOrTaxPercent"
+                  value={formData.gstOrTaxPercent}
+                  onChange={handleChange}
+                  placeholder="Enter GST Rate (e.g., 18 for 18%)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Common GST rates: 0%, 5%, 12%, 18%, 28%
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    CGST
+                    CGST (%) - Intra-state
                   </label>
                   <input
                     type="number"
@@ -943,13 +915,14 @@ const ProductForm = () => {
                     name="cgst"
                     value={formData.cgst}
                     onChange={handleChange}
-                    placeholder="CGST"
+                    placeholder="Auto-calculated or enter manually"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">For same state sales</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    SGST
+                    SGST (%) - Intra-state
                   </label>
                   <input
                     type="number"
@@ -957,10 +930,27 @@ const ProductForm = () => {
                     name="sgst"
                     value={formData.sgst}
                     onChange={handleChange}
-                    placeholder="SGST"
+                    placeholder="Auto-calculated or enter manually"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">For same state sales</p>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  IGST (%) - Inter-state
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="igst"
+                  value={formData.igst}
+                  onChange={handleChange}
+                  placeholder="Enter IGST for inter-state sales"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">For different state sales (usually same as GST Rate)</p>
               </div>
             </div>
           </div>
