@@ -14,6 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use("/api/v1", signInRouter);
 app.use("/api/v1", signUpRouter);
+app.use("/api/v2", productRouterV2);
 
 // Product routes
 import productRouter from './routes/productRoute.js';
@@ -29,6 +30,7 @@ app.use("/api/v1/cart", cartRouter);
 
 // Wishlist routes
 import wishlistRouter from './routes/wishlistRoute.js';
+import productRouterV2 from "./routes/productRouteV2.js";
 app.use("/api/v1/wishlist", wishlistRouter);
 
 // City Admin routes

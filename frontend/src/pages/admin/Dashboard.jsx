@@ -131,7 +131,7 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link
               to="/admin/products/new"
               className="group flex items-center gap-4 p-5 border-2 border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50 transition-all duration-200"
@@ -144,6 +144,20 @@ const Dashboard = () => {
               <div>
                 <p className="font-semibold text-gray-900 group-hover:text-red-700">Add New Product</p>
                 <p className="text-sm text-gray-600">Create a new product</p>
+              </div>
+            </Link>
+            <Link
+              to="/admin/products-v2/new"
+              className="group flex items-center gap-4 p-5 border-2 border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all duration-200"
+            >
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-3 text-white group-hover:scale-110 transition-transform">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 group-hover:text-green-700">Add New Product V2</p>
+                <p className="text-sm text-gray-600">Create product with bulk pricing</p>
               </div>
             </Link>
             <Link
