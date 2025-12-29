@@ -1,14 +1,17 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { categoryAPI, productAPI } from '../utils/api';
+import { categoryAPI, productAPI, cartAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
+import { isAuthenticated } from '../utils/auth';
 
 const AllProducts = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [addingToCart, setAddingToCart] = useState({});
 
   // Fetch categories for sidebar
   useEffect(() => {
@@ -269,13 +272,35 @@ const AllProducts = () => {
                           )}
                         </div>
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.preventDefault();
-                            // Add to cart logic here
+                            if (!isAuthenticated()) {
+                              navigate('/sign-in');
+                              return;
+                            }
+                            
+                            setAddingToCart({ ...addingToCart, [product._id]: true });
+                            try {
+                              const response = await cartAPI.addToCart(product._id, 1);
+                              if (response.success) {
+                                alert('Product added to cart!');
+                              } else {
+                                alert('Failed to add product to cart. Please try again.');
+                              }
+                            } catch (err) {
+                              if (err.response?.status === 401) {
+                                navigate('/sign-in');
+                              } else {
+                                alert(err.response?.data?.message || 'Failed to add product to cart. Please try again.');
+                              }
+                            } finally {
+                              setAddingToCart({ ...addingToCart, [product._id]: false });
+                            }
                           }}
-                          className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                          disabled={addingToCart[product._id]}
+                          className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Add to Cart
+                          {addingToCart[product._id] ? 'Adding...' : 'Add to Cart'}
                         </button>
                       </div>
                     </div>

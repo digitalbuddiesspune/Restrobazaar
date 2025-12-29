@@ -1,5 +1,6 @@
 import User from '../models/user.js';
-import Cart from '../models/cart.js'
+import Cart from '../models/cart.js';
+import Wishlist from '../models/Wishlist.js';
 import bcrypt from "bcryptjs";
 
 const signup = async (req, res) => {
@@ -26,7 +27,13 @@ const signup = async (req, res) => {
       totalPrice: 0,
     });
 
-    // 3. Attach cart to user
+    // 3. Create empty wishlist for user
+    const wishlist = await Wishlist.create({
+      user: user._id,
+      products: [],
+    });
+
+    // 4. Attach cart to user
     user.cart = cart._id;
     await user.save();
 
@@ -34,6 +41,7 @@ const signup = async (req, res) => {
       message: "User registered successfully",
       userId: user._id,
       cartId: cart._id,
+      wishlistId: wishlist._id,
     });
   } catch (error) {
     console.error(error);

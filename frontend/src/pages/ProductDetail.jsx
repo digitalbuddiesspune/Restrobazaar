@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { productAPI } from '../utils/api';
+import { productAPI, cartAPI, wishlistAPI } from '../utils/api';
+import { isAuthenticated } from '../utils/auth';
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -10,6 +11,9 @@ const ProductDetail = () => {
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [updatingWishlist, setUpdatingWishlist] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -39,9 +43,82 @@ const ProductDetail = () => {
     }
   }, [slug]);
 
-  const handleAddToCart = () => {
-    // Add to cart logic here
-    console.log('Add to cart:', product, quantity);
+  // Check if product is in wishlist
+  useEffect(() => {
+    const checkWishlist = async () => {
+      if (!product || !isAuthenticated()) return;
+      
+      try {
+        const response = await wishlistAPI.checkWishlist(product._id);
+        if (response.success) {
+          setIsInWishlist(response.isInWishlist);
+        }
+      } catch (err) {
+        // Silently fail - user might not be authenticated
+        console.error('Failed to check wishlist:', err);
+      }
+    };
+
+    checkWishlist();
+  }, [product]);
+
+  const handleAddToCart = async () => {
+    if (!isAuthenticated()) {
+      navigate('/sign-in');
+      return;
+    }
+
+    if (!product) return;
+
+    setAddingToCart(true);
+    try {
+      const response = await cartAPI.addToCart(product._id, quantity);
+      if (response.success) {
+        alert('Product added to cart!');
+      } else {
+        alert('Failed to add product to cart. Please try again.');
+      }
+    } catch (err) {
+      if (err.response?.status === 401) {
+        navigate('/sign-in');
+      } else {
+        alert(err.response?.data?.message || 'Failed to add product to cart. Please try again.');
+      }
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!isAuthenticated()) {
+      navigate('/sign-in');
+      return;
+    }
+
+    if (!product) return;
+
+    setUpdatingWishlist(true);
+    try {
+      if (isInWishlist) {
+        const response = await wishlistAPI.removeFromWishlist(product._id);
+        if (response.success) {
+          setIsInWishlist(false);
+        }
+      } else {
+        const response = await wishlistAPI.addToWishlist(product._id);
+        if (response.success) {
+          setIsInWishlist(true);
+        }
+      }
+    } catch (err) {
+      if (err.response?.status === 401) {
+        navigate('/sign-in');
+      } else {
+        alert(err.response?.data?.message || 'Failed to update wishlist. Please try again.');
+      }
+    } finally {
+      setUpdatingWishlist(false);
+    }
   };
 
   const handleQuantityChange = (change) => {
@@ -307,12 +384,18 @@ const ProductDetail = () => {
                 <div className="absolute top-2 right-2 sm:top-3 sm:right-3 flex flex-row gap-1.5 sm:gap-2 z-10">
                   {/* Wishlist Button */}
                   <button
-                    className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-red-50 transition-colors border border-gray-200"
-                    aria-label="Add to Wishlist"
+                    onClick={handleWishlistToggle}
+                    disabled={updatingWishlist}
+                    className={`w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow-lg flex items-center justify-center transition-colors border border-gray-200 disabled:opacity-50 ${
+                      isInWishlist ? 'bg-red-50 border-red-200' : 'hover:bg-red-50'
+                    }`}
+                    aria-label={isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
                   >
                     <svg
-                      className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 hover:text-red-600"
-                      fill="none"
+                      className={`w-4 h-4 sm:w-5 sm:h-5 ${
+                        isInWishlist ? 'text-red-600 fill-red-600' : 'text-gray-700 hover:text-red-600'
+                      }`}
+                      fill={isInWishlist ? 'currentColor' : 'none'}
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
@@ -733,12 +816,13 @@ const ProductDetail = () => {
                 <div className="flex flex-row gap-2 sm:gap-3">
                   <button
                     onClick={handleAddToCart}
-                    className="flex-1 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 font-bold text-xs sm:text-sm md:text-base shadow-md hover:shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-1.5 sm:gap-2"
+                    disabled={addingToCart}
+                    className="flex-1 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 font-bold text-xs sm:text-sm md:text-base shadow-md hover:shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    <span>Add to Cart</span>
+                    <span>{addingToCart ? 'Adding...' : 'Add to Cart'}</span>
                   </button>
                   <button className="flex-1 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-600 hover:text-white font-bold text-xs sm:text-sm md:text-base transition-all flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm hover:shadow-md">
                     <svg

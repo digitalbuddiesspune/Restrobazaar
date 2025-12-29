@@ -22,6 +22,15 @@ app.use("/api/v1", productRouter);
 // Category routes
 import categoryRouter from './routes/categoryRoute.js';
 app.use("/api/v1", categoryRouter);
+
+// Cart routes
+import cartRouter from './routes/cartRoute.js';
+app.use("/api/v1/cart", cartRouter);
+
+// Wishlist routes
+import wishlistRouter from './routes/wishlistRoute.js';
+app.use("/api/v1/wishlist", wishlistRouter);
+
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

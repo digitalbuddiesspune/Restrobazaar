@@ -1,7 +1,8 @@
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { productAPI, categoryAPI } from '../utils/api';
+import { productAPI, categoryAPI, cartAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
+import { isAuthenticated } from '../utils/auth';
 
 // Helper function to convert title to URL slug
 const titleToSlug = (title) => {
@@ -14,6 +15,7 @@ const titleToSlug = (title) => {
 const CategoryDetail = () => {
   const { categorySlug, subcategorySlug } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [category, setCategory] = useState(null);
   const [categories, setCategories] = useState([]);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
@@ -21,6 +23,7 @@ const CategoryDetail = () => {
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [addingToCart, setAddingToCart] = useState({});
   const isAllProductsPage = location.pathname === '/all-products';
 
   // Fetch all categories for sidebar
@@ -177,7 +180,7 @@ const CategoryDetail = () => {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:py-12">
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
           {/* Sidebar - All Categories */}
-          <aside className="w-full lg:w-64 xl:w-72 flex-shrink-0 order-2 lg:order-1">
+          <aside className="hidden lg:block w-full lg:w-64 xl:w-72 flex-shrink-0 order-2 lg:order-1">
             <div className="bg-gradient-to-br from-red-50 to-white lg:from-white rounded-lg sm:rounded-xl shadow-lg lg:shadow-sm border-2 lg:border border-red-200 lg:border-gray-200 overflow-hidden lg:sticky lg:top-[120px] lg:max-h-[calc(100vh-120px)] lg:flex lg:flex-col">
               {/* Sticky Header */}
               <div className="sticky top-0 z-30 bg-gradient-to-r from-red-600 to-red-500 lg:from-white lg:to-white border-b-2 lg:border-b border-red-300 lg:border-gray-200 px-3 sm:px-4 py-3 sm:py-4 flex-shrink-0">
@@ -412,13 +415,35 @@ const CategoryDetail = () => {
                             )}
                           </div>
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.preventDefault();
-                              // Add to cart logic here
+                              if (!isAuthenticated()) {
+                                navigate('/sign-in');
+                                return;
+                              }
+                              
+                              setAddingToCart({ ...addingToCart, [product._id]: true });
+                              try {
+                                const response = await cartAPI.addToCart(product._id, 1);
+                                if (response.success) {
+                                  alert('Product added to cart!');
+                                } else {
+                                  alert('Failed to add product to cart. Please try again.');
+                                }
+                              } catch (err) {
+                                if (err.response?.status === 401) {
+                                  navigate('/sign-in');
+                                } else {
+                                  alert(err.response?.data?.message || 'Failed to add product to cart. Please try again.');
+                                }
+                              } finally {
+                                setAddingToCart({ ...addingToCart, [product._id]: false });
+                              }
                             }}
-                            className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                            disabled={addingToCart[product._id]}
+                            className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Add to Cart
+                            {addingToCart[product._id] ? 'Adding...' : 'Add to Cart'}
                           </button>
                         </div>
                       </div>
