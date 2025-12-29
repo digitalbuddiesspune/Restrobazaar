@@ -14,7 +14,7 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         const [productsRes, categoriesRes] = await Promise.all([
-          productAPI.getAllProducts({ limit: 1 }),
+          productAPI.getAllProducts({ limit: 1, all: 'true' }),
           categoryAPI.getAllCategories()
         ]);
 

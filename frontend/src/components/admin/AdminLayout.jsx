@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { removeToken } from '../../utils/auth';
+import { removeToken, isCityAdmin, getUserCity, getUserInfo, isSuperAdmin } from '../../utils/auth';
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -51,7 +51,7 @@ const AdminLayout = () => {
 
   const handleLogout = () => {
     removeToken();
-    navigate('/signin');
+    navigate('/admin/signin');
   };
 
   const menuItems = [
@@ -100,6 +100,17 @@ const AdminLayout = () => {
         </svg>
       )
     },
+    // City Admins menu item - only for super admin
+    ...(isSuperAdmin() ? [{
+      path: '/admin/city-admins', 
+      label: 'City Admins', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      )
+    }] : []),
   ];
 
   return (
@@ -124,9 +135,16 @@ const AdminLayout = () => {
                   </svg>
                 )}
               </button>
-              <Link to="/admin" className="text-xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-                RestroBazaar Admin
-              </Link>
+              <div className="flex flex-col">
+                <Link to="/admin" className="text-xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
+                  RestroBazaar Admin
+                </Link>
+                {isCityAdmin() && getUserCity() && (
+                  <span className="text-xs text-gray-500 font-medium">
+                    City: {getUserCity()}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <Link

@@ -38,7 +38,22 @@ export const getUserInfo = () => {
 
 export const isAdmin = () => {
   const userInfo = getUserInfo();
-  return userInfo?.role === 'admin';
+  return userInfo?.role === 'admin' || userInfo?.role === 'super_admin' || userInfo?.role === 'city_admin';
+};
+
+export const isSuperAdmin = () => {
+  const userInfo = getUserInfo();
+  return userInfo?.role === 'super_admin';
+};
+
+export const isCityAdmin = () => {
+  const userInfo = getUserInfo();
+  return userInfo?.role === 'city_admin';
+};
+
+export const getUserCity = () => {
+  const userInfo = getUserInfo();
+  return userInfo?.city || null;
 };
 
 

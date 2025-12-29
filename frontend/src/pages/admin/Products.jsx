@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { productAPI } from '../../utils/api';
+import { isCityAdmin, getUserCity } from '../../utils/auth';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -78,7 +79,7 @@ const Products = () => {
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Products</h1>
             <p className="text-gray-600">
-              {loading ? 'Loading...' : `Manage all products (${products.length} total)`}
+              {loading ? 'Loading...' : `Manage ${isCityAdmin() ? `${getUserCity()} city ` : 'all '}products (${products.length} total)`}
             </p>
           </div>
           <div className="flex gap-3">

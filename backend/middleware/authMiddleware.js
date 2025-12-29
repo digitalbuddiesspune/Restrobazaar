@@ -28,7 +28,8 @@ export const authenticate = async (req, res, next) => {
     req.user = {
       userId: user._id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      city: user.city || null
     };
     
     next();
@@ -58,10 +59,53 @@ export const authorize = (...roles) => {
   };
 };
 
-// Combined authenticate and authorize for admin
+// Optional authentication middleware - sets req.user if token exists, but doesn't fail if it doesn't
+export const optionalAuthenticate = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // No token provided - continue without setting req.user
+      return next();
+    }
+
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      // Invalid token format - continue without setting req.user
+      return next();
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Get user from database to check if still exists
+      const user = await User.findById(decoded.userId);
+      
+      if (user) {
+        req.user = {
+          userId: user._id,
+          email: user.email,
+          role: user.role,
+          city: user.city || null
+        };
+      }
+    } catch (tokenError) {
+      // Token invalid or expired - continue without setting req.user
+      // Don't fail the request, just proceed without authentication
+    }
+    
+    next();
+  } catch (error) {
+    // On any other error, continue without authentication
+    next();
+  }
+};
+
+// Combined authenticate and authorize for admin (supports all admin roles)
 export const authenticateAdmin = [
   authenticate,
-  authorize('admin')
+  authorize('admin', 'super_admin', 'city_admin')
 ];
 
 export default authenticate;

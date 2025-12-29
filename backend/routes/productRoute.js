@@ -9,18 +9,18 @@ import {
   deleteProduct,
   getProductsByCategory,
 } from "../controller/productController.js";
-import { authenticate, authorize } from "../middleware/authMiddleware.js";
+import { authenticate, authorize, optionalAuthenticate } from "../middleware/authMiddleware.js";
 
-// Public routes
-productRouter.get("/products", getAllProducts);
-productRouter.get("/products/category/:categorySlug", getProductsByCategory);
-productRouter.get("/products/slug/:slug", getProductBySlug);
-productRouter.get("/products/:id", getProductById);
+// Public routes (with optional authentication for city admin filtering)
+productRouter.get("/products", optionalAuthenticate, getAllProducts);
+productRouter.get("/products/category/:categorySlug", optionalAuthenticate, getProductsByCategory);
+productRouter.get("/products/slug/:slug", optionalAuthenticate, getProductBySlug);
+productRouter.get("/products/:id", optionalAuthenticate, getProductById);
 
-// Admin routes
-productRouter.post("/products", authenticate, authorize("admin"), createProduct);
-productRouter.put("/products/:id", authenticate, authorize("admin"), updateProduct);
-productRouter.delete("/products/:id", authenticate, authorize("admin"), deleteProduct);
+// Admin routes (allow admin, super_admin, and city_admin)
+productRouter.post("/products", authenticate, authorize("admin", "super_admin", "city_admin"), createProduct);
+productRouter.put("/products/:id", authenticate, authorize("admin", "super_admin", "city_admin"), updateProduct);
+productRouter.delete("/products/:id", authenticate, authorize("admin", "super_admin", "city_admin"), deleteProduct);
 
 export default productRouter;
 

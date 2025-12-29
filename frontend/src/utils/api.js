@@ -180,6 +180,36 @@ export const wishlistAPI = {
   },
 };
 
+// City Admin API functions (Super admin only)
+export const cityAdminAPI = {
+  // Create city admin
+  createCityAdmin: async (adminData) => {
+    const response = await api.post('/admin/city-admin', adminData);
+    return response.data;
+  },
+  
+  // Get all city admins
+  getCityAdmins: async () => {
+    const response = await api.get('/admin/city-admins');
+    return response.data;
+  },
+  
+  // Delete city admin
+  deleteCityAdmin: async (id) => {
+    const response = await api.delete(`/admin/city-admin/${id}`);
+    return response.data;
+  },
+};
+
+// User API functions (Admin only)
+export const userAPI = {
+  // Get all users
+  getAllUsers: async () => {
+    const response = await api.get('/admin/users');
+    return response.data;
+  },
+};
+
 export default api;
 
 

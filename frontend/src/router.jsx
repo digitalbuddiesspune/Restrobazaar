@@ -23,6 +23,10 @@ import AdminProducts from './pages/admin/Products'
 import AdminCategories from './pages/admin/Categories'
 import CategoryForm from './pages/admin/CategoryForm'
 import ProductForm from './pages/admin/ProductForm'
+import AdminSignIn from './pages/admin/AdminSignIn'
+import CityAdmins from './pages/admin/CityAdmins'
+import CityAdminForm from './pages/admin/CityAdminForm'
+import Users from './pages/admin/Users'
 import ProtectedRoute from './components/ProtectedRoute'
 
 
@@ -50,6 +54,7 @@ const router = createBrowserRouter(
             <Route path='shipping-policy' element={<ShippingPolicy/>} />
             
             {/* Admin Routes */}
+            <Route path='admin/signin' element={<AdminSignIn />} />
             <Route path='admin' element={
               <ProtectedRoute requireAdmin={true}>
                 <AdminLayout />
@@ -62,6 +67,9 @@ const router = createBrowserRouter(
               <Route path='categories' element={<AdminCategories />} />
               <Route path='categories/new' element={<CategoryForm />} />
               <Route path='categories/:id/edit' element={<CategoryForm />} />
+              <Route path='users' element={<Users />} />
+              <Route path='city-admins' element={<CityAdmins />} />
+              <Route path='city-admins/new' element={<CityAdminForm />} />
             </Route>
         </Route>
     )

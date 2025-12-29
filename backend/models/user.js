@@ -19,8 +19,14 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "super_admin", "city_admin"],
       default: "user",
+    },
+    city: {
+      type: String,
+      required: function() {
+        return this.role === 'city_admin';
+      },
     },
     password: {
       type: String,

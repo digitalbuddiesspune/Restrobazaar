@@ -56,7 +56,10 @@ const getAllProducts = async (req, res) => {
 
     // City filter - if city is "Other" or not provided, show all products
     // If specific city is selected, show only products for that city (not "Other")
-    if (city && city !== 'Other' && city !== '') {
+    // For city_admin, automatically filter by their city
+    if (req.user && req.user.role === 'city_admin' && req.user.city) {
+      query.city = req.user.city;
+    } else if (city && city !== 'Other' && city !== '') {
       query.city = city;
     }
 
@@ -188,6 +191,11 @@ const createProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: "Category not found" });
     }
 
+    // For city_admin, automatically set the city
+    if (req.user && req.user.role === 'city_admin' && req.user.city) {
+      productData.city = req.user.city;
+    }
+
     // Generate slug if not provided
     if (!productData.slug && productData.name) {
       productData.slug = productData.name
@@ -280,6 +288,20 @@ const updateProduct = async (req, res) => {
     const { id } = req.params;
     const updateData = { ...req.body };
 
+    // For city_admin, ensure they can't change the city and can only update their city's products
+    if (req.user && req.user.role === 'city_admin') {
+      // Check if product belongs to their city
+      const existingProduct = await Product.findById(id);
+      if (!existingProduct) {
+        return res.status(404).json({ success: false, message: "Product not found" });
+      }
+      if (existingProduct.city !== req.user.city) {
+        return res.status(403).json({ success: false, message: "You can only update products from your city" });
+      }
+      // Prevent city_admin from changing the city
+      delete updateData.city;
+    }
+
     // Check if category exists if being updated
     if (updateData.category) {
       const category = await Category.findById(updateData.category);
@@ -353,6 +375,17 @@ const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // For city_admin, ensure they can only delete products from their city
+    if (req.user && req.user.role === 'city_admin') {
+      const product = await Product.findById(id);
+      if (!product) {
+        return res.status(404).json({ success: false, message: "Product not found" });
+      }
+      if (product.city !== req.user.city) {
+        return res.status(403).json({ success: false, message: "You can only delete products from your city" });
+      }
+    }
+
     const product = await Product.findByIdAndDelete(id);
 
     if (!product) {
@@ -400,9 +433,14 @@ const getProductsByCategory = async (req, res) => {
 
     // Filter by city - if city is "Other" or not provided, show all products
     // If specific city is selected, show only products for that city (not "Other")
-    const { city } = req.query;
-    if (city && city !== 'Other' && city !== '') {
-      query.city = city;
+    // For city_admin, automatically filter by their city
+    if (req.user && req.user.role === 'city_admin' && req.user.city) {
+      query.city = req.user.city;
+    } else {
+      const { city } = req.query;
+      if (city && city !== 'Other' && city !== '') {
+        query.city = city;
+      }
     }
 
     const skip = (Number(page) - 1) * Number(limit);

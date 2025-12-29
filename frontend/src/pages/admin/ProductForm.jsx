@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { productAPI, categoryAPI } from '../../utils/api';
+import { isCityAdmin, getUserCity } from '../../utils/auth';
 
 const ProductForm = () => {
   const { id } = useParams();
@@ -69,6 +70,11 @@ const ProductForm = () => {
     fetchCategories();
     if (isEdit) {
       fetchProduct();
+    } else {
+      // For city_admin, set city automatically when creating new product
+      if (isCityAdmin() && getUserCity()) {
+        setFormData(prev => ({ ...prev, city: getUserCity() }));
+      }
     }
   }, [id]);
 
@@ -381,7 +387,8 @@ const ProductForm = () => {
           })),
         subcategory: formData.subcategory && formData.subcategory.trim() !== '' ? formData.subcategory.trim() : undefined,
         otherCategory: formData.otherCategory && formData.otherCategory.trim() !== '' ? formData.otherCategory.trim() : undefined,
-        city: formData.city && formData.city.trim() !== '' ? formData.city.trim() : 'Other',
+        // For city_admin, city is set automatically on backend, but we still send it for consistency
+        city: isCityAdmin() && getUserCity() ? getUserCity() : (formData.city && formData.city.trim() !== '' ? formData.city.trim() : 'Other'),
         productPurchaseFrom: formData.productPurchaseFrom && formData.productPurchaseFrom.trim() !== '' ? formData.productPurchaseFrom.trim() : undefined,
         hsnCode: formData.hsnCode && formData.hsnCode.trim() !== '' ? formData.hsnCode.trim() : undefined,
       };
@@ -628,7 +635,8 @@ const ProductForm = () => {
 
               <div>
                 <label className="block text-xs font-medium text-gray-900 mb-0.5">
-                  City <span className="text-gray-500 text-xs">(Default: Other - shows all products)</span>
+                  City {isCityAdmin() && <span className="text-gray-500 text-xs">(Auto-set for your city)</span>}
+                  {!isCityAdmin() && <span className="text-gray-500 text-xs">(Default: Other - shows all products)</span>}
                 </label>
                 <div className="relative">
                   <input
@@ -636,21 +644,26 @@ const ProductForm = () => {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    placeholder="Enter city name (e.g., Pune, Mumbai, Nagpur, Ahmedabad) or 'Other' for all cities"
+                    disabled={isCityAdmin()}
+                    placeholder={isCityAdmin() ? `City: ${getUserCity()}` : "Enter city name (e.g., Pune, Mumbai, Nagpur, Ahmedabad) or 'Other' for all cities"}
                     list="city-suggestions"
-                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className={`w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${isCityAdmin() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
-                  <datalist id="city-suggestions">
-                    <option value="Other">Other (All cities)</option>
-                    <option value="Pune">Pune</option>
-                    <option value="Nagpur">Nagpur</option>
-                    <option value="Mumbai">Mumbai</option>
-                    <option value="Ahmedabad">Ahmedabad</option>
-                  </datalist>
+                  {!isCityAdmin() && (
+                    <datalist id="city-suggestions">
+                      <option value="Other">Other (All cities)</option>
+                      <option value="Pune">Pune</option>
+                      <option value="Nagpur">Nagpur</option>
+                      <option value="Mumbai">Mumbai</option>
+                      <option value="Ahmedabad">Ahmedabad</option>
+                    </datalist>
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Tip: Type "Other" to show products in all cities, or enter a specific city name
-                </p>
+                {!isCityAdmin() && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Tip: Type "Other" to show products in all cities, or enter a specific city name
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

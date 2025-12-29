@@ -31,6 +31,14 @@ app.use("/api/v1/cart", cartRouter);
 import wishlistRouter from './routes/wishlistRoute.js';
 app.use("/api/v1/wishlist", wishlistRouter);
 
+// City Admin routes
+import cityAdminRouter from './routes/cityAdminRoute.js';
+app.use("/api/v1", cityAdminRouter);
+
+// User routes
+import userRouter from './routes/userRoute.js';
+app.use("/api/v1", userRouter);
+
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

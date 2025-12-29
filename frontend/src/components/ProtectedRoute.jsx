@@ -5,7 +5,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const isAuth = isAuthenticated();
 
   if (!isAuth) {
-    return <Navigate to="/signin" replace />;
+    // Redirect to admin signin for admin routes, regular signin for others
+    const redirectPath = requireAdmin ? '/admin/signin' : '/signin';
+    return <Navigate to={redirectPath} replace />;
   }
 
   if (requireAdmin && !isAdmin()) {
@@ -14,7 +16,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
           <p className="text-gray-600 mb-4">You need admin privileges to access this page.</p>
-          <Navigate to="/" replace />
+          <Navigate to="/admin/signin" replace />
         </div>
       </div>
     );
