@@ -6,23 +6,21 @@ import Vendor from "../models/admin/vendor.js";
 // Authentication middleware
 export const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    // Try to get token from cookie first (preferred method)
+    let token = req.cookies?.token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized - No token provided" });
+    // Fallback to Authorization header for backward compatibility (optional)
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
     }
-
-    const token = authHeader.split(" ")[1];
 
     if (!token) {
       return res
         .status(401)
-        .json({
-          success: false,
-          message: "Unauthorized - Invalid token format",
-        });
+        .json({ success: false, message: "Unauthorized - No token provided" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -146,17 +144,19 @@ export const authorize = (...roles) => {
 // Optional authentication middleware - sets req.user if token exists, but doesn't fail if it doesn't
 export const optionalAuthenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    // Try to get token from cookie first (preferred method)
+    let token = req.cookies?.token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      // No token provided - continue without setting req.user
-      return next();
+    // Fallback to Authorization header for backward compatibility (optional)
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
     }
 
-    const token = authHeader.split(" ")[1];
-
     if (!token) {
-      // Invalid token format - continue without setting req.user
+      // No token provided - continue without setting req.user
       return next();
     }
 

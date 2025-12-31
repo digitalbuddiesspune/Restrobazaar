@@ -1,13 +1,14 @@
 import User from "../../models/users/user.js";
+import Cart from "../../models/users/cart.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 // @desc    Get all users
 // @route   GET /api/v1/admin/users
-// @access  Admin/Super Admin/City Admin
+// @access  Admin/Super Admin
 export const getAllUsers = async (req, res) => {
   try {
     const {
-      role,
-      city,
       search,
       page = 1,
       limit = 10,
@@ -17,9 +18,6 @@ export const getAllUsers = async (req, res) => {
 
     // Build query
     const query = {};
-
-    if (role) query.role = role;
-    if (city) query.city = city;
 
     // Search by name, email, or phone
     if (search) {
@@ -39,10 +37,12 @@ export const getAllUsers = async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-    // Execute query (exclude password)
+    // Execute query
     const users = await User.find(query)
-      .select("-password")
-      .populate("cart")
+      .populate({
+        path: "cart",
+        select: "-__v",
+      })
       .sort(sort)
       .skip(skip)
       .limit(limitNum);
@@ -75,8 +75,8 @@ export const getAllUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id; // From authentication middleware
-    const userRole = req.user?.role; // From authentication middleware
+    const userId = req.user?.userId || req.user?.id;
+    const userRole = req.user?.role;
 
     // Users can only view their own profile unless they're admin
     if (userId !== id && !["admin", "super_admin", "city_admin"].includes(userRole)) {
@@ -86,7 +86,10 @@ export const getUserById = async (req, res) => {
       });
     }
 
-    const user = await User.findById(id).select("-password").populate("cart");
+    const user = await User.findById(id).populate({
+      path: "cart",
+      select: "-__v",
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -113,7 +116,7 @@ export const getUserById = async (req, res) => {
 // @access  Private
 export const getCurrentUser = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -122,7 +125,10 @@ export const getCurrentUser = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId).select("-password").populate("cart");
+    const user = await User.findById(userId).populate({
+      path: "cart",
+      select: "-__v", // Exclude version key
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -149,29 +155,13 @@ export const getCurrentUser = async (req, res) => {
 // @access  Admin/Super Admin
 export const createUser = async (req, res) => {
   try {
-    const { name, email, phone, role, city, password } = req.body;
+    const { name, email, phone } = req.body;
 
     // Validate required fields
-    if (!name || !email || !phone || !password) {
+    if (!name || !email || !phone) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, phone, and password are required",
-      });
-    }
-
-    // Validate role
-    if (role && !["user", "admin", "super_admin", "city_admin"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role. Must be one of: user, admin, super_admin, city_admin",
-      });
-    }
-
-    // Validate city for city_admin role
-    if (role === "city_admin" && !city) {
-      return res.status(400).json({
-        success: false,
-        message: "City is required for city_admin role",
+        message: "Name, email, and phone are required",
       });
     }
 
@@ -190,19 +180,12 @@ export const createUser = async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       phone,
-      role: role || "user",
-      city: role === "city_admin" ? city : undefined,
-      password, // Password should be hashed in a pre-save hook or here
     });
-
-    // Remove password from response
-    const userResponse = user.toObject();
-    delete userResponse.password;
 
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      data: userResponse,
+      data: user,
     });
   } catch (error) {
     // Handle duplicate key error
@@ -236,9 +219,9 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
     const userRole = req.user?.role;
-    const { name, email, phone, role, city, cart } = req.body;
+    const { name, email, phone, cart } = req.body;
 
     // Users can only update their own profile unless they're admin
     if (userId !== id && !["admin", "super_admin", "city_admin"].includes(userRole)) {
@@ -258,44 +241,12 @@ export const updateUser = async (req, res) => {
       });
     }
 
-    // Regular users cannot change their role
-    if (role && userId === id && !["admin", "super_admin", "city_admin"].includes(userRole)) {
-      return res.status(403).json({
-        success: false,
-        message: "You cannot change your own role",
-      });
-    }
-
-    // Validate role if provided
-    if (role && !["user", "admin", "super_admin", "city_admin"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role. Must be one of: user, admin, super_admin, city_admin",
-      });
-    }
-
-    // Validate city for city_admin role
-    if (role === "city_admin" && !city) {
-      return res.status(400).json({
-        success: false,
-        message: "City is required for city_admin role",
-      });
-    }
-
     // Prepare update data
     const updateData = {};
 
     if (name !== undefined) updateData.name = name.trim();
     if (email !== undefined) updateData.email = email.toLowerCase().trim();
     if (phone !== undefined) updateData.phone = phone;
-    if (role !== undefined && ["admin", "super_admin", "city_admin"].includes(userRole)) {
-      updateData.role = role;
-    }
-    if (city !== undefined) {
-      if (role === "city_admin" || user.role === "city_admin") {
-        updateData.city = city;
-      }
-    }
     if (cart !== undefined) updateData.cart = cart;
 
     // Check if email conflicts with another user
@@ -317,9 +268,10 @@ export const updateUser = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    })
-      .select("-password")
-      .populate("cart");
+    }).populate({
+      path: "cart",
+      select: "-__v",
+    });
 
     res.status(200).json({
       success: true,
@@ -358,7 +310,7 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
 
     // Prevent users from deleting themselves
     if (userId === id) {
@@ -379,138 +331,15 @@ export const deleteUser = async (req, res) => {
 
     await User.findByIdAndDelete(id);
 
-    // Remove password from response
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
     res.status(200).json({
       success: true,
       message: "User deleted successfully",
-      data: userResponse,
+      data: user,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error deleting user",
-      error: error.message,
-    });
-  }
-};
-
-// @desc    Get users by role
-// @route   GET /api/v1/admin/users/role/:role
-// @access  Admin/Super Admin
-export const getUsersByRole = async (req, res) => {
-  try {
-    const { role } = req.params;
-    const { city, page = 1, limit = 10 } = req.query;
-
-    // Validate role
-    if (!["user", "admin", "super_admin", "city_admin"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role. Must be one of: user, admin, super_admin, city_admin",
-      });
-    }
-
-    const query = { role };
-    if (city) query.city = city;
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
-    const users = await User.find(query)
-      .select("-password")
-      .populate("cart")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
-
-    const total = await User.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      data: users,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        pages: Math.ceil(total / limitNum),
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error fetching users by role",
-      error: error.message,
-    });
-  }
-};
-
-// @desc    Update user role
-// @route   PATCH /api/v1/admin/users/:id/role
-// @access  Admin/Super Admin
-export const updateUserRole = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { role, city } = req.body;
-
-    if (!role) {
-      return res.status(400).json({
-        success: false,
-        message: "Role is required",
-      });
-    }
-
-    // Validate role
-    if (!["user", "admin", "super_admin", "city_admin"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role. Must be one of: user, admin, super_admin, city_admin",
-      });
-    }
-
-    // Validate city for city_admin role
-    if (role === "city_admin" && !city) {
-      return res.status(400).json({
-        success: false,
-        message: "City is required for city_admin role",
-      });
-    }
-
-    const user = await User.findById(id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    const updateData = { role };
-    if (role === "city_admin" && city) {
-      updateData.city = city;
-    } else if (role !== "city_admin") {
-      updateData.city = undefined;
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    })
-      .select("-password")
-      .populate("cart");
-
-    res.status(200).json({
-      success: true,
-      message: "User role updated successfully",
-      data: updatedUser,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error updating user role",
       error: error.message,
     });
   }
@@ -523,9 +352,10 @@ export const getUserByEmail = async (req, res) => {
   try {
     const { email } = req.params;
 
-    const user = await User.findOne({ email: email.toLowerCase() })
-      .select("-password")
-      .populate("cart");
+    const user = await User.findOne({ email: email.toLowerCase() }).populate({
+      path: "cart",
+      select: "-__v",
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -554,7 +384,7 @@ export const updateUserCart = async (req, res) => {
   try {
     const { id } = req.params;
     const { cart } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
 
     // Users can only update their own cart
     if (userId !== id) {
@@ -576,9 +406,10 @@ export const updateUserCart = async (req, res) => {
     user.cart = cart;
     await user.save();
 
-    const updatedUser = await User.findById(id)
-      .select("-password")
-      .populate("cart");
+    const updatedUser = await User.findById(id).populate({
+      path: "cart",
+      select: "-__v",
+    });
 
     res.status(200).json({
       success: true,
@@ -594,3 +425,209 @@ export const updateUserCart = async (req, res) => {
   }
 };
 
+// @desc    User signup/register
+// @route   POST /api/v1/users/signup
+// @access  Public
+export const userSignup = async (req, res) => {
+  try {
+    const { name, email, phone, password } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, phone, and password are required",
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Check if user with email already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
+
+    // Create user (password will be hashed by pre-save hook)
+    const user = await User.create({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      phone,
+      password,
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "30d",
+      }
+    );
+
+    // Set JWT in HTTP-only cookie
+    const cookieOptions = {
+      httpOnly: true, // Prevents JavaScript access (XSS protection)
+      secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection - use 'lax' in dev for cross-origin
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+      path: "/", // Available for all routes
+    };
+
+    res.cookie("token", token, cookieOptions);
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: {
+        id: userResponse._id,
+        name: userResponse.name,
+        email: userResponse.email,
+        role: userResponse.role || "user",
+      },
+    });
+  } catch (error) {
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
+
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        error: error.message,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Error registering user",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    User logout
+// @route   POST /api/v1/users/logout
+// @access  Private
+export const userLogout = async (req, res) => {
+  try {
+    // Clear the token cookie with same settings as login
+    res.cookie("token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 0, // Immediately expire the cookie
+      path: "/",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error logging out",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    User signin/login
+// @route   POST /api/v1/users/signin
+// @access  Public
+export const userSignin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    // Find user with password field included
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+    }).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "30d",
+      }
+    );
+
+    // Set JWT in HTTP-only cookie
+    const cookieOptions = {
+      httpOnly: true, // Prevents JavaScript access (XSS protection)
+      secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection - use 'lax' in dev for cross-origin
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+      path: "/", // Available for all routes
+    };
+
+    res.cookie("token", token, cookieOptions);
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        id: userResponse._id,
+        name: userResponse.name,
+        email: userResponse.email,
+        role: userResponse.role || "user",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error signing in",
+      error: error.message,
+    });
+  }
+};

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
@@ -17,21 +18,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    role: {
-      type: String,
-      enum: ["user", "admin", "super_admin", "city_admin"],
-      default: "user",
-    },
-    city: {
-      type: String,
-      required: function() {
-        return this.role === 'city_admin';
-      },
-    },
     password: {
       type: String,
       required: true,
-      select: false,
+      select: false, // Don't include password in queries by default
     },
     cart: {
       type: mongoose.Schema.Types.ObjectId,
@@ -40,6 +30,23 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Hash password before saving
+userSchema.pre("save", async function (next) {
+  // Only hash the password if it has been modified (or is new)
+  if (!this.isModified("password")) {
+    return next();
+  }
+
+  try {
+    // Hash password with cost of 10
+    const hashedPassword = await bcrypt.hash(this.password, 10);
+    this.password = hashedPassword;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 const User = mongoose.model("User", userSchema);
 export default User;

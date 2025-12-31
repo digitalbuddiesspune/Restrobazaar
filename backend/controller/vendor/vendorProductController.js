@@ -1,4 +1,5 @@
 import VendorProduct from "../../models/vendor/vendorProductSchema.js";
+import Product from "../../models/admin/globalProduct.js";
 
 // @desc    Get all vendor products
 // @route   GET /api/vendor-products
@@ -24,7 +25,12 @@ export const getAllVendorProducts = async (req, res) => {
     if (cityId) query.cityId = cityId;
     if (productId) query.productId = productId;
     if (priceType) query.priceType = priceType;
-    if (status !== undefined) query.status = status === "true";
+    // Default to showing only active products if status is not explicitly set
+    if (status !== undefined) {
+      query.status = status === "true";
+    } else {
+      query.status = true; // Default to active products only
+    }
 
     // Pagination
     const pageNum = parseInt(page);
@@ -482,7 +488,12 @@ export const getVendorProductsByCity = async (req, res) => {
     const query = { cityId };
     if (vendorId) query.vendorId = vendorId;
     if (productId) query.productId = productId;
-    if (status !== undefined) query.status = status === "true";
+    // Default to showing only active products if status is not explicitly set
+    if (status !== undefined) {
+      query.status = status === "true";
+    } else {
+      query.status = true; // Default to active products only
+    }
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -625,6 +636,125 @@ export const toggleVendorProductStatus = async (req, res) => {
 // @desc    Get authenticated vendor's own products
 // @route   GET /api/vendor-products/my-products
 // @access  Vendor
+// @desc    Search vendor products by query string
+// @route   GET /api/vendor-products/search
+// @access  Public
+export const searchVendorProducts = async (req, res) => {
+  try {
+    const {
+      q, // search query
+      cityId,
+      status,
+      page = 1,
+      limit = 20,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
+
+    if (!q || q.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required",
+      });
+    }
+
+    const searchQuery = q.trim().toLowerCase();
+
+    // Get cityId from query or use selected city
+    let selectedCityId = cityId;
+
+    // Build base query - filter by city and status
+    const query = {};
+    
+    if (selectedCityId) {
+      query.cityId = selectedCityId;
+    }
+    
+    // Default to showing only active products if status is not explicitly set
+    if (status !== undefined) {
+      query.status = status === "true";
+    } else {
+      query.status = true; // Default to active products only
+    }
+
+    // Pagination
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+    // First, find products that match the search query
+    // Search in productName, shortDescription, and searchTags
+    const productSearchQuery = {
+      $or: [
+        { productName: { $regex: searchQuery, $options: "i" } },
+        { shortDescription: { $regex: searchQuery, $options: "i" } },
+        { searchTags: { $in: [new RegExp(searchQuery, "i")] } },
+      ],
+      status: true, // Only active products
+    };
+
+    const matchingProducts = await Product.find(productSearchQuery).select("_id");
+
+    const productIds = matchingProducts.map((p) => p._id);
+
+    // If no products found, return empty result
+    if (productIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: 0,
+          pages: 0,
+        },
+        query: searchQuery,
+      });
+    }
+
+    // Add productId filter to query
+    query.productId = { $in: productIds };
+
+    // Execute query with population
+    let vendorProducts = await VendorProduct.find(query)
+      .populate("productId", "productName shortDescription images category slug")
+      .populate("vendorId", "businessName email phone")
+      .populate("cityId", "name displayName state")
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    // Get total count for pagination
+    const total = await VendorProduct.countDocuments(query);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(total / limitNum);
+
+    res.status(200).json({
+      success: true,
+      data: vendorProducts,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: totalPages,
+      },
+      query: searchQuery,
+    });
+  } catch (error) {
+    console.error("Error searching vendor products:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error searching products",
+      error: error.message,
+    });
+  }
+};
+
 export const getMyVendorProducts = async (req, res) => {
   try {
     const vendorId = req.user.userId;
@@ -658,6 +788,148 @@ export const getMyVendorProducts = async (req, res) => {
       },
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching vendor products",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get vendor products by city and category
+// @route   GET /api/vendor-products/city/:cityId/category/:categoryId
+// @access  Public
+export const getVendorProductsByCityAndCategory = async (req, res) => {
+  try {
+    const { cityId, categoryId } = req.params;
+    const {
+      vendorId,
+      priceType,
+      status,
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 20,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
+
+    // Validate required parameters
+    if (!cityId || !categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "cityId and categoryId are required",
+      });
+    }
+
+    // Build base query - filter by city and status
+    const query = { cityId };
+    
+    // Default to showing only active products if status is not explicitly set
+    if (status !== undefined) {
+      query.status = status === "true";
+    } else {
+      query.status = true; // Default to active products only
+    }
+
+    // Additional filters
+    if (vendorId) query.vendorId = vendorId;
+    if (priceType) query.priceType = priceType;
+
+    // Pagination
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+    // First, find products with the matching category
+    // This approach is more efficient than using populate with match
+    const productsWithCategory = await Product.find({
+      category: categoryId,
+      status: true,
+    }).select("_id");
+
+    const productIds = productsWithCategory.map((p) => p._id);
+
+    // If no products found in this category, return empty result
+    if (productIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: 0,
+          pages: 0,
+        },
+        filters: {
+          cityId,
+          categoryId,
+          vendorId: vendorId || null,
+          priceType: priceType || null,
+          minPrice: minPrice || null,
+          maxPrice: maxPrice || null,
+        },
+      });
+    }
+
+    // Add productId filter to query
+    query.productId = { $in: productIds };
+
+    // Execute query with population
+    let vendorProducts = await VendorProduct.find(query)
+      .populate("productId", "productName shortDescription images category slug")
+      .populate("vendorId", "businessName email phone")
+      .populate("cityId", "name displayName state")
+      .sort(sort);
+
+    // Apply price filtering if provided
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      const min = minPrice ? parseFloat(minPrice) : 0;
+      const max = maxPrice ? parseFloat(maxPrice) : Number.MAX_SAFE_INTEGER;
+
+      vendorProducts = vendorProducts.filter((vp) => {
+        let price = 0;
+        if (vp.priceType === "single" && vp.pricing?.single?.price) {
+          price = vp.pricing.single.price;
+        } else if (vp.priceType === "bulk" && vp.pricing?.bulk?.length > 0) {
+          // Use the first bulk price slab's price for filtering
+          price = vp.pricing.bulk[0].price;
+        }
+
+        return price >= min && price <= max;
+      });
+    }
+
+    // Get total count before pagination
+    const total = vendorProducts.length;
+
+    // Apply pagination
+    vendorProducts = vendorProducts.slice(skip, skip + limitNum);
+
+    res.status(200).json({
+      success: true,
+      data: vendorProducts,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+      filters: {
+        cityId,
+        categoryId,
+        vendorId: vendorId || null,
+        priceType: priceType || null,
+        minPrice: minPrice || null,
+        maxPrice: maxPrice || null,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching vendor products by city and category:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching vendor products",

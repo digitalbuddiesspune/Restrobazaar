@@ -8,17 +8,22 @@ import {
   deleteVendorProduct,
   getVendorProductsByVendor,
   getVendorProductsByCity,
+  getVendorProductsByCityAndCategory,
   updateVendorProductStock,
   toggleVendorProductStatus,
   getMyVendorProducts,
+  searchVendorProducts,
 } from "../../controller/vendor/vendorProductController.js";
 import { authenticate, authorize, optionalAuthenticate } from "../../middleware/authMiddleware.js";
 
 // Public routes
 vendorProductRouter.get("/vendor-products", optionalAuthenticate, getAllVendorProducts);
 // Specific routes must come before parameterized routes
+vendorProductRouter.get("/vendor-products/search", optionalAuthenticate, searchVendorProducts);
 vendorProductRouter.get("/vendor-products/my-products", authenticate, authorize("vendor"), getMyVendorProducts);
 vendorProductRouter.get("/vendor-products/vendor/:vendorId", optionalAuthenticate, getVendorProductsByVendor);
+// City and category route must come before city-only route
+vendorProductRouter.get("/vendor-products/city/:cityId/category/:categoryId", optionalAuthenticate, getVendorProductsByCityAndCategory);
 vendorProductRouter.get("/vendor-products/city/:cityId", optionalAuthenticate, getVendorProductsByCity);
 // Parameterized route must come last
 vendorProductRouter.get("/vendor-products/:id", optionalAuthenticate, getVendorProductById);

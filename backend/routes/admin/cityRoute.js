@@ -16,11 +16,12 @@ import {
 import { authenticate, authorize } from "../../middleware/authMiddleware.js";
 
 // Public routes
+// IMPORTANT: Specific routes must come before parameterized routes
 cityRouter.get("/cities", getAllCities);
-cityRouter.get("/cities/:id", getCityById);
-cityRouter.get("/cities/name/:name", getCityByName);
 cityRouter.get("/cities/serviceable", getServiceableCities);
+cityRouter.get("/cities/name/:name", getCityByName);
 cityRouter.get("/cities/state/:state", getCitiesByState);
+cityRouter.get("/cities/:id", getCityById); // This must be last to avoid matching specific routes
 
 // Admin routes
 cityRouter.post("/cities", authenticate, authorize("admin", "super_admin"), createCity);

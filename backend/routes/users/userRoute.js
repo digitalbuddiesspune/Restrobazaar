@@ -1,20 +1,22 @@
 import express from "express";
-const userRouter = express.Router();
 import {
-  getAllUsers,
-  getUserById,
   getCurrentUser,
-  createUser,
+  getUserById,
   updateUser,
-  deleteUser,
-  getUsersByRole,
-  updateUserRole,
-  getUserByEmail,
   updateUserCart,
+  userSignup,
+  userSignin,
+  userLogout,
 } from "../../controller/users/userController.js";
-import { authenticate, authorize } from "../../middleware/authMiddleware.js";
+import { authenticate } from "../../middleware/authMiddleware.js";
+const userRouter = express.Router();
 
-// Public routes - None (all user routes require authentication)
+// Public routes - Signup and Signin
+userRouter.post("/users/signup", userSignup);
+userRouter.post("/users/signin", userSignin);
+
+// Protected routes - Logout
+userRouter.post("/users/logout", authenticate, userLogout);
 
 // User routes - Users can access their own profile
 userRouter.get("/users/me", authenticate, getCurrentUser);
@@ -22,12 +24,6 @@ userRouter.get("/users/:id", authenticate, getUserById);
 userRouter.put("/users/:id", authenticate, updateUser);
 userRouter.patch("/users/:id/cart", authenticate, updateUserCart);
 
-// Admin routes - Admin can manage all users
-userRouter.get("/admin/users", authenticate, authorize("admin", "super_admin", "city_admin"), getAllUsers);
-userRouter.post("/admin/users", authenticate, authorize("admin", "super_admin"), createUser);
-userRouter.get("/admin/users/role/:role", authenticate, authorize("admin", "super_admin"), getUsersByRole);
-userRouter.get("/admin/users/email/:email", authenticate, authorize("admin", "super_admin"), getUserByEmail);
-userRouter.delete("/users/:id", authenticate, authorize("admin", "super_admin"), deleteUser);
-userRouter.patch("/admin/users/:id/role", authenticate, authorize("admin", "super_admin"), updateUserRole);
+
 
 export default userRouter;

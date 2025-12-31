@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../utils/api';
-import { setToken } from '../utils/auth';
+import { setUserInfo } from '../utils/auth';
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -55,15 +55,21 @@ const SignUp = () => {
       const { confirmPassword, ...signUpData } = formData;
       const response = await authAPI.signUp(signUpData);
       
-      if (response.message) {
+      if (response.success && response.data) {
+        // Store user info (id, name, role) in localStorage for UI purposes
+        // The JWT token is automatically stored in HTTP-only cookie by the backend
+        setUserInfo(response.data);
+        navigate('/');
+        window.location.reload();
+      } else if (response.message) {
         // After successful signup, automatically sign in
         const signInResponse = await authAPI.signIn({
           email: formData.email,
           password: formData.password,
         });
         
-        if (signInResponse.token) {
-          setToken(signInResponse.token);
+        if (signInResponse.success && signInResponse.data) {
+          setUserInfo(signInResponse.data);
           navigate('/');
           window.location.reload();
         }

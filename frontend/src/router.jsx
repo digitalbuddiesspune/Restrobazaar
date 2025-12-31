@@ -18,12 +18,22 @@ import SuperAdminLogin from "./pages/SuperAdminLogin";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import VendorLogin from "./pages/VendorLogin";
 import VendorAdminDashboard from "./pages/VendorAdminDashboard";
+import SignIn from "./pages/SignIn";
+import SignUp from "./pages/SignUp";
+import Account from "./pages/Account";
+import Category from "./pages/Category";
+import ProductDetail from "./pages/ProductDetail";
+import SearchResults from "./pages/SearchResults";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/" element={<App />}>
       <Route index element={<HomePage />} />
       <Route path="categories" element={<Categories />} />
+      <Route path="category/:categorySlug/:productId" element={<ProductDetail />} />
+      <Route path="category/:slug" element={<Category />} />
+      <Route path="product/:productId" element={<ProductDetail />} />
+      <Route path="search" element={<SearchResults />} />
       <Route path="custom-printing" element={<CustomPrinting />} />
       <Route path="about" element={<About />} />
       <Route path="contact" element={<Contact />} />
@@ -31,6 +41,9 @@ const router = createBrowserRouter(
       <Route path="terms-of-service" element={<TermsOfService />} />
       <Route path="refund-policy" element={<RefundPolicy />} />
       <Route path="shipping-policy" element={<ShippingPolicy />} />
+      <Route path="signin" element={<SignIn />} />
+      <Route path="signup" element={<SignUp />} />
+      <Route path="account" element={<Account />} />
       <Route path="super_admin/login" element={<SuperAdminLogin />} />
       <Route path="admin/dashboard" element={<SuperAdminDashboard />} />
       <Route path="vendor/login" element={<VendorLogin />} />
