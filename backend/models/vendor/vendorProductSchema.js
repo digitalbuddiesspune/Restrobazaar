@@ -82,21 +82,34 @@ const vendorProductSchema = new mongoose.Schema(
   { timestamps: true }
 );
 vendorProductSchema.pre("save", function (next) {
-  if (this.priceType === "single") {
-    if (!this.pricing?.single?.price) {
-      return next(new Error("Single price is required"));
+  try {
+    // Cleanup pricing based on priceType
+    if (this.priceType === "single") {
+      // Clear bulk pricing when using single
+      if (this.pricing && this.pricing.bulk) {
+        this.pricing.bulk = [];
+      }
     }
-    this.pricing.bulk = [];
-  }
 
-  if (this.priceType === "bulk") {
-    if (!this.pricing?.bulk?.length) {
-      return next(new Error("At least one bulk price slab is required"));
+    if (this.priceType === "bulk") {
+      // Clear single pricing when using bulk
+      if (this.pricing && this.pricing.single) {
+        this.pricing.single = undefined;
+      }
     }
-    this.pricing.single = undefined;
-  }
 
-  next();
+    // Only call next if it's a function (for callback-based saves)
+    if (next && typeof next === "function") {
+      next();
+    }
+  } catch (error) {
+    // If next is available, pass the error
+    if (next && typeof next === "function") {
+      return next(error);
+    }
+    // Otherwise, throw the error (for promise-based saves)
+    throw error;
+  }
 });
 const VendorProduct = mongoose.model("VendorProduct", vendorProductSchema);
 export default VendorProduct;

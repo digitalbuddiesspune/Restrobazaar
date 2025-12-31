@@ -10,14 +10,18 @@ import {
   getVendorProductsByCity,
   updateVendorProductStock,
   toggleVendorProductStatus,
+  getMyVendorProducts,
 } from "../../controller/vendor/vendorProductController.js";
 import { authenticate, authorize, optionalAuthenticate } from "../../middleware/authMiddleware.js";
 
 // Public routes
 vendorProductRouter.get("/vendor-products", optionalAuthenticate, getAllVendorProducts);
-vendorProductRouter.get("/vendor-products/:id", optionalAuthenticate, getVendorProductById);
+// Specific routes must come before parameterized routes
+vendorProductRouter.get("/vendor-products/my-products", authenticate, authorize("vendor"), getMyVendorProducts);
 vendorProductRouter.get("/vendor-products/vendor/:vendorId", optionalAuthenticate, getVendorProductsByVendor);
 vendorProductRouter.get("/vendor-products/city/:cityId", optionalAuthenticate, getVendorProductsByCity);
+// Parameterized route must come last
+vendorProductRouter.get("/vendor-products/:id", optionalAuthenticate, getVendorProductById);
 
 // Vendor routes - Vendors can manage their own products
 vendorProductRouter.post("/vendor-products", authenticate, authorize("vendor", "admin", "super_admin"), createVendorProduct);

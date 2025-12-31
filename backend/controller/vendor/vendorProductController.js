@@ -37,7 +37,7 @@ export const getAllVendorProducts = async (req, res) => {
 
     // Execute query with population
     const vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "name description image category")
+      .populate("productId", "productName shortDescription images category")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state")
       .sort(sort)
@@ -74,7 +74,7 @@ export const getVendorProductById = async (req, res) => {
     const { id } = req.params;
 
     const vendorProduct = await VendorProduct.findById(id)
-      .populate("productId", "name description image category")
+      .populate("productId", "productName shortDescription images category")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state");
 
@@ -105,7 +105,7 @@ export const createVendorProduct = async (req, res) => {
   try {
     const {
       productId,
-      vendorId,
+      vendorId: bodyVendorId,
       cityId,
       priceType,
       pricing,
@@ -114,6 +114,9 @@ export const createVendorProduct = async (req, res) => {
       notifyQuantity,
       status,
     } = req.body;
+
+    // Use vendor ID from token if user is a vendor, otherwise use body vendorId (for admin)
+    const vendorId = req.user?.role === "vendor" ? req.user.userId : bodyVendorId;
 
     // Validate required fields
     if (!productId || !vendorId || !cityId || !priceType) {
@@ -178,13 +181,29 @@ export const createVendorProduct = async (req, res) => {
       });
     }
 
+    // Prepare pricing object based on priceType
+    let pricingData = {};
+    if (priceType === "single") {
+      pricingData = {
+        single: {
+          price: pricing?.single?.price || 0,
+        },
+        bulk: [],
+      };
+    } else if (priceType === "bulk") {
+      pricingData = {
+        bulk: pricing?.bulk || [],
+        single: undefined,
+      };
+    }
+
     // Create vendor product
     const vendorProduct = await VendorProduct.create({
       productId,
       vendorId,
       cityId,
       priceType,
-      pricing: pricing || {},
+      pricing: pricingData,
       availableStock: availableStock !== undefined ? availableStock : 0,
       minimumOrderQuantity: minimumOrderQuantity !== undefined ? minimumOrderQuantity : 1,
       notifyQuantity,
@@ -193,7 +212,7 @@ export const createVendorProduct = async (req, res) => {
 
     // Populate before sending response
     await vendorProduct.populate([
-      { path: "productId", select: "name description image category" },
+      { path: "productId", select: "productName shortDescription images category" },
       { path: "vendorId", select: "businessName email phone" },
       { path: "cityId", select: "name state" },
     ]);
@@ -204,6 +223,8 @@ export const createVendorProduct = async (req, res) => {
       data: vendorProduct,
     });
   } catch (error) {
+    console.error("Error creating vendor product:", error);
+    
     // Handle validation errors
     if (error.name === "ValidationError") {
       return res.status(400).json({
@@ -213,10 +234,32 @@ export const createVendorProduct = async (req, res) => {
       });
     }
 
+    // Handle pre-save hook errors
+    if (error.message && (
+      error.message.includes("Single price is required") ||
+      error.message.includes("bulk price slab is required")
+    )) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        error: error.message,
+      });
+    }
+
+    // Handle CastError (invalid ObjectId)
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ${error.path}: ${error.value}`,
+        error: error.message,
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Error creating vendor product",
       error: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };
@@ -243,6 +286,14 @@ export const updateVendorProduct = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Vendor product not found",
+      });
+    }
+
+    // If user is a vendor, ensure they can only update their own products
+    if (req.user?.role === "vendor" && vendorProduct.vendorId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden - You can only update your own products",
       });
     }
 
@@ -309,7 +360,7 @@ export const updateVendorProduct = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     )
-      .populate("productId", "name description image category")
+      .populate("productId", "productName shortDescription images category")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state");
 
@@ -352,6 +403,14 @@ export const deleteVendorProduct = async (req, res) => {
       });
     }
 
+    // If user is a vendor, ensure they can only delete their own products
+    if (req.user?.role === "vendor" && vendorProduct.vendorId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden - You can only delete your own products",
+      });
+    }
+
     await VendorProduct.findByIdAndDelete(id);
 
     res.status(200).json({
@@ -385,7 +444,7 @@ export const getVendorProductsByVendor = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "name description image category")
+      .populate("productId", "productName shortDescription images category")
       .populate("cityId", "name state")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -430,7 +489,7 @@ export const getVendorProductsByCity = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "name description image category")
+      .populate("productId", "productName shortDescription images category")
       .populate("vendorId", "businessName email phone")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -481,6 +540,14 @@ export const updateVendorProductStock = async (req, res) => {
       });
     }
 
+    // If user is a vendor, ensure they can only update their own products
+    if (req.user?.role === "vendor" && vendorProduct.vendorId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden - You can only update your own products",
+      });
+    }
+
     const updateData = {};
     if (availableStock !== undefined) updateData.availableStock = availableStock;
     if (notifyQuantity !== undefined) updateData.notifyQuantity = notifyQuantity;
@@ -490,7 +557,7 @@ export const updateVendorProductStock = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     )
-      .populate("productId", "name description image category")
+      .populate("productId", "productName shortDescription images category")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state");
 
@@ -524,11 +591,19 @@ export const toggleVendorProductStatus = async (req, res) => {
       });
     }
 
+    // If user is a vendor, ensure they can only update their own products
+    if (req.user?.role === "vendor" && vendorProduct.vendorId.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden - You can only update your own products",
+      });
+    }
+
     vendorProduct.status = !vendorProduct.status;
     await vendorProduct.save();
 
     await vendorProduct.populate([
-      { path: "productId", select: "name description image category" },
+      { path: "productId", select: "productName shortDescription images category" },
       { path: "vendorId", select: "businessName email phone" },
       { path: "cityId", select: "name state" },
     ]);
@@ -542,6 +617,50 @@ export const toggleVendorProductStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error toggling vendor product status",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get authenticated vendor's own products
+// @route   GET /api/vendor-products/my-products
+// @access  Vendor
+export const getMyVendorProducts = async (req, res) => {
+  try {
+    const vendorId = req.user.userId;
+    const { cityId, status, page = 1, limit = 10 } = req.query;
+
+    const query = { vendorId };
+    if (cityId) query.cityId = cityId;
+    if (status !== undefined) query.status = status === "true";
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const vendorProducts = await VendorProduct.find(query)
+      .populate("productId", "productName shortDescription images category")
+      .populate("cityId", "name state")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await VendorProduct.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: vendorProducts,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching vendor products",
       error: error.message,
     });
   }

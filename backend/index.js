@@ -7,6 +7,7 @@ import categoryRouter from "./routes/admin/categoryRoute.js";
 import cityRouter from "./routes/admin/cityRoute.js";
 import globalProductRouter from "./routes/admin/globalProductRoute.js";
 import vendorRouter from "./routes/admin/vendorRoute.js";
+import vendorProductRouter from "./routes/vendor/vendorProductRoute.js";
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -20,6 +21,7 @@ app.use("/api/v1", categoryRouter);
 app.use("/api/v1", cityRouter);
 app.use("/api/v1", globalProductRouter);
 app.use("/api/v1", vendorRouter);
+app.use("/api/v1", vendorProductRouter);
 
 
 
