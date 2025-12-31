@@ -1,6 +1,14 @@
 import Product from "../../models/admin/globalProduct.js";
 import Category from "../../models/admin/Category.js";
 
+// Helper function to generate slug from name
+const generateSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Public/Admin
@@ -138,6 +146,7 @@ export const createProduct = async (req, res) => {
   try {
     const {
       productName,
+      slug,
       searchTags,
       productPurchasedFrom,
       purchasedMode,
@@ -185,8 +194,33 @@ export const createProduct = async (req, res) => {
       });
     }
 
+    // Generate or use provided slug
+    let productSlug;
+    if (slug) {
+      // Use provided slug, but check for uniqueness
+      productSlug = slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const slugExists = await Product.findOne({ slug: productSlug });
+      if (slugExists) {
+        return res.status(400).json({
+          success: false,
+          message: "A product with this slug already exists",
+        });
+      }
+    } else {
+      // Generate unique slug from product name
+      productSlug = generateSlug(productName);
+      let slugExists = await Product.findOne({ slug: productSlug });
+      let counter = 1;
+      while (slugExists) {
+        productSlug = `${generateSlug(productName)}-${counter}`;
+        slugExists = await Product.findOne({ slug: productSlug });
+        counter++;
+      }
+    }
+
     // Create product
     const product = await Product.create({
+      slug: productSlug,
       productName: productName.trim(),
       searchTags: searchTags || [],
       productPurchasedFrom,
@@ -267,9 +301,41 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    // Trim product name if provided
-    if (updateData.productName) {
+    // Handle slug update
+    if (updateData.slug) {
+      // Use provided slug, but check for uniqueness
+      updateData.slug = updateData.slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const slugExists = await Product.findOne({ 
+        slug: updateData.slug,
+        _id: { $ne: id }
+      });
+      if (slugExists) {
+        return res.status(400).json({
+          success: false,
+          message: "A product with this slug already exists",
+        });
+      }
+    } else if (updateData.productName) {
+      // Trim product name if provided
       updateData.productName = updateData.productName.trim();
+      
+      // Generate new slug if product name changed (and slug not explicitly provided)
+      const newSlug = generateSlug(updateData.productName);
+      let productSlug = newSlug;
+      let slugExists = await Product.findOne({ 
+        slug: productSlug,
+        _id: { $ne: id } // Exclude current product
+      });
+      let counter = 1;
+      while (slugExists) {
+        productSlug = `${newSlug}-${counter}`;
+        slugExists = await Product.findOne({ 
+          slug: productSlug,
+          _id: { $ne: id }
+        });
+        counter++;
+      }
+      updateData.slug = productSlug;
     }
 
     // Update product
