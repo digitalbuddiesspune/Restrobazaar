@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 export const categoryCards = [
@@ -87,6 +88,40 @@ export const titleToSlug = (title) => {
 };
 
 const Categories = () => {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(`${baseUrl}/categories`);
+        const data = await response.json();
+        
+        if (data.success) {
+          // Filter only active categories and sort by priority
+          const activeCategories = data.data
+            .filter(cat => cat.isActive !== false)
+            .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+          setCategories(activeCategories);
+        } else {
+          setError(data.message || 'Failed to fetch categories');
+        }
+      } catch (err) {
+        setError('Error loading categories. Please try again later.');
+        console.error('Error fetching categories:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [baseUrl]);
+
   return (
     <section className="bg-gray-50 py-8 md:py-12 lg:py-16">
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -105,29 +140,46 @@ const Categories = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:gap-5 md:gap-6 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-          {categoryCards.map((card) => (
-            <Link
-              key={card.title}
-              to={`/category/${titleToSlug(card.title)}`}
-              className="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-            >
-              <div className="aspect-[4/3] overflow-hidden bg-gray-100">
-                <img
-                  src={card.image}
-                  alt={card.title}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-              </div>
-              <div className="p-4">
-                <h3 className="text-sm sm:text-base font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
-                  {card.title}
-                </h3>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-gray-600">Loading categories...</div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-red-600">{error}</div>
+          </div>
+        ) : categories.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-gray-600">No categories available</div>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:gap-5 md:gap-6 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+            {categories.map((category) => (
+              <Link
+                key={category._id || category.slug}
+                to={`/category/${category.slug || titleToSlug(category.name)}`}
+                className="group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <div className="aspect-[4/3] overflow-hidden bg-gray-100">
+                  <img
+                    src={category.image || 'https://via.placeholder.com/300x200?text=Category'}
+                    alt={category.name}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.src = 'https://via.placeholder.com/300x200?text=Category';
+                    }}
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="text-sm sm:text-base font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
+                    {category.name}
+                  </h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,50 +1,28 @@
-import express from "express";
+import cors from "cors";
 import dotenv from "dotenv";
-import cors from 'cors';
-import connectDB from './config/databaseConnection.js';
-import signInRouter from './routes/signInRoute.js';
-import signUpRouter from './routes/signUpRoute.js';
+import express from "express";
+import connectDB from "./config/databaseConnection.js";
+import superAdminRouter from "./routes/admin/superAdminRoute.js";
+import categoryRouter from "./routes/admin/categoryRoute.js";
+import cityRouter from "./routes/admin/cityRoute.js";
+import globalProductRouter from "./routes/admin/globalProductRoute.js";
+import vendorRouter from "./routes/admin/vendorRoute.js";
 dotenv.config();
 const app = express();
-const port = process.env.PORT || 3000;
-connectDB();
-
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
-app.use("/api/v1", signInRouter);
-app.use("/api/v1", signUpRouter);
-app.use("/api/v2", productRouterV2);
+await connectDB();
 
-// Product routes
-import productRouter from './routes/productRoute.js';
-app.use("/api/v1", productRouter);
-
-// Category routes
-import categoryRouter from './routes/categoryRoute.js';
+//admin routes 
+app.use("/api/v1", superAdminRouter);
 app.use("/api/v1", categoryRouter);
+app.use("/api/v1", cityRouter);
+app.use("/api/v1", globalProductRouter);
+app.use("/api/v1", vendorRouter);
 
-// Cart routes
-import cartRouter from './routes/cartRoute.js';
-app.use("/api/v1/cart", cartRouter);
 
-// Wishlist routes
-import wishlistRouter from './routes/wishlistRoute.js';
-import productRouterV2 from "./routes/productRouteV2.js";
-app.use("/api/v1/wishlist", wishlistRouter);
 
-// City Admin routes
-import cityAdminRouter from './routes/cityAdminRoute.js';
-app.use("/api/v1", cityAdminRouter);
-
-// User routes
-import userRouter from './routes/userRoute.js';
-app.use("/api/v1", userRouter);
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
-
-app.get("/", (req, res) => {
-  res.send("Hello World");
+app.listen(process.env.PORT, () => {
+  console.log(`Server is running on port ${process.env.PORT}`);
 });

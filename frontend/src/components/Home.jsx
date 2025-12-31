@@ -9,7 +9,7 @@ const Home = () => {
         slides={[
            {
             desktop:
-              "https://res.cloudinary.com/debhhnzgh/image/upload/v1766486888/Artboard_1_4x-100_ns3ryn.jpg",
+              "https://res.cloudinary.com/debhhnzgh/image/upload/v1767119600/Artboard_1_4x-100_2__11zon_ps5omm.jpg",
             alt: "RestroBanner1",
           },
           {
