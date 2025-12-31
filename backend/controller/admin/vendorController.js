@@ -1,5 +1,6 @@
 import Vendor from "../../models/admin/vendor.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 // @desc    Get all vendors
 // @route   GET /api/vendors
@@ -688,6 +689,89 @@ export const getVendorsByKycStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching vendors by KYC status",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Vendor login
+// @route   POST /api/vendors/login
+// @access  Public
+export const vendorLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    // Find vendor with password field included
+    const vendor = await Vendor.findOne({
+      email: email.toLowerCase().trim(),
+    }).select("+password");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Check if vendor is active
+    if (!vendor.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: "Vendor account is inactive. Please contact admin.",
+      });
+    }
+
+    // Check if vendor is approved
+    if (!vendor.isApproved) {
+      return res.status(403).json({
+        success: false,
+        message: "Vendor account is not approved yet. Please wait for admin approval.",
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, vendor.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
+    // Update last login timestamp
+    vendor.lastLoginAt = new Date();
+    await vendor.save();
+
+    // Generate JWT token with vendor ID and role
+    const token = jwt.sign(
+      { id: vendor._id, role: "vendor" },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "24h",
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor logged in successfully",
+      token: token,
+      data: {
+        id: vendor._id,
+        businessName: vendor.businessName,
+        email: vendor.email,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error logging in",
       error: error.message,
     });
   }

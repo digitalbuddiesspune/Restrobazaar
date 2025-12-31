@@ -16,6 +16,8 @@ import CustomPrinting from "./components/CustomPrinting";
 import HomePage from "./pages/HomePage";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import VendorLogin from "./pages/VendorLogin";
+import VendorAdminDashboard from "./pages/VendorAdminDashboard";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -31,6 +33,8 @@ const router = createBrowserRouter(
       <Route path="shipping-policy" element={<ShippingPolicy />} />
       <Route path="super_admin/login" element={<SuperAdminLogin />} />
       <Route path="admin/dashboard" element={<SuperAdminDashboard />} />
+      <Route path="vendor/login" element={<VendorLogin />} />
+      <Route path="vendor/dashboard" element={<VendorAdminDashboard />} />
     </Route>
   )
 );

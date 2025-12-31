@@ -14,6 +14,7 @@ import {
   updateLastLogin,
   getVendorsByCity,
   getVendorsByKycStatus,
+  vendorLogin,
 } from "../../controller/admin/vendorController.js";
 import { authenticate, authorize } from "../../middleware/authMiddleware.js";
 
@@ -32,6 +33,9 @@ vendorRouter.put("/vendors/:id/approval", authenticate, authorize("admin", "supe
 vendorRouter.delete("/vendors/:id", authenticate, authorize("admin", "super_admin"), deleteVendor);
 vendorRouter.patch("/vendors/:id/toggle-active", authenticate, authorize("admin", "super_admin"), toggleVendorActive);
 vendorRouter.patch("/vendors/:id/update-last-login", authenticate, authorize("admin", "super_admin", "vendor"), updateLastLogin);
+
+// Public route - Vendor login (no authentication required)
+vendorRouter.post("/vendors/login", vendorLogin);
 
 export default vendorRouter;
 

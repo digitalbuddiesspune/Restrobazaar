@@ -6,13 +6,14 @@ import ScrollToTop from "./components/ScrollToTop";
 function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isVendorAdminRoute = location.pathname.startsWith("/vendor");
 
   return (
     <>
       <ScrollToTop />
-      {!isAdminRoute && <Header />}
+      {!isAdminRoute && !isVendorAdminRoute && <Header />}
       <Outlet />
-      {!isAdminRoute && <Footer />}
+      {!isAdminRoute && !isVendorAdminRoute && <Footer />}
     </>
   );
 }
