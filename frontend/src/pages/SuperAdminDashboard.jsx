@@ -148,8 +148,8 @@ const SuperAdminDashboard = () => {
 
       setStats({
         products:
-          productsRes.data?.data?.length ||
           productsRes.data?.pagination?.total ||
+          productsRes.data?.data?.length ||
           0,
         cities: citiesRes.data?.data?.length || citiesRes.data?.count || 0,
         categories:
@@ -167,6 +167,7 @@ const SuperAdminDashboard = () => {
       const token = getToken();
       const res = await axios.get(`${baseUrl}/products`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 10000000 }, // Fetch all products
       });
       setProducts(res.data?.data || []);
     } catch (err) {
