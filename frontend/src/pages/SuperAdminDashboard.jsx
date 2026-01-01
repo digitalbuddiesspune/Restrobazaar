@@ -1158,10 +1158,26 @@ const SuperAdminDashboard = () => {
                     >
                       <option value="piece">Piece</option>
                       <option value="kg">Kg</option>
-                      <option value="gram">Gram</option>
+                      <option value="grams">Grams</option>
                       <option value="liter">Liter</option>
                       <option value="ml">ML</option>
+                      <option value="box">Box</option>
                       <option value="meter">Meter</option>
+                      <option value="tray">Tray</option>
+                      <option value="bottel">Bottel</option>
+                      <option value="jar">Jar</option>
+                      <option value="pkt">Pkt</option>
+                      <option value="roll">Roll</option>
+                      <option value="sheet">Sheet</option>
+                      <option value="pouch">Pouch</option>
+                      <option value="bowl">Bowl </option>
+                      <option value="cup">Cup</option>
+                      <option value="plate">Plate</option>
+                      <option value="spoon">Spoon</option>
+                      <option value="fork">Fork</option>
+                      <option value="knife">Knife</option>
+                      <option value="chopstick">Chopstick</option>
+                      <option value="other">Other</option>
                     </select>
                   </div>
                   <div>
