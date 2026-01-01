@@ -33,7 +33,6 @@ const SignIn = () => {
         // The JWT token is automatically stored in HTTP-only cookie by the backend
         setUserInfo(response.data);
         navigate('/');
-        window.location.reload();
       }
     } catch (err) {
       setError(

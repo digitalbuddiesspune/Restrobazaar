@@ -73,9 +73,8 @@ export const logout = async () => {
   } catch (error) {
     console.error('Error during logout:', error);
   } finally {
-    // Always clear local user info
+    // Always clear local user info (this will dispatch authChange event)
     removeUserInfo();
-    window.location.href = '/';
   }
 };
 

@@ -1,25 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { CITY_STORAGE_KEY } from './CitySelectionPopup'
-
-// Check authentication status
-// Try to import from utils/auth, fallback to localStorage check
-let isAuthenticated;
-try {
-  // eslint-disable-next-line
-  const authUtils = require('../utils/auth');
-  isAuthenticated = authUtils.isAuthenticated;
-} catch (e) {
-  // Fallback: check for token in localStorage
-  isAuthenticated = () => {
-    try {
-      const token = localStorage.getItem('token');
-      return !!token;
-    } catch {
-      return false;
-    }
-  };
-}
+import { CITY_STORAGE_KEY, CITY_ID_KEY } from './CitySelectionPopup'
+import { isAuthenticated, logout } from '../utils/auth'
+import { cityAPI } from '../utils/api'
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -28,15 +11,51 @@ const Header = () => {
   const [deliveryLocation, setDeliveryLocation] = useState({ city: '', pincode: '' })
   const [categories, setCategories] = useState([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [userAuthenticated, setUserAuthenticated] = useState(false)
+  const [cities, setCities] = useState([])
+  const [citiesLoading, setCitiesLoading] = useState(false)
+  const [selectedCityId, setSelectedCityId] = useState('')
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
   const navigate = useNavigate()
 
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
 
+  // Check authentication status on mount and when auth changes
+  useEffect(() => {
+    const checkAuth = () => {
+      setUserAuthenticated(isAuthenticated())
+    }
+    
+    // Check initial auth status
+    checkAuth()
+    
+    // Listen for auth changes
+    window.addEventListener('authChange', checkAuth)
+    
+    return () => {
+      window.removeEventListener('authChange', checkAuth)
+    }
+  }, [])
+
   useEffect(() => {
     // Get delivery location from localStorage
-    const savedCity = localStorage.getItem(CITY_STORAGE_KEY) || 'Select City';
-    const savedPincode = localStorage.getItem('pincode') || '';
-    setDeliveryLocation({ city: savedCity, pincode: savedPincode });
+    const updateDeliveryLocation = () => {
+      const savedCity = localStorage.getItem(CITY_STORAGE_KEY) || 'Select City';
+      const savedPincode = localStorage.getItem('pincode') || '';
+      const savedCityId = localStorage.getItem(CITY_ID_KEY) || '';
+      setDeliveryLocation({ city: savedCity, pincode: savedPincode });
+      setSelectedCityId(savedCityId);
+    };
+    
+    // Initial load
+    updateDeliveryLocation();
+    
+    // Listen for city changes
+    window.addEventListener('cityChange', updateDeliveryLocation);
+    
+    return () => {
+      window.removeEventListener('cityChange', updateDeliveryLocation);
+    };
   }, [])
 
   useEffect(() => {
@@ -64,6 +83,25 @@ const Header = () => {
     fetchCategories();
   }, [baseUrl])
 
+  useEffect(() => {
+    // Fetch cities for dropdown
+    const fetchCities = async () => {
+      try {
+        setCitiesLoading(true);
+        const response = await cityAPI.getServiceableCities();
+        if (response.success && response.data) {
+          setCities(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching cities:', err);
+      } finally {
+        setCitiesLoading(false);
+      }
+    };
+
+    fetchCities();
+  }, [])
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
   }
@@ -81,9 +119,56 @@ const Header = () => {
     }
   }
 
-  const handleLocationClick = () => {
-    // Navigate to a location selection page or show popup
-    navigate('/location')
+  const handleCityChange = (e) => {
+    const cityId = e.target.value;
+    if (cityId) {
+      const selectedCity = cities.find(c => c._id === cityId);
+      if (selectedCity) {
+        // Save selected city to localStorage
+        localStorage.setItem(CITY_STORAGE_KEY, selectedCity.displayName);
+        localStorage.setItem(CITY_ID_KEY, selectedCity._id);
+        
+        // Update state
+        setSelectedCityId(cityId);
+        setDeliveryLocation({ 
+          city: selectedCity.displayName, 
+          pincode: deliveryLocation.pincode 
+        });
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event('cityChange'));
+      }
+    }
+  }
+
+  const handleCitySelect = (cityId) => {
+    if (cityId) {
+      const selectedCity = cities.find(c => c._id === cityId);
+      if (selectedCity) {
+        // Save selected city to localStorage
+        localStorage.setItem(CITY_STORAGE_KEY, selectedCity.displayName);
+        localStorage.setItem(CITY_ID_KEY, selectedCity._id);
+        
+        // Update state
+        setSelectedCityId(cityId);
+        setDeliveryLocation({ 
+          city: selectedCity.displayName, 
+          pincode: deliveryLocation.pincode 
+        });
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event('cityChange'));
+      }
+    }
+    setIsCityDropdownOpen(false);
+  }
+
+  const toggleCityDropdown = () => {
+    setIsCityDropdownOpen(!isCityDropdownOpen);
+  }
+
+  const closeCityDropdown = () => {
+    setIsCityDropdownOpen(false);
   }
 
   const handleCategoryClick = (category) => {
@@ -101,9 +186,32 @@ const Header = () => {
   }
 
   const handleAccountOptionClick = (route) => {
-    navigate(route)
+    // Handle modal routes
+    if (route === '/signin' && window.openSignInModal) {
+      window.openSignInModal();
+    } else if (route === '/signup' && window.openSignUpModal) {
+      window.openSignUpModal();
+    } else if (route === '/super_admin/login' && window.openSuperAdminLoginModal) {
+      window.openSuperAdminLoginModal();
+    } else if (route === '/vendor/login' && window.openVendorLoginModal) {
+      window.openVendorLoginModal();
+    } else {
+      navigate(route);
+    }
+    closeAccountDropdown();
+    closeMenu();
+  }
+
+  const handleLogout = async () => {
     closeAccountDropdown()
     closeMenu()
+    
+    // Show confirmation alert
+    const confirmed = window.confirm('Are you sure you want to logout?')
+    if (confirmed) {
+      await logout()
+      navigate('/signin')
+    }
   }
 
   // Close dropdown when clicking outside
@@ -112,14 +220,15 @@ const Header = () => {
       if (isAccountDropdownOpen && !event.target.closest('.account-dropdown')) {
         closeAccountDropdown()
       }
+      if (isCityDropdownOpen && !event.target.closest('.city-dropdown')) {
+        closeCityDropdown()
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isAccountDropdownOpen])
-
-  const userAuthenticated = isAuthenticated()
+  }, [isAccountDropdownOpen, isCityDropdownOpen])
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
@@ -137,12 +246,9 @@ const Header = () => {
           </div>
 
           {/* Delivery Location */}
-          <div 
-            onClick={handleLocationClick}
-            className="hidden md:flex items-center gap-1 cursor-pointer hover:text-red-600 transition-colors min-w-[120px]"
-          >
+          <div className="hidden md:flex items-center gap-2 min-w-[150px] city-dropdown relative">
             <svg 
-              className="w-4 h-4 text-gray-600" 
+              className="w-4 h-4 text-gray-600 shrink-0" 
               fill="none" 
               strokeLinecap="round" 
               strokeLinejoin="round" 
@@ -153,12 +259,61 @@ const Header = () => {
               <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1 min-w-0">
               <span className="text-xs text-gray-500">Deliver to</span>
-              <span className="text-sm font-medium text-gray-700">
-                {deliveryLocation.city}
-                {deliveryLocation.pincode && `, ${deliveryLocation.pincode}`}
-              </span>
+              <button
+                onClick={toggleCityDropdown}
+                disabled={citiesLoading}
+                className="text-sm font-medium bg-transparent border-none outline-none cursor-pointer pr-4 truncate text-left flex items-center gap-1"
+              >
+                <span className={selectedCityId ? 'text-red-600' : 'text-gray-700'}>
+                  {deliveryLocation.city || 'Select City'}
+                </span>
+                <svg
+                  className={`w-4 h-4 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''} ${selectedCityId ? 'text-red-600' : 'text-gray-600'}`}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {isCityDropdownOpen && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border-2 border-gray-200 z-50 max-h-80 overflow-y-auto">
+                  <ul className="py-2">
+                    <li>
+                      <button
+                        onClick={() => handleCitySelect('')}
+                        className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors border-b border-gray-100 ${
+                          !selectedCityId 
+                            ? 'text-red-600 bg-red-50 border-red-200' 
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-red-600'
+                        }`}
+                      >
+                        Select City
+                      </button>
+                    </li>
+                    {cities.map((city) => (
+                      <li key={city._id}>
+                        <button
+                          onClick={() => handleCitySelect(city._id)}
+                          className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors border-b border-gray-100 ${
+                            selectedCityId === city._id
+                              ? 'text-red-600 bg-red-50 border-red-200'
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-red-600'
+                          }`}
+                        >
+                          {city.displayName}{city.state ? `, ${city.state}` : ''}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 
@@ -238,12 +393,20 @@ const Header = () => {
               {isAccountDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                   {userAuthenticated ? (
-                    <button
-                      onClick={() => handleAccountOptionClick('/account')}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
-                    >
-                      Account
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleAccountOptionClick('/account')}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        Account
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        Logout
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
@@ -340,12 +503,9 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden pb-4 border-t border-gray-200 mt-2">
             {/* Mobile Delivery Location */}
-            <div 
-              onClick={() => { handleLocationClick(); closeMenu(); }}
-              className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50"
-            >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 city-dropdown relative">
               <svg 
-                className="w-5 h-5 text-gray-600" 
+                className="w-5 h-5 text-gray-600 shrink-0" 
                 fill="none" 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
@@ -356,12 +516,61 @@ const Header = () => {
                 <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">Deliver to</span>
-                <span className="text-sm font-medium text-gray-700">
-                  {deliveryLocation.city}
-                  {deliveryLocation.pincode && `, ${deliveryLocation.pincode}`}
-                </span>
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-xs text-gray-500 mb-1">Deliver to</span>
+                <button
+                  onClick={toggleCityDropdown}
+                  disabled={citiesLoading}
+                  className="text-sm font-medium bg-white border-2 border-gray-300 rounded px-3 py-2 w-full cursor-pointer text-left flex items-center justify-between hover:border-red-400 transition-colors"
+                >
+                  <span className={selectedCityId ? 'text-red-600 font-semibold' : 'text-gray-700'}>
+                    {deliveryLocation.city || 'Select City'}
+                  </span>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''} ${selectedCityId ? 'text-red-600' : 'text-gray-600'}`}
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {isCityDropdownOpen && (
+                  <div className="absolute top-full left-4 right-4 mt-2 bg-white rounded-lg shadow-lg border-2 border-gray-200 z-50 max-h-80 overflow-y-auto">
+                    <ul className="py-2">
+                      <li>
+                        <button
+                          onClick={() => handleCitySelect('')}
+                          className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors border-b border-gray-100 ${
+                            !selectedCityId 
+                              ? 'text-red-600 bg-red-50 border-red-200' 
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-red-600'
+                          }`}
+                        >
+                          Select City
+                        </button>
+                      </li>
+                      {cities.map((city) => (
+                        <li key={city._id}>
+                          <button
+                            onClick={() => handleCitySelect(city._id)}
+                            className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors border-b border-gray-100 ${
+                              selectedCityId === city._id
+                                ? 'text-red-600 bg-red-50 border-red-200'
+                                : 'text-gray-700 hover:bg-gray-50 hover:text-red-600'
+                            }`}
+                          >
+                            {city.displayName}{city.state ? `, ${city.state}` : ''}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -421,12 +630,20 @@ const Header = () => {
                   Account
                 </div>
                 {userAuthenticated ? (
-                  <button
-                    onClick={() => handleAccountOptionClick('/account')}
-                    className="w-full text-left px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium"
-                  >
-                    Account
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleAccountOptionClick('/account')}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium"
+                    >
+                      Account
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium"
+                    >
+                      Logout
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button

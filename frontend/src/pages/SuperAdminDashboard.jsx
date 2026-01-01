@@ -12,6 +12,10 @@ const SuperAdminDashboard = () => {
   const [success, setSuccess] = useState("");
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
+  
+  // Pagination state
+  const [productsPage, setProductsPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Stats
   const [stats, setStats] = useState({
@@ -213,7 +217,10 @@ const SuperAdminDashboard = () => {
 
   useEffect(() => {
     fetchStats();
-    if (activeTab === "products") fetchProducts();
+    if (activeTab === "products") {
+      fetchProducts();
+      setProductsPage(1); // Reset pagination when switching to products tab
+    }
     if (activeTab === "cities") fetchCities();
     if (activeTab === "categories") fetchCategories();
     if (activeTab === "vendors") fetchVendors();
@@ -747,6 +754,17 @@ const SuperAdminDashboard = () => {
     } catch (err) {
       setError(`Failed to delete ${type}`);
     }
+  };
+
+  // Pagination helper functions
+  const getPaginatedData = (data, currentPage, itemsPerPage) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (data, itemsPerPage) => {
+    return Math.ceil(data.length / itemsPerPage);
   };
 
   // Logout
@@ -2351,7 +2369,11 @@ const SuperAdminDashboard = () => {
         )}
 
         {/* All Products Tab */}
-        {activeTab === "products" && (
+        {activeTab === "products" && (() => {
+          const totalPages = getTotalPages(products, itemsPerPage);
+          const paginatedProducts = getPaginatedData(products, productsPage, itemsPerPage);
+          
+          return (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Products</h2>
@@ -2378,7 +2400,7 @@ const SuperAdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {products.map((product) => (
+                  {paginatedProducts.map((product) => (
                     <tr key={product._id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {product.img ? (
@@ -2401,8 +2423,15 @@ const SuperAdminDashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {product.productName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.category?.name || product.category || "N/A"}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {product.category?.name || product.category || "N/A"}
+                        </div>
+                        {product.subCategory && (
+                          <div className="text-xs text-gray-400">
+                            {product.subCategory}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -2437,14 +2466,73 @@ const SuperAdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {products.length === 0 && (
+              {paginatedProducts.length === 0 && (
                 <div className="p-6 text-center text-gray-500">
                   No products found
                 </div>
               )}
             </div>
+            {/* Pagination Controls */}
+            {products.length > 0 && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing {(productsPage - 1) * itemsPerPage + 1} to{" "}
+                  {Math.min(productsPage * itemsPerPage, products.length)} of{" "}
+                  {products.length} products
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setProductsPage((prev) => Math.max(1, prev - 1))}
+                    disabled={productsPage === 1}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        // Show first page, last page, current page, and pages around current
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= productsPage - 1 && page <= productsPage + 1)
+                        );
+                      })
+                      .map((page, index, array) => {
+                        // Add ellipsis if there's a gap
+                        const showEllipsisBefore = index > 0 && page - array[index - 1] > 1;
+                        return (
+                          <div key={page} className="flex items-center gap-1">
+                            {showEllipsisBefore && (
+                              <span className="px-2 text-gray-500">...</span>
+                            )}
+                            <button
+                              onClick={() => setProductsPage(page)}
+                              className={`px-3 py-2 text-sm border rounded-lg ${
+                                productsPage === page
+                                  ? "bg-purple-600 text-white border-purple-600"
+                                  : "border-gray-300 hover:bg-gray-50"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <button
+                    onClick={() => setProductsPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={productsPage === totalPages}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
 
         {/* All Cities Tab */}
         {activeTab === "cities" && (

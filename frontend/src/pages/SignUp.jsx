@@ -60,7 +60,6 @@ const SignUp = () => {
         // The JWT token is automatically stored in HTTP-only cookie by the backend
         setUserInfo(response.data);
         navigate('/');
-        window.location.reload();
       } else if (response.message) {
         // After successful signup, automatically sign in
         const signInResponse = await authAPI.signIn({
@@ -71,7 +70,6 @@ const SignUp = () => {
         if (signInResponse.success && signInResponse.data) {
           setUserInfo(signInResponse.data);
           navigate('/');
-          window.location.reload();
         }
       }
     } catch (err) {

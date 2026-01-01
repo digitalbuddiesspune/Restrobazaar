@@ -52,9 +52,10 @@ const Account = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      logout();
+      await logout();
+      navigate('/signin');
     }
   };
 
