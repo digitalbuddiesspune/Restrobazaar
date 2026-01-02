@@ -43,7 +43,7 @@ export const getAllVendorProducts = async (req, res) => {
 
     // Execute query with population
     const vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "productName shortDescription images category")
+      .populate("productId", "productName shortDescription images category subCategory")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state")
       .sort(sort)
@@ -80,7 +80,7 @@ export const getVendorProductById = async (req, res) => {
     const { id } = req.params;
 
     const vendorProduct = await VendorProduct.findById(id)
-      .populate("productId", "productName shortDescription images category")
+      .populate("productId", "productName shortDescription images category subCategory")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state");
 
@@ -218,7 +218,7 @@ export const createVendorProduct = async (req, res) => {
 
     // Populate before sending response
     await vendorProduct.populate([
-      { path: "productId", select: "productName shortDescription images category" },
+      { path: "productId", select: "productName shortDescription images category subCategory" },
       { path: "vendorId", select: "businessName email phone" },
       { path: "cityId", select: "name state" },
     ]);
@@ -366,7 +366,7 @@ export const updateVendorProduct = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     )
-      .populate("productId", "productName shortDescription images category")
+      .populate("productId", "productName shortDescription images category subCategory")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state");
 
@@ -450,7 +450,7 @@ export const getVendorProductsByVendor = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "productName shortDescription images category")
+      .populate("productId", "productName shortDescription images category subCategory")
       .populate("cityId", "name state")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -500,7 +500,7 @@ export const getVendorProductsByCity = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "productName shortDescription images category")
+      .populate("productId", "productName shortDescription images category subCategory")
       .populate("vendorId", "businessName email phone")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -568,7 +568,7 @@ export const updateVendorProductStock = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     )
-      .populate("productId", "productName shortDescription images category")
+      .populate("productId", "productName shortDescription images category subCategory")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name state");
 
@@ -614,7 +614,7 @@ export const toggleVendorProductStatus = async (req, res) => {
     await vendorProduct.save();
 
     await vendorProduct.populate([
-      { path: "productId", select: "productName shortDescription images category" },
+      { path: "productId", select: "productName shortDescription images category subCategory" },
       { path: "vendorId", select: "businessName email phone" },
       { path: "cityId", select: "name state" },
     ]);
@@ -721,7 +721,7 @@ export const searchVendorProducts = async (req, res) => {
 
     // Execute query with population
     let vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "productName shortDescription images category slug")
+      .populate("productId", "productName shortDescription images category subCategory slug")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name displayName state")
       .sort(sort)
@@ -769,7 +769,7 @@ export const getMyVendorProducts = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "productName shortDescription images category")
+      .populate("productId", "productName shortDescription images category subCategory")
       .populate("cityId", "name state")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -806,6 +806,7 @@ export const getVendorProductsByCityAndCategory = async (req, res) => {
       vendorId,
       priceType,
       status,
+      subCategory,
       minPrice,
       maxPrice,
       page = 1,
@@ -845,12 +846,19 @@ export const getVendorProductsByCityAndCategory = async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-    // First, find products with the matching category
+    // First, find products with the matching category and optionally subcategory
     // This approach is more efficient than using populate with match
-    const productsWithCategory = await Product.find({
+    const productQuery = {
       category: categoryId,
       status: true,
-    }).select("_id");
+    };
+    
+    // Add subcategory filter if provided
+    if (subCategory) {
+      productQuery.subCategory = subCategory;
+    }
+    
+    const productsWithCategory = await Product.find(productQuery).select("_id subCategory");
 
     const productIds = productsWithCategory.map((p) => p._id);
 
@@ -868,6 +876,7 @@ export const getVendorProductsByCityAndCategory = async (req, res) => {
         filters: {
           cityId,
           categoryId,
+          subCategory: subCategory || null,
           vendorId: vendorId || null,
           priceType: priceType || null,
           minPrice: minPrice || null,
@@ -881,7 +890,7 @@ export const getVendorProductsByCityAndCategory = async (req, res) => {
 
     // Execute query with population
     let vendorProducts = await VendorProduct.find(query)
-      .populate("productId", "productName shortDescription images category slug")
+      .populate("productId", "productName shortDescription images category subCategory slug")
       .populate("vendorId", "businessName email phone")
       .populate("cityId", "name displayName state")
       .sort(sort);
@@ -922,6 +931,7 @@ export const getVendorProductsByCityAndCategory = async (req, res) => {
       filters: {
         cityId,
         categoryId,
+        subCategory: subCategory || null,
         vendorId: vendorId || null,
         priceType: priceType || null,
         minPrice: minPrice || null,
