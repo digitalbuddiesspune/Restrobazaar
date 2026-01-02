@@ -65,12 +65,28 @@ const VendorAdminDashboard = () => {
     }
   };
 
-  // Fetch vendor info
+  // Fetch vendor info and get vendor's primary city
   const fetchVendorInfo = async () => {
     try {
       const token = getToken();
-      // Get vendor products to infer vendor info, or create a vendor profile endpoint
-      // For now, we'll work with products directly
+      if (!token) return;
+      
+      // Try to get vendor info from vendor products (use the city from first product)
+      // Or we can create a vendor profile endpoint later
+      if (vendorProducts.length > 0) {
+        const firstProduct = vendorProducts[0];
+        const vendorCityId = firstProduct.cityId?._id || firstProduct.cityId;
+        if (vendorCityId) {
+          setVendorInfo({ cityId: vendorCityId });
+          // Auto-set city in form if not already set
+          if (!productForm.cityId && activeTab === "add-product") {
+            setProductForm(prev => ({
+              ...prev,
+              cityId: vendorCityId,
+            }));
+          }
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch vendor info");
     }
@@ -180,11 +196,34 @@ const VendorAdminDashboard = () => {
     }
   }, [activeTab]);
 
+  // Update vendor info when vendor products are loaded
+  useEffect(() => {
+    if (vendorProducts.length > 0 && !vendorInfo) {
+      const firstProduct = vendorProducts[0];
+      const vendorCityId = firstProduct.cityId?._id || firstProduct.cityId;
+      if (vendorCityId) {
+        setVendorInfo({ cityId: vendorCityId });
+      }
+    }
+  }, [vendorProducts, vendorInfo]);
+
+  // Auto-set city when switching to add-product tab or when vendorInfo becomes available
+  useEffect(() => {
+    if (activeTab === "add-product" && vendorInfo?.cityId && !productForm.cityId) {
+      setProductForm(prev => ({
+        ...prev,
+        cityId: vendorInfo.cityId,
+      }));
+    }
+  }, [activeTab, vendorInfo, productForm.cityId]);
+
   // Handle edit product
   const handleEdit = (product) => {
+    // Use vendor's city if available, otherwise fall back to product's city
+    const cityId = vendorInfo?.cityId || product.cityId._id || product.cityId;
     setProductForm({
       productId: product.productId._id || product.productId,
-      cityId: product.cityId._id || product.cityId,
+      cityId: cityId,
       priceType: product.priceType,
       pricing: product.pricing || {
         single: { price: "" },
@@ -277,7 +316,7 @@ const VendorAdminDashboard = () => {
 
       const formData = {
         productId: productForm.productId,
-        cityId: productForm.cityId,
+        cityId: vendorInfo?.cityId || productForm.cityId,
         priceType: productForm.priceType,
         pricing: pricingData,
         availableStock: parseFloat(productForm.availableStock) || 0,
@@ -311,7 +350,7 @@ const VendorAdminDashboard = () => {
       // Reset form
       setProductForm({
         productId: "",
-        cityId: "",
+        cityId: vendorInfo?.cityId || "",
         priceType: "single",
         pricing: {
           single: {
@@ -427,6 +466,14 @@ const VendorAdminDashboard = () => {
 
   const getTotalPages = (data, itemsPerPage) => {
     return Math.ceil(data.length / itemsPerPage);
+  };
+
+  // Check if a product is already in vendor's product list
+  const isProductInVendorList = (productId) => {
+    return vendorProducts.some((vendorProduct) => {
+      const vendorProductId = vendorProduct.productId?._id || vendorProduct.productId;
+      return vendorProductId === productId;
+    });
   };
 
   // Reset pagination when search query changes
@@ -740,11 +787,17 @@ const VendorAdminDashboard = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
+                          {isProductInVendorList(product._id) ? (
+                            <span className="text-gray-400 font-medium cursor-not-allowed">
+                              Already Added
+                            </span>
+                          ) : (
+                            <button
                             onClick={() => {
+                              const defaultCityId = vendorInfo?.cityId || "";
                               setProductForm({
                                 productId: product._id,
-                                cityId: "",
+                                cityId: defaultCityId,
                                 priceType: "single",
                                 pricing: {
                                   single: {
@@ -760,10 +813,11 @@ const VendorAdminDashboard = () => {
                               setEditingProductId(null);
                               setActiveTab("add-product");
                             }}
-                            className="text-orange-600 hover:text-orange-900 font-medium"
-                          >
-                            Add to My Catalog
-                          </button>
+                              className="text-orange-600 hover:text-orange-900 font-medium"
+                            >
+                              Add to My Catalog
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1143,25 +1197,43 @@ const VendorAdminDashboard = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       City *
                     </label>
-                    <select
-                      required
-                      value={productForm.cityId}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          cityId: e.target.value,
-                        })
-                      }
-                      disabled={!!editingProductId}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    >
-                      <option value="">Select a city</option>
-                      {cities.map((city) => (
-                        <option key={city._id} value={city._id}>
-                          {city.name}
-                        </option>
-                      ))}
-                    </select>
+                    {vendorInfo?.cityId ? (
+                      <div>
+                        <input
+                          type="text"
+                          value={
+                            cities.find((c) => c._id === vendorInfo.cityId)?.displayName ||
+                            cities.find((c) => c._id === vendorInfo.cityId)?.name ||
+                            "Your City"
+                          }
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          City is automatically set based on your vendor profile
+                        </p>
+                      </div>
+                    ) : (
+                      <select
+                        required
+                        value={productForm.cityId}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            cityId: e.target.value,
+                          })
+                        }
+                        disabled={!!editingProductId}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      >
+                        <option value="">Select a city</option>
+                        {cities.map((city) => (
+                          <option key={city._id} value={city._id}>
+                            {city.displayName || city.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1425,7 +1497,7 @@ const VendorAdminDashboard = () => {
                     setEditingProductId(null);
                     setProductForm({
                       productId: "",
-                      cityId: "",
+                      cityId: vendorInfo?.cityId || "",
                       priceType: "single",
                       pricing: {
                         single: {

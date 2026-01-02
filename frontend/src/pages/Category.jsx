@@ -16,6 +16,8 @@ const Category = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedCity, setSelectedCity] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedSubcategory, setSelectedSubcategory] = useState('all');
+  const [allProducts, setAllProducts] = useState([]);
 
   // Fetch categories for sidebar
   useEffect(() => {
@@ -34,17 +36,20 @@ const Category = () => {
               cat => cat.slug === slug || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug
             );
             if (category) {
+              console.log('Category found in list:', category.name, 'Subcategories:', category.subcategories);
               setSelectedCategory(category);
             } else {
               // Try to fetch category by slug from API
               try {
                 const categoryResponse = await categoryAPI.getCategoryBySlug(slug);
                 if (categoryResponse.success && categoryResponse.data) {
+                  console.log('Category fetched by slug:', categoryResponse.data.name, 'Subcategories:', categoryResponse.data.subcategories);
                   setSelectedCategory(categoryResponse.data);
                 } else {
                   setError('Category not found');
                 }
               } catch (err) {
+                console.error('Error fetching category by slug:', err);
                 setError('Category not found');
               }
             }
@@ -69,7 +74,7 @@ const Category = () => {
     setSelectedCity(savedCity);
   }, [slug]);
 
-  const fetchProducts = async (categoryId, pageNum = 1) => {
+  const fetchProducts = async (categoryId, pageNum = 1, fetchAll = false) => {
     try {
       setProductsLoading(true);
       setError('');
@@ -81,17 +86,42 @@ const Category = () => {
         return;
       }
 
+      // If filtering by subcategory, fetch all products (use a large limit)
+      const limit = fetchAll ? 1000 : 20;
+
       const response = await vendorProductAPI.getVendorProductsByCityAndCategory(categoryId, {
         page: pageNum,
-        limit: 20,
+        limit: limit,
         sortBy: 'createdAt',
         sortOrder: 'desc',
       });
 
       if (response.success) {
-        setProducts(response.data || []);
+        const fetchedProducts = response.data || [];
+        console.log('Fetched products count:', fetchedProducts.length);
+        console.log('Sample product:', fetchedProducts[0]);
+        setAllProducts(fetchedProducts); // Store all products
+        
+        // Apply subcategory filter if one is selected
+        if (selectedSubcategory && selectedSubcategory !== 'all') {
+          const filtered = fetchedProducts.filter((product) => {
+            // Check both possible locations for subCategory
+            const productSubCategory = product.productId?.subCategory || product.subCategory;
+            // Trim and compare (in case of whitespace issues)
+            const matches = productSubCategory?.trim() === selectedSubcategory.trim();
+            if (matches) {
+              console.log('Product matches subcategory:', product.productId?.productName, productSubCategory);
+            }
+            return matches;
+          });
+          console.log('Filtered products count:', filtered.length);
+          setProducts(filtered);
+        } else {
+          setProducts(fetchedProducts);
+        }
         setTotalPages(response.pagination?.pages || 1);
       } else {
+        console.error('Failed to fetch products:', response.message);
         setError(response.message || 'Failed to fetch products');
       }
     } catch (err) {
@@ -106,17 +136,48 @@ const Category = () => {
   // Fetch products when category is selected
   useEffect(() => {
     if (selectedCategory) {
-      fetchProducts(selectedCategory._id, page);
+      setSelectedSubcategory('all'); // Reset subcategory when category changes
+      fetchProducts(selectedCategory._id, page, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, page]);
 
+  // When subcategory changes, refetch all products to filter properly
+  useEffect(() => {
+    if (selectedCategory && selectedSubcategory && selectedSubcategory !== 'all') {
+      // Fetch all products when filtering by subcategory
+      fetchProducts(selectedCategory._id, 1, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubcategory]);
+
+  // Filter products when subcategory changes (client-side filter as backup)
+  useEffect(() => {
+    if (selectedSubcategory && selectedSubcategory !== 'all' && allProducts.length > 0) {
+      const filtered = allProducts.filter((product) => {
+        // Check both possible locations for subCategory
+        const productSubCategory = product.productId?.subCategory || product.subCategory;
+        // Trim and compare (in case of whitespace issues)
+        return productSubCategory?.trim() === selectedSubcategory.trim();
+      });
+      setProducts(filtered);
+    } else if (selectedSubcategory === 'all') {
+      setProducts(allProducts);
+    }
+  }, [selectedSubcategory, allProducts]);
+
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setPage(1); // Reset to first page
+    setSelectedSubcategory('all'); // Reset subcategory filter
     setSidebarOpen(false); // Close sidebar on mobile
     // Update URL without navigation
     navigate(`/category/${category.slug}`, { replace: true });
+  };
+
+  const handleSubcategorySelect = (subcategory) => {
+    setSelectedSubcategory(subcategory);
+    setPage(1); // Reset to first page when filtering
   };
 
   const getProductPrice = (product) => {
@@ -152,11 +213,11 @@ const Category = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
             {selectedCategory ? selectedCategory.name : 'Categories'}
           </h1>
           {selectedCity && selectedCity !== 'Select City' && (
-            <p className="text-gray-600">
+            <p className="text-sm text-gray-600">
               Showing products available in <span className="font-semibold">{selectedCity}</span>
             </p>
           )}
@@ -266,7 +327,7 @@ const Category = () => {
               <>
                 {/* Category Info */}
                 <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 mb-4">
                     {selectedCategory.image && (
                       <img
                         src={selectedCategory.image}
@@ -278,11 +339,53 @@ const Category = () => {
                       />
                     )}
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{selectedCategory.name}</h2>
+                      <h2 className="text-lg font-bold text-gray-900">{selectedCategory.name}</h2>
                       {selectedCategory.description && (
-                        <p className="text-gray-600 text-sm mt-1">{selectedCategory.description}</p>
+                        <p className="text-gray-600 text-xs mt-1">{selectedCategory.description}</p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Subcategories Filter - Always show for debugging */}
+                  <div className="border-t pt-4 mt-4">
+                    {selectedCategory.subcategories && Array.isArray(selectedCategory.subcategories) && selectedCategory.subcategories.length > 0 ? (
+                      <>
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Filter by Subcategory:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleSubcategorySelect('all')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                              selectedSubcategory === 'all'
+                                ? 'bg-red-600 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            All
+                          </button>
+                          {selectedCategory.subcategories.map((subcat, index) => (
+                            <button
+                              key={index}
+                              onClick={() => handleSubcategorySelect(subcat)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                selectedSubcategory === subcat
+                                  ? 'bg-red-600 text-white shadow-md'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {subcat}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Filter by Subcategory:</h3>
+                        <p className="text-xs text-gray-500">
+                          No subcategories available for this category
+                          {selectedCategory.subcategories ? ` (subcategories: ${JSON.stringify(selectedCategory.subcategories)})` : ' (subcategories: undefined)'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -412,8 +515,8 @@ const Category = () => {
                       ))}
                     </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
+                    {/* Pagination - Only show if not filtering by subcategory */}
+                    {selectedSubcategory === 'all' && totalPages > 1 && (
                       <div className="flex items-center justify-center gap-2 mt-8">
                         <button
                           onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -432,6 +535,12 @@ const Category = () => {
                         >
                           Next
                         </button>
+                      </div>
+                    )}
+                    {/* Show filtered count when subcategory is selected */}
+                    {selectedSubcategory !== 'all' && (
+                      <div className="text-center mt-4 text-sm text-gray-600">
+                        Showing {products.length} product{products.length !== 1 ? 's' : ''} in this subcategory
                       </div>
                     )}
                   </>

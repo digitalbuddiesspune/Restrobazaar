@@ -75,6 +75,7 @@ const SuperAdminDashboard = () => {
     slug: "",
     image: "",
     description: "",
+    subcategories: [],
     isActive: true,
     priority: 0,
   });
@@ -264,6 +265,7 @@ const SuperAdminDashboard = () => {
         slug: category.slug || "",
         image: category.image || "",
         description: category.description || "",
+        subcategories: category.subcategories || [],
         isActive: category.isActive !== undefined ? category.isActive : true,
         priority: category.priority || 0,
       });
@@ -550,6 +552,7 @@ const SuperAdminDashboard = () => {
         ...(categoryForm.description && {
           description: categoryForm.description.trim(),
         }),
+        subcategories: (categoryForm.subcategories || []).filter(subcat => subcat.trim() !== ""),
         isActive: categoryForm.isActive,
         priority: categoryForm.priority || 0,
       };
@@ -574,6 +577,7 @@ const SuperAdminDashboard = () => {
         slug: "",
         image: "",
         description: "",
+        subcategories: [],
         isActive: true,
         priority: 0,
       });
@@ -1046,12 +1050,17 @@ const SuperAdminDashboard = () => {
                     <select
                       required
                       value={productForm.category}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const selectedCategoryId = e.target.value;
+                        const selectedCategory = categories.find(
+                          (cat) => cat._id === selectedCategoryId
+                        );
                         setProductForm({
                           ...productForm,
-                          category: e.target.value,
-                        })
-                      }
+                          category: selectedCategoryId,
+                          subCategory: "", // Reset subcategory when category changes
+                        });
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
                       <option value="">Select a category</option>
@@ -1066,18 +1075,75 @@ const SuperAdminDashboard = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Sub Category
                     </label>
-                    <input
-                      type="text"
-                      value={productForm.subCategory}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          subCategory: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter sub category"
-                    />
+                    {productForm.category ? (
+                      (() => {
+                        const selectedCategory = categories.find(
+                          (cat) => cat._id === productForm.category
+                        );
+                        const subcategories =
+                          selectedCategory?.subcategories || [];
+                        return subcategories.length > 0 ? (
+                          <select
+                            value={productForm.subCategory}
+                            onChange={(e) =>
+                              setProductForm({
+                                ...productForm,
+                                subCategory: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          >
+                            <option value="">Select a subcategory</option>
+                            {subcategories.map((subcat, index) => (
+                              <option key={index} value={subcat}>
+                                {subcat}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={productForm.subCategory}
+                            onChange={(e) =>
+                              setProductForm({
+                                ...productForm,
+                                subCategory: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="No subcategories available. Enter manually if needed."
+                          />
+                        );
+                      })()
+                    ) : (
+                      <input
+                        type="text"
+                        value={productForm.subCategory}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            subCategory: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-100"
+                        placeholder="Please select a category first"
+                        disabled
+                      />
+                    )}
+                    {productForm.category && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        {(() => {
+                          const selectedCategory = categories.find(
+                            (cat) => cat._id === productForm.category
+                          );
+                          const subcategories =
+                            selectedCategory?.subcategories || [];
+                          return subcategories.length > 0
+                            ? `Select from ${subcategories.length} available subcategories`
+                            : "This category has no subcategories. You can enter one manually.";
+                        })()}
+                      </p>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1770,6 +1836,61 @@ const SuperAdminDashboard = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subcategories
+                </label>
+                <div className="space-y-2">
+                  {categoryForm.subcategories.map((subcat, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={subcat}
+                        onChange={(e) => {
+                          const newSubcategories = [...categoryForm.subcategories];
+                          newSubcategories[index] = e.target.value;
+                          setCategoryForm({
+                            ...categoryForm,
+                            subcategories: newSubcategories,
+                          });
+                        }}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter subcategory name"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSubcategories = categoryForm.subcategories.filter(
+                            (_, i) => i !== index
+                          );
+                          setCategoryForm({
+                            ...categoryForm,
+                            subcategories: newSubcategories,
+                          });
+                        }}
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategoryForm({
+                        ...categoryForm,
+                        subcategories: [...categoryForm.subcategories, ""],
+                      });
+                    }}
+                    className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    + Add Subcategory
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Add subcategories for this category (optional).
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Priority
                 </label>
                 <input
@@ -1829,6 +1950,7 @@ const SuperAdminDashboard = () => {
                         slug: "",
                         image: "",
                         description: "",
+                        subcategories: [],
                         isActive: true,
                         priority: 0,
                       });
