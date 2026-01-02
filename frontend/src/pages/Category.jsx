@@ -211,17 +211,7 @@ const Category = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">
-            {selectedCategory ? selectedCategory.name : 'Categories'}
-          </h1>
-          {selectedCity && selectedCity !== 'Select City' && (
-            <p className="text-sm text-gray-600">
-              Showing products available in <span className="font-semibold">{selectedCity}</span>
-            </p>
-          )}
-        </div>
+       
 
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Mobile Sidebar Toggle */}
