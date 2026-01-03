@@ -149,9 +149,17 @@ const Footer = () => {
           {/* Company Info */}
           <div className="lg:col-span-1">
             <NavLink to="/" className="inline-block mb-4" onClick={scrollToTop}>
-              <h2 className="text-2xl font-heading font-bold text-white">
+              {/* Hardcoded logo text - commented out */}
+              {/* <h2 className="text-2xl font-heading font-bold text-white">
                 RestroBazaar
-              </h2>
+              </h2> */}
+              
+              {/* Logo Image */}
+              <img 
+                src="https://res.cloudinary.com/debhhnzgh/image/upload/v1767436047/IMG_20260103_151920_nujfb4.png" 
+                alt="RestroBazaar Logo" 
+                className="h-8 sm:h-10 md:h-12 lg:h-14 xl:h-16 w-auto rounded-lg object-contain max-w-full"
+              />
             </NavLink>
             <p className="text-sm text-gray-400 mb-6 leading-relaxed">
               Your one-stop destination for all restaurant supplies and catering needs. Quality products, fast delivery, and exceptional service.
