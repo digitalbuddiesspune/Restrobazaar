@@ -6,6 +6,7 @@ import IndustriesWeServe from '../components/IndustriesWeServe'
 import QualitySection from '../components/QualitySection'
 import Testimonials from '../components/Testimonials'
 import CitySelectionPopup from '../components/CitySelectionPopup'
+import FAQ from '../components/FAQ'
 
 
 const HomePage = () => {
@@ -24,6 +25,7 @@ const HomePage = () => {
         <IndustriesWeServe/>
         <CustomPrinting/>
         <Testimonials/>
+        <FAQ />
     </div>
   )
 }

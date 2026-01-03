@@ -7,7 +7,7 @@ const Home = () => {
       {/* Hero Slider */}
       <HeroSlider
         slides={[
-           {
+          {
             desktop:
               "https://res.cloudinary.com/debhhnzgh/image/upload/v1767119600/Artboard_1_4x-100_2__11zon_ps5omm.jpg",
             alt: "RestroBanner1",
@@ -19,14 +19,15 @@ const Home = () => {
           },
           {
             desktop:
-              "https://res.cloudinary.com/debhhnzgh/image/upload/v1766658673/Brown_and_Beige_Scrapbook_Collage_India_Video_1920_x_600_px_6_tgp3ti.png",
+              "https://res.cloudinary.com/debhhnzgh/image/upload/v1767420951/Artboard_1_copy4x-100_glxul7.jpg",
             alt: "Restrobanner3",
           },
-        
-         
         ]}
         mobileSrc="https://res.cloudinary.com/debhhnzgh/image/upload/v1766925734/IMG_20251228_181115_c6o3io.png"
       />
+      
+      {/* FAQ Section */}
+     
     </div>
   );
 };
