@@ -52,9 +52,10 @@ const Account = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      logout();
+      await logout();
+      navigate('/signin');
     }
   };
 
@@ -78,12 +79,7 @@ const Account = () => {
     return colors[role] || 'bg-gray-100 text-gray-800';
   };
 
-  const formatRole = (role) => {
-    return role
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
+  
 
   return (
     <ProtectedRoute>
@@ -141,13 +137,7 @@ const Account = () => {
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Personal Information</h2>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getRoleBadgeColor(
-                      user.role
-                    )}`}
-                  >
-                    {formatRole(user.role)}
-                  </span>
+                 
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
+      unique: true, // Ensure phone numbers are unique
+      trim: true,
     },
     password: {
       type: String,
@@ -32,20 +34,15 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
   // Only hash the password if it has been modified (or is new)
   if (!this.isModified("password")) {
-    return next();
+    return;
   }
 
-  try {
-    // Hash password with cost of 10
-    const hashedPassword = await bcrypt.hash(this.password, 10);
-    this.password = hashedPassword;
-    next();
-  } catch (error) {
-    next(error);
-  }
+  // Hash password with cost of 10
+  const hashedPassword = await bcrypt.hash(this.password, 10);
+  this.password = hashedPassword;
 });
 
 const User = mongoose.model("User", userSchema);

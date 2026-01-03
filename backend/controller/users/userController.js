@@ -448,13 +448,48 @@ export const userSignup = async (req, res) => {
       });
     }
 
-    // Check if user with email already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    // Validate and clean phone number
+    // Remove all non-digit characters (spaces, dashes, plus signs, etc.)
+    const cleanedPhone = phone.replace(/\D/g, "");
+    
+    // Check if phone number is valid (Indian mobile number: 10 digits starting with 6, 7, 8, or 9)
+    // Also allow numbers with country code +91 (13 digits total, remove country code)
+    let validPhone = cleanedPhone;
+    
+    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+      // Remove country code +91
+      validPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      // Remove leading 0
+      validPhone = cleanedPhone.substring(1);
+    }
+    
+    // Validate Indian mobile number format (10 digits starting with 6, 7, 8, or 9)
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(validPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9",
+      });
+    }
 
-    if (existingUser) {
+    // Check if user with email already exists
+    const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
+
+    if (existingUserByEmail) {
       return res.status(409).json({
         success: false,
         message: "User with this email already exists",
+      });
+    }
+
+    // Check if user with phone number already exists
+    const existingUserByPhone = await User.findOne({ phone: validPhone });
+
+    if (existingUserByPhone) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this phone number already exists",
       });
     }
 
@@ -462,7 +497,7 @@ export const userSignup = async (req, res) => {
     const user = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
-      phone,
+      phone: validPhone, // Use cleaned and validated phone number
       password,
     });
 
