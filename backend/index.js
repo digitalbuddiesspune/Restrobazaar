@@ -10,6 +10,8 @@ import globalProductRouter from "./routes/admin/globalProductRoute.js";
 import vendorRouter from "./routes/admin/vendorRoute.js";
 import vendorProductRouter from "./routes/vendor/vendorProductRoute.js";
 import userRouter from "./routes/users/userRoute.js";
+import addressRouter from "./routes/users/addressRoute.js";
+import orderRouter from "./routes/users/orderRoute.js";
 dotenv.config();
 const app = express();
 
@@ -36,6 +38,8 @@ app.use("/api/v1", globalProductRouter);
 app.use("/api/v1", vendorRouter);
 app.use("/api/v1", vendorProductRouter);
 app.use("/api/v1", userRouter);
+app.use("/api/v1", addressRouter);
+app.use("/api/v1", orderRouter);
 
 
 
