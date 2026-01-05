@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vendorProductAPI, categoryAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
+import { useAppDispatch } from '../store/hooks';
+import { addToCart } from '../store/slices/cartSlice';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [product, setProduct] = useState(null);
   const [category, setCategory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,6 +17,7 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedCity, setSelectedCity] = useState('');
   const [quantityError, setQuantityError] = useState('');
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     // Get selected city
@@ -161,8 +165,80 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
-    // TODO: Implement add to cart functionality
-    alert('Add to cart functionality will be implemented');
+    if (!product) return;
+    
+    // Validate quantity
+    if (quantity < (product.minimumOrderQuantity || 1)) {
+      setQuantityError(`Minimum quantity is ${product.minimumOrderQuantity || 1}`);
+      return;
+    }
+    
+    if (quantity > product.availableStock) {
+      setQuantityError(`Only ${product.availableStock} items available`);
+      return;
+    }
+    
+    setAddingToCart(true);
+    
+    try {
+      // Get the selected price based on quantity
+      let selectedPrice = null;
+      
+      if (product.priceType === 'single' && product.pricing?.single?.price) {
+        selectedPrice = {
+          type: 'single',
+          price: product.pricing.single.price,
+          display: `₹${product.pricing.single.price} per piece`,
+        };
+      } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
+        // Find the appropriate price slab for the quantity
+        const slab = product.pricing.bulk.find(
+          s => quantity >= s.minQty && quantity <= s.maxQty
+        );
+        if (slab) {
+          selectedPrice = {
+            type: 'bulk',
+            price: slab.price,
+            display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
+            slab: slab,
+          };
+        } else {
+          // If quantity exceeds all slabs, use the last (highest) slab
+          const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+          selectedPrice = {
+            type: 'bulk',
+            price: lastSlab.price,
+            display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
+            slab: lastSlab,
+          };
+        }
+      }
+      
+      if (!selectedPrice) {
+        alert('Unable to determine price. Please try again.');
+        setAddingToCart(false);
+        return;
+      }
+      
+      // Dispatch add to cart action
+      dispatch(addToCart({
+        vendorProduct: product,
+        quantity: quantity,
+        selectedPrice: selectedPrice,
+      }));
+      
+      // Show success message
+      alert(`Added ${quantity} item(s) to cart!`);
+      
+      // Optional: Navigate to cart
+      // navigate('/cart');
+      
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add item to cart. Please try again.');
+    } finally {
+      setAddingToCart(false);
+    }
   };
 
   // Initialize quantity to minimumOrderQuantity when product loads
@@ -456,9 +532,20 @@ const ProductDetail = () => {
 
                   <button
                     onClick={handleAddToCart}
-                    className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl"
+                    disabled={addingToCart || quantityError !== ''}
+                    className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    Add to Cart
+                    {addingToCart ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Adding...
+                      </>
+                    ) : (
+                      'Add to Cart'
+                    )}
                   </button>
                 </div>
               )}

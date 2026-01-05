@@ -9,6 +9,8 @@ import SignUpModal from "./pages/SignUpModal";
 import SuperAdminLoginModal from "./pages/SuperAdminLoginModal";
 import VendorLoginModal from "./pages/VendorLoginModal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Provider } from "react-redux";
+import { store } from "./store/store";
 
 // Configure QueryClient with default caching options
 const queryClient = new QueryClient({
@@ -93,29 +95,31 @@ function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ScrollToTop />
-      {!isAdminRoute && !isVendorAdminRoute && <Header />}
-      <Outlet />
-      {!isAdminRoute && !isVendorAdminRoute && <Footer />}
-      
-      {/* Login Modals */}
-      <Modal isOpen={showSignIn} onClose={closeSignIn}>
-        <SignInModal onClose={closeSignIn} onSwitchToSignUp={() => { setShowSignIn(false); setShowSignUp(true); }} />
-      </Modal>
-      
-      <Modal isOpen={showSignUp} onClose={closeSignUp}>
-        <SignUpModal onClose={closeSignUp} onSwitchToSignIn={() => { setShowSignUp(false); setShowSignIn(true); }} />
-      </Modal>
-      
-      <Modal isOpen={showSuperAdminLogin} onClose={closeSuperAdminLogin}>
-        <SuperAdminLoginModal onClose={closeSuperAdminLogin} />
-      </Modal>
-      
-      <Modal isOpen={showVendorLogin} onClose={closeVendorLogin}>
-        <VendorLoginModal onClose={closeVendorLogin} />
-      </Modal>
-    </QueryClientProvider>
+    <Provider store={store}>
+      <QueryClientProvider client={queryClient}>
+        <ScrollToTop />
+        {!isAdminRoute && !isVendorAdminRoute && <Header />}
+        <Outlet />
+        {!isAdminRoute && !isVendorAdminRoute && <Footer />}
+        
+        {/* Login Modals */}
+        <Modal isOpen={showSignIn} onClose={closeSignIn}>
+          <SignInModal onClose={closeSignIn} onSwitchToSignUp={() => { setShowSignIn(false); setShowSignUp(true); }} />
+        </Modal>
+        
+        <Modal isOpen={showSignUp} onClose={closeSignUp}>
+          <SignUpModal onClose={closeSignUp} onSwitchToSignIn={() => { setShowSignUp(false); setShowSignIn(true); }} />
+        </Modal>
+        
+        <Modal isOpen={showSuperAdminLogin} onClose={closeSuperAdminLogin}>
+          <SuperAdminLoginModal onClose={closeSuperAdminLogin} />
+        </Modal>
+        
+        <Modal isOpen={showVendorLogin} onClose={closeVendorLogin}>
+          <VendorLoginModal onClose={closeVendorLogin} />
+        </Modal>
+      </QueryClientProvider>
+    </Provider>
   );
 }
 
