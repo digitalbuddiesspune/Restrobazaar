@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useMyVendorProducts, useGlobalProducts, useCities } from "../hooks/useApiQueries";
 
 const VendorAdminDashboard = () => {
   const baseUrl =
@@ -27,10 +28,55 @@ const VendorAdminDashboard = () => {
   });
 
   // Data lists
-  const [vendorProducts, setVendorProducts] = useState([]);
-  const [globalProducts, setGlobalProducts] = useState([]);
-  const [cities, setCities] = useState([]);
   const [vendorInfo, setVendorInfo] = useState(null);
+
+  // React Query hooks - fetch data on component render
+  const { 
+    data: vendorProductsData, 
+    isLoading: vendorProductsLoading, 
+    error: vendorProductsError,
+    refetch: refetchVendorProducts 
+  } = useMyVendorProducts(
+    { limit: 1000 },
+    { enabled: true } // Always fetch on mount
+  );
+  const vendorProducts = vendorProductsData?.data || [];
+
+  const { 
+    data: globalProductsData, 
+    isLoading: globalProductsLoading, 
+    error: globalProductsError,
+    refetch: refetchGlobalProducts 
+  } = useGlobalProducts(
+    { status: "true", limit: 1000 },
+    { enabled: true } // Always fetch on mount
+  );
+  const globalProducts = globalProductsData?.data || [];
+
+  const { 
+    data: citiesData, 
+    isLoading: citiesLoading,
+    error: citiesError 
+  } = useCities({}, { enabled: true });
+  const cities = citiesData?.data || [];
+
+  // Handle React Query errors
+  useEffect(() => {
+    if (vendorProductsError) {
+      const errorMessage = vendorProductsError?.response?.data?.message || "Failed to fetch vendor products";
+      if (errorMessage.includes("Authentication") || vendorProductsError?.response?.status === 401) {
+        navigate("/vendor/login");
+      } else {
+        setError(errorMessage);
+      }
+    }
+  }, [vendorProductsError, navigate]);
+
+  useEffect(() => {
+    if (globalProductsError) {
+      setError(globalProductsError?.response?.data?.message || "Failed to fetch product catalog");
+    }
+  }, [globalProductsError]);
 
   // Form states
   const [productForm, setProductForm] = useState({
@@ -92,21 +138,22 @@ const VendorAdminDashboard = () => {
     }
   };
 
-  // Fetch stats
-  const fetchStats = async () => {
-    try {
-      const token = getToken();
-      if (!token) {
-        navigate("/vendor/login");
-        return;
-      }
+  // Stats are now calculated from vendorProducts data in useEffect above
 
-      const res = await axios.get(`${baseUrl}/vendor-products/my-products`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 }, // Get all for stats
-      });
+  // Note: Data fetching is now handled by React Query hooks above
+  // These functions are kept for refetching after mutations
+  const fetchVendorProducts = () => {
+    refetchVendorProducts();
+  };
 
-      const products = res.data?.success ? (res.data.data || []) : [];
+  const fetchGlobalProducts = () => {
+    refetchGlobalProducts();
+  };
+
+  // Fetch stats when vendor products data changes
+  useEffect(() => {
+    if (vendorProducts.length > 0 || !vendorProductsLoading) {
+      const products = vendorProducts;
       const totalProducts = products.length;
       const activeProducts = products.filter((p) => p.status).length;
       const lowStock = products.filter(
@@ -123,78 +170,8 @@ const VendorAdminDashboard = () => {
         lowStock,
         totalStock,
       });
-    } catch (err) {
-      console.error("Error fetching stats:", err);
-      setError(err.response?.data?.message || "Failed to fetch statistics");
     }
-  };
-
-  // Fetch vendor products (vendor's own products)
-  const fetchVendorProducts = async () => {
-    try {
-      const token = getToken();
-      const res = await axios.get(`${baseUrl}/vendor-products/my-products`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 }, // Fetch all products, pagination handled on frontend
-      });
-      if (res.data?.success && res.data?.data) {
-        setVendorProducts(res.data.data);
-      } else {
-        setVendorProducts([]);
-      }
-    } catch (err) {
-      console.error("Error fetching vendor products:", err);
-      setError(err.response?.data?.message || "Failed to fetch vendor products");
-      setVendorProducts([]);
-    }
-  };
-
-  // Fetch global products (from globalProductRoute)
-  const fetchGlobalProducts = async () => {
-    try {
-      const token = getToken();
-      const res = await axios.get(`${baseUrl}/products`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { status: "true", limit: 1000 },
-      });
-      if (res.data?.success && res.data?.data) {
-        setGlobalProducts(res.data.data);
-      } else {
-        setGlobalProducts([]);
-      }
-    } catch (err) {
-      console.error("Error fetching global products:", err);
-      setError(err.response?.data?.message || "Failed to fetch global products");
-      setGlobalProducts([]);
-    }
-  };
-
-  // Fetch cities
-  const fetchCities = async () => {
-    try {
-      const token = getToken();
-      const res = await axios.get(`${baseUrl}/cities`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCities(res.data?.data || []);
-    } catch (err) {
-      console.error("Failed to fetch cities");
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-    if (activeTab === "product-catalog") {
-      fetchGlobalProducts();
-    }
-    if (activeTab === "my-products") {
-      fetchVendorProducts();
-    }
-    if (activeTab === "add-product") {
-      fetchGlobalProducts();
-      fetchCities();
-    }
-  }, [activeTab]);
+  }, [vendorProducts, vendorProductsLoading]);
 
   // Update vendor info when vendor products are loaded
   useEffect(() => {
@@ -365,8 +342,7 @@ const VendorAdminDashboard = () => {
       });
       setEditingProductId(null);
       setActiveTab("my-products");
-      fetchVendorProducts();
-      fetchStats();
+      fetchVendorProducts(); // This will refetch and update stats automatically
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -389,8 +365,7 @@ const VendorAdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuccess("Product deleted successfully!");
-      fetchVendorProducts();
-      fetchStats();
+      fetchVendorProducts(); // This will refetch and update stats automatically
     } catch (err) {
       setError(err.response?.data?.message || "Failed to delete product");
     }
@@ -408,8 +383,7 @@ const VendorAdminDashboard = () => {
         }
       );
       setSuccess("Product status updated successfully!");
-      fetchVendorProducts();
-      fetchStats();
+      fetchVendorProducts(); // This will refetch and update stats automatically
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update product status");
     }
@@ -827,7 +801,7 @@ const VendorAdminDashboard = () => {
                         colSpan="6"
                         className="px-6 py-4 text-center text-gray-500"
                       >
-                        {loading ? "Loading products..." : "No products found."}
+                        {globalProductsLoading ? "Loading products..." : "No products found."}
                       </td>
                     </tr>
                   )}
@@ -1089,7 +1063,7 @@ const VendorAdminDashboard = () => {
                         colSpan="8"
                         className="px-6 py-4 text-center text-gray-500"
                       >
-                        No products found. Add products from the Product Catalog!
+                        {vendorProductsLoading ? "Loading products..." : "No products found. Add products from the Product Catalog!"}
                       </td>
                     </tr>
                   )}

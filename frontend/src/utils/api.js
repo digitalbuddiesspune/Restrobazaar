@@ -115,6 +115,38 @@ export const getSelectedCityId = () => {
   }
 };
 
+// Helper function to make authenticated API requests with Bearer token
+const authenticatedApiRequest = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('token');
+  const config = {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  try {
+    const response = await fetch(`${baseUrl}${endpoint}`, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw {
+        response: {
+          data: data,
+          status: response.status,
+        },
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Vendor Product API
 export const vendorProductAPI = {
   // Get all vendor products (optionally filtered by city)
@@ -257,6 +289,49 @@ export const vendorProductAPI = {
       method: 'GET',
     });
   },
+
+  // Get vendor's own products (requires authentication)
+  getMyVendorProducts: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    if (filters.cityId) queryParams.append('cityId', filters.cityId);
+    if (filters.status !== undefined) {
+      queryParams.append('status', filters.status);
+    }
+    if (filters.page) queryParams.append('page', filters.page);
+    if (filters.limit) queryParams.append('limit', filters.limit);
+    
+    const queryString = queryParams.toString();
+    return authenticatedApiRequest(`/vendor-products/my-products${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+    });
+  },
+};
+
+// Global Product API (Product Catalog)
+export const globalProductAPI = {
+  // Get all products (product catalog)
+  getAllProducts: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    if (filters.category) queryParams.append('category', filters.category);
+    if (filters.subCategory) queryParams.append('subCategory', filters.subCategory);
+    if (filters.status !== undefined) {
+      queryParams.append('status', filters.status);
+    } else {
+      queryParams.append('status', 'true'); // Default to active products
+    }
+    if (filters.search) queryParams.append('search', filters.search);
+    if (filters.page) queryParams.append('page', filters.page);
+    if (filters.limit) queryParams.append('limit', filters.limit);
+    if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
+    if (filters.sortOrder) queryParams.append('sortOrder', filters.sortOrder);
+    
+    const queryString = queryParams.toString();
+    return authenticatedApiRequest(`/products${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+    });
+  },
 };
 
 export default {
@@ -265,5 +340,6 @@ export default {
   cityAPI,
   categoryAPI,
   vendorProductAPI,
+  globalProductAPI,
 };
 

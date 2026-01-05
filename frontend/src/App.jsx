@@ -8,6 +8,29 @@ import SignInModal from "./pages/SignInModal";
 import SignUpModal from "./pages/SignUpModal";
 import SuperAdminLoginModal from "./pages/SuperAdminLoginModal";
 import VendorLoginModal from "./pages/VendorLoginModal";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Configure QueryClient with default caching options
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Default stale time: data is considered fresh for 5 minutes
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      // Default garbage collection time: unused data is kept for 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      // Retry failed requests once
+      retry: 1,
+      // Refetch on window focus (can be overridden per query)
+      refetchOnWindowFocus: false,
+      // Refetch on reconnect
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      // Retry failed mutations once
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   const location = useLocation();
@@ -70,7 +93,7 @@ function App() {
   }, []);
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <ScrollToTop />
       {!isAdminRoute && !isVendorAdminRoute && <Header />}
       <Outlet />
@@ -92,7 +115,7 @@ function App() {
       <Modal isOpen={showVendorLogin} onClose={closeVendorLogin}>
         <VendorLoginModal onClose={closeVendorLogin} />
       </Modal>
-    </>
+    </QueryClientProvider>
   );
 }
 
