@@ -334,23 +334,15 @@ export const globalProductAPI = {
   },
 };
 
-<<<<<<< Updated upstream
+
 // Wishlist API
 export const wishlistAPI = {
   getWishlist: async () => {
     return apiRequest('/users/wishlist', {
-=======
-// Address API
-export const addressAPI = {
-  // Get all addresses for current user
-  getUserAddresses: async () => {
-    return authenticatedApiRequest('/addresses', {
->>>>>>> Stashed changes
       method: 'GET',
     });
   },
 
-<<<<<<< Updated upstream
   addToWishlist: async (productId) => {
     return apiRequest('/users/wishlist', {
       method: 'POST',
@@ -360,7 +352,20 @@ export const addressAPI = {
 
   removeFromWishlist: async (productId) => {
     return apiRequest(`/users/wishlist/${productId}`, {
-=======
+      method: 'DELETE',
+    });
+  },
+};
+
+// Address API
+export const addressAPI = {
+  // Get all addresses for current user
+  getUserAddresses: async () => {
+    return authenticatedApiRequest('/addresses', {
+      method: 'GET',
+    });
+  },
+
   // Get address by ID
   getAddressById: async (addressId) => {
     return authenticatedApiRequest(`/addresses/${addressId}`, {
@@ -387,20 +392,21 @@ export const addressAPI = {
   // Delete address
   deleteAddress: async (addressId) => {
     return authenticatedApiRequest(`/addresses/${addressId}`, {
->>>>>>> Stashed changes
+
       method: 'DELETE',
     });
   },
 };
 
-<<<<<<< Updated upstream
 // Cart API (for adding from wishlist to cart)
 export const cartAPI = {
   addToCart: async (productId, quantity = 1) => {
     // This uses Redux, but we can also add a backend endpoint if needed
     // For now, return success - the frontend will handle it via Redux
     return { success: true, message: 'Product added to cart' };
-=======
+  },
+};
+
 // Order API
 export const orderAPI = {
   // Create a new order
@@ -436,7 +442,6 @@ export const orderAPI = {
     return authenticatedApiRequest(`/orders/${orderId}/cancel`, {
       method: 'PUT',
     });
->>>>>>> Stashed changes
   },
 };
 
@@ -447,12 +452,12 @@ export default {
   categoryAPI,
   vendorProductAPI,
   globalProductAPI,
-<<<<<<< Updated upstream
+
   wishlistAPI,
   cartAPI,
-=======
+
   addressAPI,
   orderAPI,
->>>>>>> Stashed changes
+
 };
 

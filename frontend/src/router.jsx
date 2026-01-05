@@ -25,12 +25,9 @@ import Category from "./pages/Category";
 import ProductDetail from "./pages/ProductDetail";
 import SearchResults from "./pages/SearchResults";
 import Cart from "./pages/Cart";
-<<<<<<< Updated upstream
 import Wishlist from "./pages/Wishlist";
-=======
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
->>>>>>> Stashed changes
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -52,12 +49,9 @@ const router = createBrowserRouter(
       <Route path="signup" element={<SignUp />} />
       <Route path="account" element={<Account />} />
       <Route path="cart" element={<Cart />} />
-<<<<<<< Updated upstream
       <Route path="wishlist" element={<Wishlist />} />
-=======
       <Route path="checkout" element={<Checkout />} />
       <Route path="orders" element={<Orders />} />
->>>>>>> Stashed changes
       <Route path="super_admin/login" element={<SuperAdminLogin />} />
       <Route path="admin/dashboard" element={<SuperAdminDashboard />} />
       <Route path="vendor/login" element={<VendorLogin />} />
