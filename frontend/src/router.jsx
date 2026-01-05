@@ -25,6 +25,7 @@ import Category from "./pages/Category";
 import ProductDetail from "./pages/ProductDetail";
 import SearchResults from "./pages/SearchResults";
 import Cart from "./pages/Cart";
+import Wishlist from "./pages/Wishlist";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -46,6 +47,7 @@ const router = createBrowserRouter(
       <Route path="signup" element={<SignUp />} />
       <Route path="account" element={<Account />} />
       <Route path="cart" element={<Cart />} />
+      <Route path="wishlist" element={<Wishlist />} />
       <Route path="super_admin/login" element={<SuperAdminLogin />} />
       <Route path="admin/dashboard" element={<SuperAdminDashboard />} />
       <Route path="vendor/login" element={<VendorLogin />} />

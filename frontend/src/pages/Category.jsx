@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { categoryAPI, vendorProductAPI, getSelectedCityId } from '../utils/api';
+import { categoryAPI, vendorProductAPI, getSelectedCityId, wishlistAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
+import { isAuthenticated } from '../utils/auth';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { addToCart, updateQuantity } from '../store/slices/cartSlice';
+import { selectCartItems } from '../store/slices/cartSlice';
 
 const Category = () => {
   const { slug } = useParams();
@@ -18,6 +22,13 @@ const Category = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [allProducts, setAllProducts] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState(new Set());
+  const [wishlistLoading, setWishlistLoading] = useState({});
+  const [addingToCart, setAddingToCart] = useState({});
+  const [quantities, setQuantities] = useState({});
+  const [showQuantitySelector, setShowQuantitySelector] = useState({});
+  const dispatch = useAppDispatch();
+  const cartItems = useAppSelector(selectCartItems);
 
   // Fetch categories for sidebar
   useEffect(() => {
@@ -166,6 +177,68 @@ const Category = () => {
     }
   }, [selectedSubcategory, allProducts]);
 
+  // Fetch wishlist items when products change
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (!isAuthenticated() || products.length === 0) {
+        setWishlistItems(new Set());
+        return;
+      }
+      
+      try {
+        const response = await wishlistAPI.getWishlist();
+        if (response.success && response.data?.products) {
+          const wishlistProductIds = new Set(
+            response.data.products.map(item => item._id)
+          );
+          setWishlistItems(wishlistProductIds);
+        }
+      } catch (err) {
+        // Silently fail if user is not authenticated
+        if (err.response?.status !== 401 && err.response?.status !== 403) {
+          console.error('Error fetching wishlist:', err);
+        }
+        setWishlistItems(new Set());
+      }
+    };
+    
+    fetchWishlist();
+  }, [products]);
+
+  // Initialize quantities and show quantity selector for products in cart
+  useEffect(() => {
+    const initialQuantities = {};
+    const productsInCart = {};
+    
+    products.forEach(product => {
+      const productId = product._id;
+      const minQty = product.minimumOrderQuantity || 1;
+      
+      // Check if product is in cart
+      const cartItem = cartItems.find(item => item.vendorProductId === productId);
+      
+      if (cartItem) {
+        // Product is in cart - show quantity selector and use cart quantity
+        productsInCart[productId] = true;
+        initialQuantities[productId] = cartItem.quantity;
+      } else if (!quantities[productId]) {
+        // Product not in cart - initialize with minQty
+        initialQuantities[productId] = minQty;
+      }
+    });
+    
+    // Update quantities
+    if (Object.keys(initialQuantities).length > 0) {
+      setQuantities(prev => ({ ...prev, ...initialQuantities }));
+    }
+    
+    // Show quantity selector for products in cart
+    if (Object.keys(productsInCart).length > 0) {
+      setShowQuantitySelector(prev => ({ ...prev, ...productsInCart }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, cartItems]);
+
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setPage(1); // Reset to first page
@@ -195,6 +268,277 @@ const Category = () => {
       return product.productId.images[0].url || product.productId.images[0];
     }
     return 'https://via.placeholder.com/300x300?text=Product';
+  };
+
+  const handleWishlistToggle = async (e, product) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
+    if (!isAuthenticated()) {
+      navigate('/sign-in');
+      return;
+    }
+    
+    if (!product?._id) return;
+    
+    setWishlistLoading(prev => ({ ...prev, [product._id]: true }));
+    
+    try {
+      const isInWishlist = wishlistItems.has(product._id);
+      
+      if (isInWishlist) {
+        await wishlistAPI.removeFromWishlist(product._id);
+        setWishlistItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(product._id);
+          return newSet;
+        });
+      } else {
+        await wishlistAPI.addToWishlist(product._id);
+        setWishlistItems(prev => new Set(prev).add(product._id));
+      }
+    } catch (err) {
+      console.error('Error updating wishlist:', err);
+      alert('Failed to update wishlist. Please try again.');
+    } finally {
+      setWishlistLoading(prev => ({ ...prev, [product._id]: false }));
+    }
+  };
+
+  // Helper function to round quantity to nearest multiple of minimumOrderQuantity
+  const roundToMultiple = (value, multiple) => {
+    if (multiple <= 0) return value;
+    return Math.round(value / multiple) * multiple;
+  };
+
+  // Get quantity for a product (from state or cart or default to minQty)
+  const getProductQuantity = (product) => {
+    const productId = product._id;
+    const minQty = product.minimumOrderQuantity || 1;
+    
+    // Always prioritize state quantity if it exists
+    if (quantities[productId] !== undefined && quantities[productId] !== null) {
+      return quantities[productId];
+    }
+    
+    // Check if product is in cart
+    const cartItem = cartItems.find(item => item.vendorProductId === productId);
+    if (cartItem) {
+      // Sync cart quantity to state if different (only if state is not set)
+      if (quantities[productId] === undefined || quantities[productId] === null) {
+        setQuantities(prev => ({ ...prev, [productId]: cartItem.quantity }));
+      }
+      return cartItem.quantity;
+    }
+    
+    // Return quantity from state or default to minQty
+    return quantities[productId] !== undefined ? quantities[productId] : minQty;
+  };
+
+  // Update quantity for a product
+  const updateProductQuantity = (product, newQuantity) => {
+    const productId = product._id;
+    const minQty = product.minimumOrderQuantity || 1;
+    const maxQty = product.availableStock || Infinity;
+    
+    // Round to nearest multiple of minQty
+    let validQty = roundToMultiple(newQuantity, minQty);
+    
+    // Ensure within bounds
+    if (validQty < minQty) {
+      validQty = minQty;
+    } else if (validQty > maxQty) {
+      validQty = roundToMultiple(maxQty, minQty);
+    }
+    
+    setQuantities(prev => ({ ...prev, [productId]: validQty }));
+    return validQty;
+  };
+
+  // Get cart item ID for a product
+  const getCartItemId = (product, selectedPrice) => {
+    return `${product._id}_${selectedPrice?.type || 'single'}_${selectedPrice?.price || product.pricing?.single?.price || '0'}`;
+  };
+
+  // Get selected price based on quantity
+  const getSelectedPriceForQuantity = (product, quantity) => {
+    if (product.priceType === 'single' && product.pricing?.single?.price) {
+      return {
+        type: 'single',
+        price: product.pricing.single.price,
+        display: `₹${product.pricing.single.price} per piece`,
+      };
+    } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
+      // Find the appropriate price slab for the quantity
+      const slab = product.pricing.bulk.find(
+        s => quantity >= s.minQty && quantity <= s.maxQty
+      );
+      if (slab) {
+        return {
+          type: 'bulk',
+          price: slab.price,
+          display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
+          slab: slab,
+        };
+      } else {
+        // If quantity exceeds all slabs, use the last (highest) slab
+        const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+        return {
+          type: 'bulk',
+          price: lastSlab.price,
+          display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
+          slab: lastSlab,
+        };
+      }
+    }
+    return null;
+  };
+
+  const handleAddToCartClick = async (e, product) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
+    if (!product) return;
+    
+    // Check if product is in stock
+    if (product.availableStock === 0 || product.availableStock === undefined) {
+      alert('This product is out of stock');
+      return;
+    }
+    
+    const productId = product._id;
+    const minQty = product.minimumOrderQuantity || 1;
+    
+    // Check if product is already in cart
+    const cartItem = cartItems.find(item => item.vendorProductId === productId);
+    
+    if (!cartItem) {
+      // Product not in cart - add to cart with minimum quantity
+      try {
+        const selectedPrice = getSelectedPriceForQuantity(product, minQty);
+        if (selectedPrice) {
+          dispatch(addToCart({
+            vendorProduct: product,
+            quantity: minQty,
+            selectedPrice: selectedPrice,
+          }));
+        }
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+      }
+    }
+    
+    // Show quantity selector for this product
+    setShowQuantitySelector(prev => ({ ...prev, [productId]: true }));
+    
+    // Initialize quantity if not set
+    if (!quantities[productId]) {
+      const initialQty = cartItem ? cartItem.quantity : minQty;
+      setQuantities(prev => ({ ...prev, [productId]: initialQty }));
+    }
+  };
+
+  const handleConfirmAddToCart = (e, product) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
+    if (!product) return;
+    
+    const quantity = getProductQuantity(product);
+    setAddingToCart(prev => ({ ...prev, [product._id]: true }));
+    
+    try {
+      // Get the selected price based on quantity
+      const selectedPrice = getSelectedPriceForQuantity(product, quantity);
+      
+      if (!selectedPrice) {
+        alert('Unable to determine price. Please view product details.');
+        setAddingToCart(prev => ({ ...prev, [product._id]: false }));
+        return;
+      }
+      
+      // Check if product is already in cart
+      const cartItemId = getCartItemId(product, selectedPrice);
+      const existingCartItem = cartItems.find(item => item.id === cartItemId);
+      
+      if (existingCartItem) {
+        // Update quantity if item exists
+        dispatch(updateQuantity({ itemId: cartItemId, quantity: existingCartItem.quantity + quantity }));
+        alert(`Added ${quantity} more item(s) to cart!`);
+      } else {
+        // Add new item to cart
+        dispatch(addToCart({
+          vendorProduct: product,
+          quantity: quantity,
+          selectedPrice: selectedPrice,
+        }));
+        alert(`Added ${quantity} item(s) to cart!`);
+      }
+      
+      // Keep quantity selector visible after adding to cart (don't hide it)
+      setShowQuantitySelector(prev => ({ ...prev, [product._id]: true }));
+      
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add item to cart. Please try again.');
+    } finally {
+      setAddingToCart(prev => ({ ...prev, [product._id]: false }));
+    }
+  };
+
+  const handleQuantityChange = (e, product, delta) => {
+    e.stopPropagation(); // Prevent card click navigation
+    e.preventDefault();
+    
+    const productId = product._id;
+    const minQty = product.minimumOrderQuantity || 1;
+    
+    // First check if product is in cart at all (by vendorProductId)
+    const cartItemByProduct = cartItems.find(item => item.vendorProductId === productId);
+    
+    // If product is not in cart, don't update - user must click "Add to Cart" first
+    if (!cartItemByProduct) {
+      return;
+    }
+    
+    // Get current quantity - prioritize state over cart
+    let currentQty;
+    if (quantities[productId] !== undefined) {
+      currentQty = quantities[productId];
+    } else {
+      currentQty = cartItemByProduct.quantity;
+    }
+    
+    const newQty = currentQty + delta;
+    
+    // Round to nearest multiple of minQty
+    let validQty = roundToMultiple(newQty, minQty);
+    
+    // Only enforce minimum, not maximum
+    if (validQty < minQty) {
+      validQty = minQty;
+    }
+    
+    // Update state immediately for instant UI feedback
+    setQuantities(prev => ({ ...prev, [productId]: validQty }));
+    
+    // Get selected price for the updated quantity
+    const selectedPrice = getSelectedPriceForQuantity(product, validQty);
+    if (!selectedPrice) {
+      console.error('No price found for quantity:', validQty);
+      return;
+    }
+    
+    // Find the cart item by ID (might change if price slab changes)
+    const cartItemId = getCartItemId(product, selectedPrice);
+    let existingCartItem = cartItems.find(item => item.id === cartItemId);
+    
+    // If cart item not found by ID, find by product ID (price might have changed)
+    if (!existingCartItem) {
+      existingCartItem = cartItemByProduct;
+    }
+    
+    // Update cart quantity (product is already in cart)
+    if (existingCartItem) {
+      dispatch(updateQuantity({ itemId: existingCartItem.id, quantity: validQty }));
+    }
   };
 
   if (loading) {
@@ -428,7 +772,7 @@ const Category = () => {
                 ) : (
                   <>
                     {/* Products Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 mb-8">
                       {products.map((product) => (
                         <div
                           key={product._id}
@@ -452,9 +796,34 @@ const Category = () => {
                                 e.target.src = 'https://via.placeholder.com/300x300?text=Product';
                               }}
                             />
+                            {/* Wishlist Button - Top Left Corner */}
+                            <button
+                              onClick={(e) => handleWishlistToggle(e, product)}
+                              disabled={wishlistLoading[product._id]}
+                              className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2 p-1.5 sm:p-2 rounded-full shadow-lg transition-all z-10 ${
+                                wishlistItems.has(product._id)
+                                  ? 'bg-red-600 text-white hover:bg-red-700'
+                                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-300'
+                              }`}
+                              title={wishlistItems.has(product._id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                            >
+                              <svg
+                                className="w-4 h-4 sm:w-5 sm:h-5"
+                                fill={wishlistItems.has(product._id) ? 'currentColor' : 'none'}
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                />
+                              </svg>
+                            </button>
                             {/* Stock Status Badge on Image */}
                             {product.availableStock !== undefined && (
-                              <span className={`absolute top-2 right-2 text-xs px-2 py-1 rounded font-semibold shadow-md ${
+                              <span className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-semibold shadow-md ${
                                 product.availableStock > 0
                                   ? 'bg-green-500 text-white'
                                   : 'bg-red-500 text-white'
@@ -482,23 +851,92 @@ const Category = () => {
                               </span>
                             </div>
 
-                            {product.vendorId && (
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
+                            {/* Add to Cart Button / Quantity Selector */}
+                            {product.availableStock > 0 ? (
+                              (() => {
+                                // Check if product is in cart
+                                const cartItem = cartItems.find(item => item.vendorProductId === product._id);
+                                const shouldShowQuantitySelector = showQuantitySelector[product._id] || cartItem;
+                                
+                                return shouldShowQuantitySelector ? (
+                                // Show Quantity Selector with light gray background and black border (same size as Add to Cart button)
+                                <div className="w-full bg-gray-50 border border-black rounded-lg flex items-stretch overflow-hidden" style={{ minHeight: '40px' }}>
+                                  <button
+                                    onClick={(e) => handleQuantityChange(e, product, -(product.minimumOrderQuantity || 1))}
+                                    disabled={false}
+                                    className="w-8 sm:w-10 bg-gray-200 hover:bg-gray-300 transition-colors flex items-center justify-center border-r border-gray-300 flex-shrink-0 self-stretch cursor-pointer"
+                                    title={`Decrease by ${product.minimumOrderQuantity || 1}`}
+                                  >
+                                    <svg
+                                      className="w-4 h-4 text-black"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                      strokeWidth={3}
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M20 12H4"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <div className="flex-1 bg-white flex items-center justify-center border-x border-gray-300 self-stretch">
+                                    <span className="text-xs sm:text-sm font-semibold text-black">
+                                      {getProductQuantity(product)}
+                                    </span>
+                                  </div>
+                                  <button
+                                    onClick={(e) => handleQuantityChange(e, product, (product.minimumOrderQuantity || 1))}
+                                    disabled={false}
+                                    className="w-8 sm:w-10 bg-gray-200 hover:bg-gray-300 transition-colors flex items-center justify-center border-l border-gray-300 flex-shrink-0 self-stretch cursor-pointer"
+                                    title={`Increase by ${product.minimumOrderQuantity || 1}`}
+                                  >
+                                    <svg
+                                      className="w-4 h-4 text-black"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                      strokeWidth={3}
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M12 4v16m8-8H4"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                // Show initial Add to Cart Button
+                                <button
+                                  onClick={(e) => handleAddToCartClick(e, product)}
+                                  className="w-full py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                  />
-                                </svg>
-                                <span className="truncate">{product.vendorId.businessName || 'Vendor'}</span>
-                              </div>
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                                    />
+                                  </svg>
+                                  <span>Add to Cart</span>
+                                </button>
+                              );
+                              })()
+                            ) : (
+                              <button
+                                disabled
+                                className="w-full py-2 bg-gray-400 text-white rounded-lg font-semibold cursor-not-allowed text-xs sm:text-sm"
+                              >
+                                Out of Stock
+                              </button>
                             )}
                           </div>
                         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { CITY_STORAGE_KEY, CITY_ID_KEY } from './CitySelectionPopup'
 import { isAuthenticated, logout } from '../utils/auth'
-import { cityAPI } from '../utils/api'
+import { cityAPI, wishlistAPI } from '../utils/api'
 import { useAppSelector } from '../store/hooks'
 import { selectCartItemsCount } from '../store/slices/cartSlice'
 
@@ -18,6 +18,7 @@ const Header = () => {
   const [citiesLoading, setCitiesLoading] = useState(false)
   const [selectedCityId, setSelectedCityId] = useState('')
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
+  const [wishlistCount, setWishlistCount] = useState(0)
   const navigate = useNavigate()
   
   // Get cart items count from Redux
@@ -106,6 +107,34 @@ const Header = () => {
 
     fetchCities();
   }, [])
+
+  // Fetch wishlist count
+  useEffect(() => {
+    const fetchWishlistCount = async () => {
+      if (!userAuthenticated) {
+        setWishlistCount(0);
+        return;
+      }
+      
+      try {
+        const response = await wishlistAPI.getWishlist();
+        if (response.success && response.data?.products) {
+          setWishlistCount(response.data.products.length);
+        } else {
+          setWishlistCount(0);
+        }
+      } catch (err) {
+        // Silently fail if user is not authenticated or other errors
+        // Only log if it's not a 401/403 error (unauthorized/forbidden)
+        if (err.response?.status !== 401 && err.response?.status !== 403) {
+          console.error('Error fetching wishlist count:', err);
+        }
+        setWishlistCount(0);
+      }
+    };
+    
+    fetchWishlistCount();
+  }, [userAuthenticated]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
@@ -442,6 +471,38 @@ const Header = () => {
               )}
             </div>
 
+            {/* Wishlist */}
+            <NavLink
+              to="/wishlist"
+              className={({ isActive }) =>
+                `relative text-sm xl:text-base text-gray-700 hover:text-red-600 transition-colors font-medium whitespace-nowrap ${
+                  isActive ? 'text-red-600' : ''
+                }`
+              }
+            >
+              <div className="flex items-center gap-1">
+                <div className="relative">
+                  <svg
+                    className="w-5 h-5 xl:w-6 xl:h-6"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {wishlistCount > 99 ? '99+' : wishlistCount}
+                    </span>
+                  )}
+                </div>
+                <span>Wishlist</span>
+              </div>
+            </NavLink>
+
             {/* Orders */}
             <NavLink
               to="/orders"
@@ -683,6 +744,36 @@ const Header = () => {
                   </>
                 )}
               </div>
+              
+              <NavLink
+                to="/wishlist"
+                onClick={closeMenu}
+                className={({ isActive }) =>
+                  `px-4 py-3 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium ${
+                    isActive ? 'text-red-600 bg-red-50' : ''
+                  }`
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  <span>Wishlist</span>
+                  {wishlistCount > 0 && (
+                    <span className="ml-auto bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {wishlistCount > 99 ? '99+' : wishlistCount}
+                    </span>
+                  )}
+                </div>
+              </NavLink>
               
               <NavLink
                 to="/orders"

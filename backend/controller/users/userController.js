@@ -1,5 +1,6 @@
 import User from "../../models/users/user.js";
 import Cart from "../../models/users/cart.js";
+import Wishlist from "../../models/users/wishlist.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -662,6 +663,272 @@ export const userSignin = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error signing in",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get user wishlist
+// @route   GET /api/v1/users/wishlist
+// @access  Private
+export const getWishlist = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authenticated",
+      });
+    }
+
+    let wishlist = await Wishlist.findOne({ user: userId }).populate({
+      path: "products.vendorProduct",
+      populate: [
+        {
+          path: "productId",
+          select: "productName images shortDescription slug originalPrice",
+        },
+        {
+          path: "vendorId",
+          select: "businessName",
+        },
+      ],
+    });
+
+    if (!wishlist) {
+      // Create empty wishlist if it doesn't exist
+      wishlist = await Wishlist.create({ user: userId, products: [] });
+      
+      // Update user's wishlist reference
+      await User.findByIdAndUpdate(userId, { wishlist: wishlist._id });
+    }
+
+    // Format response to match frontend expectations
+    const formattedProducts = wishlist.products.map((item) => {
+      const vendorProduct = item.vendorProduct;
+      if (!vendorProduct) return null;
+      
+      const product = vendorProduct.productId;
+      const price = vendorProduct.priceType === 'single' 
+        ? vendorProduct.pricing?.single?.price 
+        : vendorProduct.pricing?.bulk?.[0]?.price || 0;
+      const originalPrice = product?.originalPrice || price;
+
+      return {
+        _id: vendorProduct._id,
+        name: product?.productName || 'Product',
+        slug: product?.slug || vendorProduct._id.toString(),
+        price: price,
+        originalPrice: originalPrice,
+        images: product?.images?.map(img => img.url || img) || [],
+        vendorName: vendorProduct.vendorId?.businessName || 'Vendor',
+        addedAt: item.addedAt,
+      };
+    }).filter(Boolean);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        products: formattedProducts,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching wishlist",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Add product to wishlist
+// @route   POST /api/v1/users/wishlist
+// @access  Private
+export const addToWishlist = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const { productId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authenticated",
+      });
+    }
+
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        message: "Product ID is required",
+      });
+    }
+
+    let wishlist = await Wishlist.findOne({ user: userId });
+
+    if (!wishlist) {
+      // Create wishlist if it doesn't exist
+      wishlist = await Wishlist.create({ user: userId, products: [] });
+      
+      // Update user's wishlist reference
+      await User.findByIdAndUpdate(userId, { wishlist: wishlist._id });
+    }
+
+    // Check if product already exists in wishlist
+    const existingProduct = wishlist.products.find(
+      (item) => item.vendorProduct.toString() === productId
+    );
+
+    if (existingProduct) {
+      return res.status(200).json({
+        success: true,
+        message: "Product already in wishlist",
+        data: wishlist,
+      });
+    }
+
+    // Add product to wishlist
+    wishlist.products.push({
+      vendorProduct: productId,
+      addedAt: new Date(),
+    });
+
+    await wishlist.save();
+
+    // Populate and return updated wishlist
+    const updatedWishlist = await Wishlist.findById(wishlist._id).populate({
+      path: "products.vendorProduct",
+      populate: [
+        {
+          path: "productId",
+          select: "productName images shortDescription slug originalPrice",
+        },
+        {
+          path: "vendorId",
+          select: "businessName",
+        },
+      ],
+    });
+
+    // Format response
+    const formattedProducts = updatedWishlist.products.map((item) => {
+      const vendorProduct = item.vendorProduct;
+      if (!vendorProduct) return null;
+      
+      const product = vendorProduct.productId;
+      const price = vendorProduct.priceType === 'single' 
+        ? vendorProduct.pricing?.single?.price 
+        : vendorProduct.pricing?.bulk?.[0]?.price || 0;
+      const originalPrice = product?.originalPrice || price;
+
+      return {
+        _id: vendorProduct._id,
+        name: product?.productName || 'Product',
+        slug: product?.slug || vendorProduct._id.toString(),
+        price: price,
+        originalPrice: originalPrice,
+        images: product?.images?.map(img => img.url || img) || [],
+        vendorName: vendorProduct.vendorId?.businessName || 'Vendor',
+        addedAt: item.addedAt,
+      };
+    }).filter(Boolean);
+
+    res.status(200).json({
+      success: true,
+      message: "Product added to wishlist",
+      data: {
+        products: formattedProducts,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error adding to wishlist",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Remove product from wishlist
+// @route   DELETE /api/v1/users/wishlist/:productId
+// @access  Private
+export const removeFromWishlist = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const { productId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authenticated",
+      });
+    }
+
+    const wishlist = await Wishlist.findOne({ user: userId });
+
+    if (!wishlist) {
+      return res.status(404).json({
+        success: false,
+        message: "Wishlist not found",
+      });
+    }
+
+    // Remove product from wishlist
+    wishlist.products = wishlist.products.filter(
+      (item) => item.vendorProduct.toString() !== productId
+    );
+
+    await wishlist.save();
+
+    // Populate and return updated wishlist
+    const updatedWishlist = await Wishlist.findById(wishlist._id).populate({
+      path: "products.vendorProduct",
+      populate: [
+        {
+          path: "productId",
+          select: "productName images shortDescription slug originalPrice",
+        },
+        {
+          path: "vendorId",
+          select: "businessName",
+        },
+      ],
+    });
+
+    // Format response
+    const formattedProducts = updatedWishlist.products.map((item) => {
+      const vendorProduct = item.vendorProduct;
+      if (!vendorProduct) return null;
+      
+      const product = vendorProduct.productId;
+      const price = vendorProduct.priceType === 'single' 
+        ? vendorProduct.pricing?.single?.price 
+        : vendorProduct.pricing?.bulk?.[0]?.price || 0;
+      const originalPrice = product?.originalPrice || price;
+
+      return {
+        _id: vendorProduct._id,
+        name: product?.productName || 'Product',
+        slug: product?.slug || vendorProduct._id.toString(),
+        price: price,
+        originalPrice: originalPrice,
+        images: product?.images?.map(img => img.url || img) || [],
+        vendorName: vendorProduct.vendorId?.businessName || 'Vendor',
+        addedAt: item.addedAt,
+      };
+    }).filter(Boolean);
+
+    res.status(200).json({
+      success: true,
+      message: "Product removed from wishlist",
+      data: {
+        products: formattedProducts,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error removing from wishlist",
       error: error.message,
     });
   }

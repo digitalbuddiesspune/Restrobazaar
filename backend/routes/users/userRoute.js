@@ -7,6 +7,9 @@ import {
   userSignup,
   userSignin,
   userLogout,
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
 } from "../../controller/users/userController.js";
 import { authenticate } from "../../middleware/authMiddleware.js";
 const userRouter = express.Router();
@@ -24,10 +27,15 @@ userRouter.post("/users/logout", authenticate, userLogout);
 
 // User routes - Users can access their own profile
 userRouter.get("/users/me", authenticate, getCurrentUser);
+
+// Wishlist routes (MUST be before /users/:id to avoid route conflict)
+userRouter.get("/users/wishlist", authenticate, getWishlist);
+userRouter.post("/users/wishlist", authenticate, addToWishlist);
+userRouter.delete("/users/wishlist/:productId", authenticate, removeFromWishlist);
+
+// Parameterized routes (must come after specific routes)
 userRouter.get("/users/:id", authenticate, getUserById);
 userRouter.put("/users/:id", authenticate, updateUser);
 userRouter.patch("/users/:id/cart", authenticate, updateUserCart);
-
-
 
 export default userRouter;

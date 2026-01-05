@@ -334,6 +334,37 @@ export const globalProductAPI = {
   },
 };
 
+// Wishlist API
+export const wishlistAPI = {
+  getWishlist: async () => {
+    return apiRequest('/users/wishlist', {
+      method: 'GET',
+    });
+  },
+
+  addToWishlist: async (productId) => {
+    return apiRequest('/users/wishlist', {
+      method: 'POST',
+      body: JSON.stringify({ productId }),
+    });
+  },
+
+  removeFromWishlist: async (productId) => {
+    return apiRequest(`/users/wishlist/${productId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Cart API (for adding from wishlist to cart)
+export const cartAPI = {
+  addToCart: async (productId, quantity = 1) => {
+    // This uses Redux, but we can also add a backend endpoint if needed
+    // For now, return success - the frontend will handle it via Redux
+    return { success: true, message: 'Product added to cart' };
+  },
+};
+
 export default {
   authAPI,
   userAPI,
@@ -341,5 +372,7 @@ export default {
   categoryAPI,
   vendorProductAPI,
   globalProductAPI,
+  wishlistAPI,
+  cartAPI,
 };
 

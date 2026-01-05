@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { vendorProductAPI, categoryAPI } from '../utils/api';
+import { vendorProductAPI, categoryAPI, wishlistAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { useAppDispatch } from '../store/hooks';
 import { addToCart } from '../store/slices/cartSlice';
+import { isAuthenticated } from '../utils/auth';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
@@ -18,6 +19,8 @@ const ProductDetail = () => {
   const [selectedCity, setSelectedCity] = useState('');
   const [quantityError, setQuantityError] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   useEffect(() => {
     // Get selected city
@@ -249,6 +252,100 @@ const ProductDetail = () => {
     }
   }, [product?._id]); // Only reset when product changes
 
+  // Check if product is in wishlist
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!isAuthenticated() || !product?._id) return;
+      
+      try {
+        const response = await wishlistAPI.getWishlist();
+        if (response.success && response.data?.products) {
+          const productInWishlist = response.data.products.some(
+            (item) => item._id === product._id
+          );
+          setIsInWishlist(productInWishlist);
+        }
+      } catch (err) {
+        console.error('Error checking wishlist:', err);
+      }
+    };
+    
+    checkWishlistStatus();
+  }, [product?._id]);
+
+  const handleShareProduct = async () => {
+    if (!product?._id) return;
+    
+    const productUrl = `${window.location.origin}/product/${product._id}`;
+    const productName = product.productId?.productName || 'Product';
+    
+    // Try using Web Share API if available (mobile devices)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: productName,
+          text: `Check out this product: ${productName}`,
+          url: productUrl,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or error occurred, fall back to clipboard
+        if (err.name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
+      }
+    }
+    
+    // Fallback: Copy to clipboard
+    try {
+      await navigator.clipboard.writeText(productUrl);
+      alert('Product link copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = productUrl;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        alert('Product link copied to clipboard!');
+      } catch (err) {
+        alert('Failed to copy link. Please copy manually: ' + productUrl);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!isAuthenticated()) {
+      navigate('/sign-in');
+      return;
+    }
+    
+    if (!product?._id) return;
+    
+    setWishlistLoading(true);
+    try {
+      if (isInWishlist) {
+        await wishlistAPI.removeFromWishlist(product._id);
+        setIsInWishlist(false);
+        alert('Removed from wishlist');
+      } else {
+        await wishlistAPI.addToWishlist(product._id);
+        setIsInWishlist(true);
+        alert('Added to wishlist');
+      }
+    } catch (err) {
+      console.error('Error updating wishlist:', err);
+      alert('Failed to update wishlist. Please try again.');
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -314,7 +411,7 @@ const ProductDetail = () => {
           {/* Product Images */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="aspect-square bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="aspect-square bg-white rounded-lg shadow-md overflow-hidden relative">
               <img
                 src={images[selectedImageIndex]}
                 alt={product.productId?.productName || 'Product'}
@@ -323,6 +420,51 @@ const ProductDetail = () => {
                   e.target.src = 'https://via.placeholder.com/600x600?text=Product+Image';
                 }}
               />
+              {/* Share Product Button - Top Right Corner (Left of Wishlist) */}
+              <button
+                onClick={handleShareProduct}
+                className="absolute top-3 right-16 p-2.5 rounded-full shadow-lg transition-all z-10 bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                title="Share product"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                  />
+                </svg>
+              </button>
+              {/* Wishlist Button - Top Right Corner */}
+              <button
+                onClick={handleWishlistToggle}
+                disabled={wishlistLoading}
+                className={`absolute top-3 right-3 p-2.5 rounded-full shadow-lg transition-all z-10 ${
+                  isInWishlist
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-300'
+                }`}
+                title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill={isInWishlist ? 'currentColor' : 'none'}
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+              </button>
             </div>
 
             {/* Thumbnail Images */}
