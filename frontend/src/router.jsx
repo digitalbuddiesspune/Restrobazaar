@@ -18,6 +18,7 @@ import SuperAdminLogin from "./pages/SuperAdminLogin";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import VendorLogin from "./pages/VendorLogin";
 import VendorAdminDashboard from "./pages/VendorAdminDashboard";
+import VendorDashboard from "./pages/VendorDashboard";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Account from "./pages/Account";
@@ -55,7 +56,8 @@ const router = createBrowserRouter(
       <Route path="super_admin/login" element={<SuperAdminLogin />} />
       <Route path="admin/dashboard" element={<SuperAdminDashboard />} />
       <Route path="vendor/login" element={<VendorLogin />} />
-      <Route path="vendor/dashboard" element={<VendorAdminDashboard />} />
+      <Route path="vendor/dashboard" element={<VendorDashboard />} />
+      <Route path="vendor/dashboard/old" element={<VendorAdminDashboard />} />
     </Route>
   )
 );

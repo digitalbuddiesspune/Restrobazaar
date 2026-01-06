@@ -777,3 +777,43 @@ export const vendorLogin = async (req, res) => {
   }
 };
 
+// @desc    Get vendor's own profile
+// @route   GET /api/v1/vendor/me
+// @access  Vendor
+export const getVendorProfile = async (req, res) => {
+  try {
+    const vendorId = req.user.userId;
+
+    // Ensure user is a vendor
+    if (req.user.role !== "vendor") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden - Vendor access only",
+      });
+    }
+
+    const vendor = await Vendor.findById(vendorId)
+      .select("-password -__v")
+      .populate("serviceCities", "name displayName")
+      .populate("approvedBy", "name email");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching vendor profile",
+      error: error.message,
+    });
+  }
+};
+
