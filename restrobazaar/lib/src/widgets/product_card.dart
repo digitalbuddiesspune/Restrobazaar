@@ -18,61 +18,120 @@ class ProductCard extends ConsumerWidget {
     final wishlistState = ref.watch(wishlistControllerProvider);
     final inWishlist = wishlistState.contains(product.id);
     final price = product.displayPrice ?? 0;
+    final imageUrl = product.product?.images.isNotEmpty == true
+        ? product.product!.images.first
+        : 'https://via.placeholder.com/300x300?text=Product';
+    final vendorName = product.vendor?.businessName ?? 'Vendor';
+    final productName = product.product?.productName ?? 'Product';
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Card(
-        elevation: 1,
-        shadowColor: Colors.black12,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: CachedNetworkImage(
-                  imageUrl: product.product?.images.isNotEmpty == true
-                      ? product.product!.images.first
-                      : 'https://via.placeholder.com/300x300?text=Product',
-                  fit: BoxFit.cover,
-                  placeholder: (context, _) =>
-                      Container(color: Colors.grey.shade200),
-                  errorWidget: (context, _, __) => Container(
-                    color: Colors.grey.shade200,
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.image_not_supported_outlined),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, _) =>
+                          Container(color: Colors.grey.shade200),
+                      errorWidget: (context, _, __) => Container(
+                        color: Colors.grey.shade200,
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.image_not_supported_outlined),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: InkWell(
+                    onTap: () async {
+                      await ref
+                          .read(wishlistControllerProvider.notifier)
+                          .toggleWishlist(product);
+                      if (context.mounted && wishlistState.error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(wishlistState.error!)),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.85),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        inWishlist ? Icons.favorite : Icons.favorite_border,
+                        color: inWishlist
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade700,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.product?.productName ?? 'Product',
+                    productName,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
-                    product.vendor?.businessName ?? '',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    vendorName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF6b7280),
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     price > 0 ? formatCurrency(price) : 'Price on request',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w800,
                       color: Theme.of(context).colorScheme.primary,
                       fontSize: 15,
                     ),
@@ -85,7 +144,7 @@ class ProductCard extends ConsumerWidget {
                           Icon(
                             product.availableStock! > 0
                                 ? Icons.check_circle
-                                : Icons.error,
+                                : Icons.error_outline,
                             color: product.availableStock! > 0
                                 ? Colors.green
                                 : Colors.red,
@@ -107,51 +166,41 @@ class ProductCard extends ConsumerWidget {
                       ),
                     ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await ref
-                                .read(cartControllerProvider.notifier)
-                                .addToCart(
-                                  product,
-                                  quantity: product.minimumOrderQuantity ?? 1,
-                                );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Added to cart'),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('Add'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filledTonal(
-                        onPressed: () async {
-                          await ref
-                              .read(wishlistControllerProvider.notifier)
-                              .toggleWishlist(product);
-                          if (context.mounted && wishlistState.error != null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(wishlistState.error!)),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await ref
+                            .read(cartControllerProvider.notifier)
+                            .addToCart(
+                              product,
+                              quantity: product.minimumOrderQuantity ?? 1,
                             );
-                          }
-                        },
-                        icon: Icon(
-                          inWishlist ? Icons.favorite : Icons.favorite_border,
-                          color: inWishlist
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.grey.shade700,
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Added to cart'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.add_shopping_cart_outlined, size: 18),
+              label: const Text(
+                'Add to cart',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        foregroundColor: Colors.grey.shade900,
                       ),
-                    ],
+                    ),
                   ),
-                ],
+        ],
               ),
             ),
           ],

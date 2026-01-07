@@ -66,20 +66,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           if (products.isEmpty) {
             return Center(child: Text('No results for "$_query"'));
           }
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.68,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-            ),
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              final product = products[index];
-              return ProductCard(
-                product: product,
-                onTap: () => context.push('/product/${product.id}'),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              const crossAxisCount = 2;
+              const spacing = 12.0;
+              final totalWidth = constraints.maxWidth;
+              final itemWidth =
+                  (totalWidth - (spacing * (crossAxisCount - 1))) /
+                      crossAxisCount;
+              final itemHeight = itemWidth + 210;
+
+              return GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: spacing,
+                  crossAxisSpacing: spacing,
+                  mainAxisExtent: itemHeight,
+                ),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  return ProductCard(
+                    product: product,
+                    onTap: () => context.push('/product/${product.id}'),
+                  );
+                },
               );
             },
           );

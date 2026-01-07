@@ -331,7 +331,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                       Icons.favorite,
                                       color: inWishlist
                                           ? Colors.white
-                                          : const Color(0xFFdc2626),
+                                          : const Color(0xFF9ca3af),
                                     ),
                             ),
                           ],

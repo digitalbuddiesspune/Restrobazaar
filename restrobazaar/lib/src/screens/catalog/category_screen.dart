@@ -6,6 +6,8 @@ import '../../controllers/catalog_providers.dart';
 import '../../controllers/city_controller.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/city_selector_sheet.dart';
+import '../../models/category.dart';
+import '../../models/product.dart';
 
 class CategoryScreen extends ConsumerStatefulWidget {
   const CategoryScreen({super.key, required this.slug});
@@ -85,79 +87,331 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
             ),
           );
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (category.subCategories.isNotEmpty)
-                SizedBox(
-                  height: 46,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    scrollDirection: Axis.horizontal,
-                    itemBuilder: (context, index) {
-                      final subCat = index == 0
-                          ? 'all'
-                          : category.subCategories[index - 1];
-                      return ChoiceChip(
-                        label: Text(index == 0 ? 'All' : subCat),
-                        selected: _selectedSubCategory == subCat,
-                        onSelected: (_) {
-                          setState(() => _selectedSubCategory = subCat);
-                        },
-                      );
-                    },
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemCount: category.subCategories.length + 1,
-                  ),
-                ),
-              Expanded(
-                child: productsAsync.when(
-                  data: (products) {
-                    final filtered = _selectedSubCategory == 'all'
-                        ? products
-                        : products.where((p) {
-                            final sub =
-                                p.subCategory ?? p.product?.subCategory ?? '';
-                            return sub.trim().toLowerCase() ==
-                                _selectedSubCategory.trim().toLowerCase();
-                          }).toList();
+          return productsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => Center(child: Text(error.toString())),
+            data: (products) {
+              final filtered = _selectedSubCategory == 'all'
+                  ? products
+                  : products.where((p) {
+                      final sub =
+                          p.subCategory ?? p.product?.subCategory ?? '';
+                      return sub.trim().toLowerCase() ==
+                          _selectedSubCategory.trim().toLowerCase();
+                    }).toList();
 
-                    if (filtered.isEmpty) {
-                      return const Center(child: Text('No products found'));
-                    }
-
-                    return GridView.builder(
-                      padding: const EdgeInsets.all(16),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.68,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                          ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final product = filtered[index];
-                        return ProductCard(
-                          product: product,
-                          onTap: () => context.push('/product/${product.id}'),
-                        );
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _CategoryInfoCard(category: category),
+                    const SizedBox(height: 12),
+                    _SubcategoryFilter(
+                      subcategories: category.subCategories,
+                      selected: _selectedSubCategory,
+                      onSelect: (value) {
+                        setState(() => _selectedSubCategory = value);
                       },
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => Center(child: Text(error.toString())),
+                    ),
+                    const SizedBox(height: 14),
+                    if (filtered.isEmpty)
+                      _EmptyProducts(message: 'No products found in this category')
+                    else
+                      _ProductGrid(
+                        products: filtered,
+                        onTap: (id) => context.push('/product/$id'),
+                      ),
+                  ],
                 ),
-              ),
-            ],
+              );
+            },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text(error.toString())),
+      ),
+    );
+  }
+}
+
+class _CategoryInfoCard extends StatelessWidget {
+  const _CategoryInfoCard({required this.category});
+
+  final CategoryModel category;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 62,
+            width: 62,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade200),
+              image: category.image != null && category.image!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(category.image!),
+                      fit: BoxFit.cover,
+                      onError: (_, __) {},
+                    )
+                  : null,
+            ),
+            child: category.image == null || category.image!.isEmpty
+                ? Icon(
+                    Icons.category_outlined,
+                    color: Colors.grey.shade500,
+                    size: 28,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  category.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Browse curated products in ${category.name}.',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFfee2e2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${category.subCategories.length} subcategories',
+                    style: const TextStyle(
+                      color: Color(0xFFdc2626),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubcategoryFilter extends StatelessWidget {
+  const _SubcategoryFilter({
+    required this.subcategories,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final List<String> subcategories;
+  final String selected;
+  final void Function(String value) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = <Widget>[
+      _SubcategoryChip(
+        label: 'All',
+        selected: selected == 'all',
+        onTap: () => onSelect('all'),
+      ),
+      ...subcategories.map(
+        (sub) => _SubcategoryChip(
+          label: sub,
+          selected: selected == sub,
+          onTap: () => onSelect(sub),
+        ),
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Filter by subcategory',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: chips,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubcategoryChip extends StatelessWidget {
+  const _SubcategoryChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFdc2626) : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? const Color(0xFFdc2626) : Colors.grey.shade300,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF374151),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductGrid extends StatelessWidget {
+  const _ProductGrid({required this.products, required this.onTap});
+
+  final List<VendorProductModel> products;
+  final void Function(String id) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const crossAxisCount = 2;
+        const spacing = 12.0;
+        final totalWidth = constraints.maxWidth;
+        final itemWidth =
+            (totalWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+        final itemHeight = itemWidth + 210;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(4),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            mainAxisExtent: itemHeight,
+          ),
+          itemCount: products.length,
+          itemBuilder: (context, index) {
+            final product = products[index];
+            return ProductCard(
+              product: product,
+              onTap: () => onTap(product.id),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _EmptyProducts extends StatelessWidget {
+  const _EmptyProducts({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 38, color: Colors.grey.shade500),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Try a different subcategory or come back later.',
+            style: TextStyle(color: Color(0xFF6b7280)),
+          ),
+        ],
       ),
     );
   }
