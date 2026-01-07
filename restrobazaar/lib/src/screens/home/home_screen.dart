@@ -152,8 +152,8 @@ class _HeroImage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
+        child: SizedBox(
+          height: 500,
           child: CachedNetworkImage(
             imageUrl: _mobileHeroBanner,
             fit: BoxFit.cover,
