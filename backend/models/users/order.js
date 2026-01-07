@@ -118,6 +118,14 @@ const orderSchema = new mongoose.Schema(
     transactionId: {
       type: String, // For tracking transactions
     },
+    couponAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    deliveryDate: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

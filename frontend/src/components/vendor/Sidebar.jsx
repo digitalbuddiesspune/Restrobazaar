@@ -7,6 +7,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
   const menuItems = [
     { id: 'overview', label: 'Dashboard', icon: '📊' },
     { id: 'orders', label: 'Orders', icon: '📋' },
+    { id: 'order-records', label: 'Order Records', icon: '📄' },
     { id: 'account', label: 'Account', icon: '👤' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
   ];

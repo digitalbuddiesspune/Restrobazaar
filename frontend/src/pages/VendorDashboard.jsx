@@ -9,6 +9,7 @@ import ProductForm from '../components/vendor/ProductForm';
 import OrdersTable from '../components/vendor/OrdersTable';
 import OrderDetails from '../components/vendor/OrderDetails';
 import VendorAccount from '../components/vendor/VendorAccount';
+import OrderRecords from '../components/OrderRecords';
 import {
   useMyVendorProducts,
   useGlobalProducts,
@@ -435,6 +436,13 @@ const VendorDashboard = () => {
                   onOrderClick={setSelectedOrderId}
                 />
               )}
+            </div>
+          )}
+
+          {/* Order Records Tab */}
+          {activeTab === 'order-records' && (
+            <div className="space-y-4">
+              <OrderRecords userRole="vendor" />
             </div>
           )}
 

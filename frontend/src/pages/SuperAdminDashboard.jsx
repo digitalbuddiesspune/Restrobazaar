@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import OrderRecords from "../components/OrderRecords";
 
 const SuperAdminDashboard = () => {
   const baseUrl =
@@ -812,6 +813,7 @@ const SuperAdminDashboard = () => {
                 { id: "cities", label: "All Cities" },
                 { id: "categories", label: "All Categories" },
                 { id: "vendors", label: "All Vendors" },
+                { id: "order-records", label: "Order Records" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -2793,6 +2795,13 @@ const SuperAdminDashboard = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Order Records Tab */}
+        {activeTab === "order-records" && (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <OrderRecords userRole="super_admin" />
           </div>
         )}
 
