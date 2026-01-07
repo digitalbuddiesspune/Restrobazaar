@@ -152,6 +152,7 @@ class VendorProductModel {
     this.availableStock,
     this.minimumOrderQuantity,
     this.subCategory,
+    this.originalPrice,
   }) : pricing = pricing ?? const PricingModel();
 
   final String id;
@@ -164,17 +165,31 @@ class VendorProductModel {
   final int? availableStock;
   final int? minimumOrderQuantity;
   final String? subCategory;
+  final double? originalPrice;
 
   factory VendorProductModel.fromJson(Map<String, dynamic> json) {
-    final productJson = json['productId'] is Map<String, dynamic>
+    Map<String, dynamic>? productJson = json['productId'] is Map<String, dynamic>
         ? json['productId'] as Map<String, dynamic>
         : null;
+    productJson ??=
+        json['product'] is Map<String, dynamic> ? json['product'] as Map<String, dynamic> : null;
+    // Some responses return the product fields directly (wishlist API)
+    productJson ??= json['images'] is List ? json : null;
+
     final vendorJson = json['vendorId'] is Map<String, dynamic>
         ? json['vendorId'] as Map<String, dynamic>
         : null;
     final cityJson = json['cityId'] is Map<String, dynamic>
         ? json['cityId'] as Map<String, dynamic>
         : null;
+
+    final pricingJson =
+        json['pricing'] is Map<String, dynamic> ? json['pricing'] as Map<String, dynamic> : null;
+    final inferredPricing = pricingJson != null
+        ? PricingModel.fromJson(pricingJson)
+        : PricingModel(
+            singlePrice: json['price'] != null ? _toDouble(json['price']) : null,
+          );
 
     return VendorProductModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -183,11 +198,7 @@ class VendorProductModel {
       vendor: vendorJson != null ? VendorModel.fromJson(vendorJson) : null,
       city: cityJson != null ? CityModel.fromJson(cityJson) : null,
       priceType: (json['priceType'] ?? 'single').toString(),
-      pricing: PricingModel.fromJson(
-        json['pricing'] is Map<String, dynamic>
-            ? json['pricing'] as Map<String, dynamic>
-            : null,
-      ),
+      pricing: inferredPricing,
       availableStock: json['availableStock'] is num
           ? (json['availableStock'] as num).toInt()
           : int.tryParse(json['availableStock']?.toString() ?? ''),
@@ -197,6 +208,8 @@ class VendorProductModel {
       subCategory:
           json['subCategory']?.toString() ??
           productJson?['subCategory']?.toString(),
+      originalPrice:
+          json['originalPrice'] != null ? _toDouble(json['originalPrice']) : null,
     );
   }
 
@@ -222,6 +235,7 @@ class VendorProductModel {
       'availableStock': availableStock,
       'minimumOrderQuantity': minimumOrderQuantity,
       'subCategory': subCategory,
+      'originalPrice': originalPrice,
     };
   }
 }
