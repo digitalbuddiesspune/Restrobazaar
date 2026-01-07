@@ -63,20 +63,27 @@ class CartController extends StateNotifier<CartState> {
     int quantity = 1,
     PriceSlab? selectedSlab,
   }) async {
-    final newItem = CartItem.fromVendorProduct(
+    final minQty = product.minimumOrderQuantity ?? 1;
+    final normalizedMinQty = minQty > 0 ? minQty : 1;
+    var addQuantity = quantity <= 0 ? normalizedMinQty : quantity;
+
+    final baseItem = CartItem.fromVendorProduct(
       product,
-      quantity: quantity,
+      quantity: 1,
       selectedSlab: selectedSlab,
     );
     final updated = [...state.items];
-    final existingIndex = updated.indexWhere((item) => item.id == newItem.id);
+    final existingIndex = updated.indexWhere((item) => item.id == baseItem.id);
     if (existingIndex >= 0) {
       final existing = updated[existingIndex];
       updated[existingIndex] = existing.copyWith(
-        quantity: existing.quantity + quantity,
+        quantity: existing.quantity + addQuantity,
       );
     } else {
-      updated.add(newItem);
+      if (addQuantity < normalizedMinQty) {
+        addQuantity = normalizedMinQty;
+      }
+      updated.add(baseItem.copyWith(quantity: addQuantity));
     }
     state = state.copyWith(items: updated);
     await _persist();
