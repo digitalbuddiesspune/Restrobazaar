@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { categoryAPI, vendorProductAPI, getSelectedCityId, wishlistAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
@@ -27,6 +27,9 @@ const Category = () => {
   const [addingToCart, setAddingToCart] = useState({});
   const [quantities, setQuantities] = useState({});
   const [showQuantitySelector, setShowQuantitySelector] = useState({});
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+  const subcategoryScrollRef = useRef(null);
   const dispatch = useAppDispatch();
   const cartItems = useAppSelector(selectCartItems);
 
@@ -252,6 +255,75 @@ const Category = () => {
     setSelectedSubcategory(subcategory);
     setPage(1); // Reset to first page when filtering
   };
+
+  const checkScrollButtons = () => {
+    if (subcategoryScrollRef.current) {
+      // Hide arrows on desktop (lg and above)
+      if (window.innerWidth >= 1024) {
+        setShowLeftArrow(false);
+        setShowRightArrow(false);
+        return;
+      }
+      const { scrollLeft, scrollWidth, clientWidth } = subcategoryScrollRef.current;
+      setShowLeftArrow(scrollLeft > 0);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  const scrollSubcategories = (direction) => {
+    if (subcategoryScrollRef.current) {
+      const scrollAmount = 200; // pixels to scroll
+      const newScrollLeft = subcategoryScrollRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+      subcategoryScrollRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+      // Check button visibility after scroll
+      setTimeout(checkScrollButtons, 100);
+    }
+  };
+
+  // Check scroll position on mount and when subcategories change
+  useEffect(() => {
+    const scrollElement = subcategoryScrollRef.current;
+    if (scrollElement) {
+      // Initial check
+      setTimeout(checkScrollButtons, 100);
+      // Add scroll listener
+      scrollElement.addEventListener('scroll', checkScrollButtons);
+      
+      // On desktop, remove width constraint to show all items
+      const handleResize = () => {
+        if (window.innerWidth >= 1024) {
+          const innerDiv = scrollElement.querySelector('div');
+          if (innerDiv) {
+            innerDiv.style.width = 'auto';
+          }
+          // Remove maxHeight on desktop
+          scrollElement.style.maxHeight = 'none';
+          // Hide arrows on desktop
+          setShowLeftArrow(false);
+          setShowRightArrow(false);
+        } else {
+          const innerDiv = scrollElement.querySelector('div');
+          if (innerDiv) {
+            innerDiv.style.width = 'max-content';
+          }
+          // Restore maxHeight on mobile
+          scrollElement.style.maxHeight = '4.5rem';
+        }
+        checkScrollButtons();
+      };
+      
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        scrollElement.removeEventListener('scroll', checkScrollButtons);
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [selectedCategory, selectedCategory?.subcategories]);
 
   const getProductPrice = (product) => {
     if (product.priceType === 'single' && product.pricing?.single?.price) {
@@ -558,29 +630,6 @@ const Category = () => {
        
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Mobile Sidebar Toggle */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mb-4"
-          >
-            <svg
-              className="w-5 h-5 text-gray-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-            <span className="font-medium text-gray-700">
-              {sidebarOpen ? 'Hide' : 'Show'} Categories
-            </span>
-          </button>
-
           {/* Sidebar - Categories */}
           <aside
             className={`lg:w-64 flex-shrink-0 ${
@@ -604,7 +653,7 @@ const Category = () => {
                 </svg>
                 Categories
               </h2>
-              <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+              <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto hide-scrollbar">
                 {categories.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">No categories available</p>
                 ) : (
@@ -612,10 +661,10 @@ const Category = () => {
                     <button
                       key={category._id}
                       onClick={() => handleCategorySelect(category)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                      className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 border ${
                         selectedCategory?._id === category._id
-                          ? 'bg-red-600 text-white font-semibold shadow-md'
-                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm'
+                          ? 'bg-red-600 text-white font-semibold shadow-md border-red-700'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border-gray-300'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -685,30 +734,38 @@ const Category = () => {
                     {selectedCategory.subcategories && Array.isArray(selectedCategory.subcategories) && selectedCategory.subcategories.length > 0 ? (
                       <>
                         <h3 className="text-xs font-semibold text-gray-700 mb-2">Filter by Subcategory:</h3>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => handleSubcategorySelect('all')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                              selectedSubcategory === 'all'
-                                ? 'bg-red-600 text-white shadow-md'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                        <div className="relative">
+                          <div
+                            ref={subcategoryScrollRef}
+                            className="overflow-x-auto lg:overflow-x-visible hide-scrollbar lg:max-h-none"
+                            style={{ WebkitOverflowScrolling: 'touch', maxHeight: '4.5rem' }}
                           >
-                            All
-                          </button>
-                          {selectedCategory.subcategories.map((subcat, index) => (
-                            <button
-                              key={index}
-                              onClick={() => handleSubcategorySelect(subcat)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                selectedSubcategory === subcat
-                                  ? 'bg-red-600 text-white shadow-md'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {subcat}
-                            </button>
-                          ))}
+                            <div className="flex flex-wrap gap-2" style={{ width: 'max-content' }}>
+                              <button
+                                onClick={() => handleSubcategorySelect('all')}
+                                className={`px-3 py-1 rounded text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+                                  selectedSubcategory === 'all'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                                }`}
+                              >
+                                All
+                              </button>
+                              {selectedCategory.subcategories.map((subcat, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => handleSubcategorySelect(subcat)}
+                                  className={`px-3 py-1 rounded text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+                                    selectedSubcategory === subcat
+                                      ? 'bg-red-600 text-white shadow-md'
+                                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {subcat}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -772,11 +829,11 @@ const Category = () => {
                 ) : (
                   <>
                     {/* Products Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 mb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 sm:gap-3 mb-8">
                       {products.map((product) => (
                         <div
                           key={product._id}
-                          className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
+                          className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer flex flex-col"
                           onClick={() => {
                             const categorySlug = selectedCategory?.slug || selectedCategory?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                             if (categorySlug) {
@@ -796,11 +853,21 @@ const Category = () => {
                                 e.target.src = 'https://via.placeholder.com/300x300?text=Product';
                               }}
                             />
-                            {/* Wishlist Button - Top Left Corner */}
+                            {/* Stock Status Badge on Image - Top Left Corner */}
+                            {product.availableStock !== undefined && (
+                              <span className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2 text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-semibold shadow-md ${
+                                product.availableStock > 0
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-red-500 text-white'
+                              }`}>
+                                {product.availableStock > 0 ? 'In Stock' : 'Out of Stock'}
+                              </span>
+                            )}
+                            {/* Wishlist Button - Top Right Corner */}
                             <button
                               onClick={(e) => handleWishlistToggle(e, product)}
                               disabled={wishlistLoading[product._id]}
-                              className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2 p-1.5 sm:p-2 rounded-full shadow-lg transition-all z-10 ${
+                              className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1.5 sm:p-2 rounded-full shadow-lg transition-all z-10 ${
                                 wishlistItems.has(product._id)
                                   ? 'bg-red-600 text-white hover:bg-red-700'
                                   : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-300'
@@ -821,37 +888,33 @@ const Category = () => {
                                 />
                               </svg>
                             </button>
-                            {/* Stock Status Badge on Image */}
-                            {product.availableStock !== undefined && (
-                              <span className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-semibold shadow-md ${
-                                product.availableStock > 0
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-red-500 text-white'
-                              }`}>
-                                {product.availableStock > 0 ? 'In Stock' : 'Out of Stock'}
-                              </span>
-                            )}
                           </div>
 
                           {/* Product Info */}
-                          <div className="p-4">
+                          <div className="p-4 flex flex-col flex-1">
                             <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
                               {product.productId?.productName || 'Product Name'}
                             </h3>
-                            
-                            {product.productId?.shortDescription && (
-                              <p className="text-xs text-gray-600 mb-3 line-clamp-2">
-                                {product.productId.shortDescription}
-                              </p>
-                            )}
 
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-bold text-red-600">
-                                {getProductPrice(product)}
+                              <span className="text-base sm:text-lg font-bold text-red-600">
+                                {product.priceType === 'single' && product.pricing?.single?.price ? (
+                                  `₹${product.pricing.single.price}`
+                                ) : product.priceType === 'bulk' && product.pricing?.bulk?.length > 0 ? (
+                                  <>
+                                    ₹{product.pricing.bulk[0].price}{' '}
+                                    <span className="text-xs sm:text-sm font-normal">
+                                      ({product.pricing.bulk[0].minQty}-{product.pricing.bulk[0].maxQty} pcs)
+                                    </span>
+                                  </>
+                                ) : (
+                                  'Price on request'
+                                )}
                               </span>
                             </div>
 
                             {/* Add to Cart Button / Quantity Selector */}
+                            <div className="mt-auto">
                             {product.availableStock > 0 ? (
                               (() => {
                                 // Check if product is in cart
@@ -938,6 +1001,7 @@ const Category = () => {
                                 Out of Stock
                               </button>
                             )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -993,6 +1057,13 @@ const Category = () => {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #a0aec0;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
         }
         .line-clamp-2 {
           display: -webkit-box;

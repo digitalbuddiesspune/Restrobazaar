@@ -153,7 +153,7 @@ const Categories = () => {
             <div className="text-gray-600">No categories available</div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:gap-5 md:gap-6 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
             {categories.map((category) => (
               <Link
                 key={category._id || category.slug}
