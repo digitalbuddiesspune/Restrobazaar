@@ -6,6 +6,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/city_controller.dart';
 import '../../controllers/wishlist_controller.dart';
+import '../../widgets/restrobazaar_logo.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -49,9 +50,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const FlutterLogo(size: 72),
-            const SizedBox(height: 16),
-            Text('RestroBazaar', style: Theme.of(context).textTheme.titleLarge),
+            const RestroBazaarLogo(height: 72),
             const SizedBox(height: 12),
             const CircularProgressIndicator(),
           ],
