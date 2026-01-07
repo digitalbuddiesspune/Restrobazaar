@@ -74,7 +74,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               final itemWidth =
                   (totalWidth - (spacing * (crossAxisCount - 1))) /
                       crossAxisCount;
-              final itemHeight = itemWidth + 210;
+              final itemHeight = itemWidth + 170;
 
               return GridView.builder(
                 padding: const EdgeInsets.all(16),

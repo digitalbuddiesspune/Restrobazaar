@@ -13,6 +13,13 @@ class ProductCard extends ConsumerWidget {
   final VendorProductModel product;
   final VoidCallback? onTap;
 
+  static String _truncateWithEllipsis(String value, int maxLength) {
+    if (value.length <= maxLength) {
+      return value;
+    }
+    return '${value.substring(0, maxLength).trimRight()}...';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wishlistState = ref.watch(wishlistControllerProvider);
@@ -23,6 +30,7 @@ class ProductCard extends ConsumerWidget {
         : 'https://via.placeholder.com/300x300?text=Product';
     final vendorName = product.vendor?.businessName ?? 'Vendor';
     final productName = product.product?.productName ?? 'Product';
+    final displayName = _truncateWithEllipsis(productName, 28);
 
     return InkWell(
       onTap: onTap,
@@ -109,8 +117,8 @@ class ProductCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    productName,
-                    maxLines: 2,
+                    displayName,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,

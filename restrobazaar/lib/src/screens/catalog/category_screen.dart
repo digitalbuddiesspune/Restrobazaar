@@ -347,7 +347,7 @@ class _ProductGrid extends StatelessWidget {
         final totalWidth = constraints.maxWidth;
         final itemWidth =
             (totalWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
-        final itemHeight = itemWidth + 210;
+        final itemHeight = itemWidth + 170;
 
         return GridView.builder(
           shrinkWrap: true,
