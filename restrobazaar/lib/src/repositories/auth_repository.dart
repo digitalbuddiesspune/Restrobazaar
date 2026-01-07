@@ -6,7 +6,7 @@ class AuthRepository {
 
   final ApiClient _client;
 
-  Future<UserModel> signIn({
+  Future<AuthResult> signIn({
     required String email,
     required String password,
   }) async {
@@ -18,7 +18,11 @@ class AuthRepository {
 
     if (response['success'] == true &&
         response['data'] is Map<String, dynamic>) {
-      return UserModel.fromJson(response['data'] as Map<String, dynamic>);
+      final data = response['data'] as Map<String, dynamic>;
+      return AuthResult(
+        user: UserModel.fromJson(data),
+        token: _extractToken(response, data),
+      );
     }
 
     throw ApiException(
@@ -27,7 +31,7 @@ class AuthRepository {
     );
   }
 
-  Future<UserModel> signUp({
+  Future<AuthResult> signUp({
     required String name,
     required String email,
     required String password,
@@ -46,13 +50,43 @@ class AuthRepository {
 
     if (response['success'] == true &&
         response['data'] is Map<String, dynamic>) {
-      return UserModel.fromJson(response['data'] as Map<String, dynamic>);
+      final data = response['data'] as Map<String, dynamic>;
+      return AuthResult(
+        user: UserModel.fromJson(data),
+        token: _extractToken(response, data),
+      );
     }
 
     throw ApiException(
       statusCode: 400,
       message: response['message']?.toString() ?? 'Unable to sign up',
     );
+  }
+
+  String? _extractToken(
+    Map<String, dynamic> response, [
+    Map<String, dynamic>? data,
+  ]) {
+    final candidates = <dynamic>[
+      response['token'],
+      response['accessToken'],
+      response['access_token'],
+      response['jwt'],
+      if (data != null) ...[
+        data['token'],
+        data['accessToken'],
+        data['access_token'],
+        data['jwt'],
+      ],
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is String && candidate.isNotEmpty) {
+        return candidate;
+      }
+    }
+
+    return null;
   }
 
   Future<UserModel?> fetchCurrentUser() async {
@@ -68,4 +102,11 @@ class AuthRepository {
   Future<void> logout() async {
     await _client.request('/users/logout', method: 'POST');
   }
+}
+
+class AuthResult {
+  const AuthResult({required this.user, this.token});
+
+  final UserModel user;
+  final String? token;
 }

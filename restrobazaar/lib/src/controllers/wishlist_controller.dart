@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/api_client.dart';
 import '../models/product.dart';
 import '../repositories/repository_providers.dart';
 import 'auth_controller.dart';
@@ -53,6 +54,14 @@ class WishlistController extends StateNotifier<WishlistState> {
       final items = await repo.getWishlist();
       state = state.copyWith(items: items, loading: false);
     } catch (error) {
+      if (error is ApiException && error.statusCode == 401) {
+        await _ref.read(authControllerProvider.notifier).logout();
+        state = state.copyWith(
+          loading: false,
+          error: 'Please sign in to view your wishlist',
+        );
+        return;
+      }
       state = state.copyWith(loading: false, error: error.toString());
     }
   }
@@ -78,6 +87,13 @@ class WishlistController extends StateNotifier<WishlistState> {
         state = state.copyWith(items: [...state.items, product], error: null);
       }
     } catch (error) {
+      if (error is ApiException && error.statusCode == 401) {
+        await _ref.read(authControllerProvider.notifier).logout();
+        state = state.copyWith(
+          error: 'Please sign in to manage wishlist',
+        );
+        return;
+      }
       state = state.copyWith(error: error.toString());
     }
   }

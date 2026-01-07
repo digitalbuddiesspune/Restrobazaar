@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/constants.dart';
+import '../core/api_client.dart';
 import '../core/local_storage.dart';
 import '../core/providers.dart';
 import '../models/user.dart';
@@ -38,8 +39,12 @@ class AuthController extends StateNotifier<AuthState> {
 
   AuthRepository get _repository => _ref.read(authRepositoryProvider);
   LocalStorage get _storage => _ref.read(localStorageProvider);
+  ApiClient get _apiClient => _ref.read(apiClientProvider);
 
   Future<void> restoreSession() async {
+    final token = _storage.getString(authTokenKey);
+    _apiClient.setBearerToken(token);
+
     final savedUser = _storage.getJson<UserModel>(
       userInfoKey,
       UserModel.fromJson,
@@ -87,9 +92,19 @@ class AuthController extends StateNotifier<AuthState> {
   Future<bool> signIn({required String email, required String password}) async {
     try {
       state = state.copyWith(loading: true, error: null);
-      final user = await _repository.signIn(email: email, password: password);
-      await _storage.setJson(userInfoKey, user.toJson());
-      state = state.copyWith(user: user, loading: false);
+      final result = await _repository.signIn(
+        email: email,
+        password: password,
+      );
+      await _storage.setJson(userInfoKey, result.user.toJson());
+      if (result.token != null && result.token!.isNotEmpty) {
+        await _storage.setString(authTokenKey, result.token!);
+        _apiClient.setBearerToken(result.token);
+      } else {
+        await _storage.remove(authTokenKey);
+        _apiClient.setBearerToken(null);
+      }
+      state = state.copyWith(user: result.user, loading: false);
       return true;
     } catch (error) {
       state = state.copyWith(loading: false, error: error.toString());
@@ -105,14 +120,21 @@ class AuthController extends StateNotifier<AuthState> {
   }) async {
     try {
       state = state.copyWith(loading: true, error: null);
-      final user = await _repository.signUp(
+      final result = await _repository.signUp(
         name: name,
         email: email,
         password: password,
         phone: phone,
       );
-      await _storage.setJson(userInfoKey, user.toJson());
-      state = state.copyWith(user: user, loading: false);
+      await _storage.setJson(userInfoKey, result.user.toJson());
+      if (result.token != null && result.token!.isNotEmpty) {
+        await _storage.setString(authTokenKey, result.token!);
+        _apiClient.setBearerToken(result.token);
+      } else {
+        await _storage.remove(authTokenKey);
+        _apiClient.setBearerToken(null);
+      }
+      state = state.copyWith(user: result.user, loading: false);
       return true;
     } catch (error) {
       state = state.copyWith(loading: false, error: error.toString());
@@ -127,6 +149,8 @@ class AuthController extends StateNotifier<AuthState> {
       // ignore network errors during logout
     } finally {
       await _storage.remove(userInfoKey);
+      await _storage.remove(authTokenKey);
+      _apiClient.setBearerToken(null);
       state = const AuthState();
     }
   }

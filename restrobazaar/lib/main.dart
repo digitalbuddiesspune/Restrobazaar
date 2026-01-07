@@ -17,7 +17,7 @@ Future<void> main() async {
   final baseUrl =
       dotenv.env[apiBaseUrlKey] ??
       dotenv.env['API_BASE_URL'] ??
-      'http://localhost:3003/api/v1';
+      'https://api.sanskrutee.in/api/v1';
 
   final appDir = await getApplicationDocumentsDirectory();
   final cookieJar = PersistCookieJar(

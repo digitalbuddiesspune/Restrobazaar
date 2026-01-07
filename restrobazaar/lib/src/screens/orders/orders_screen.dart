@@ -22,7 +22,19 @@ class OrdersScreen extends ConsumerWidget {
     final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Orders')),
+      appBar: AppBar(
+        title: const Text('Your Orders'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
+      ),
       backgroundColor: Colors.grey.shade50,
       body: ordersAsync.when(
         data: (orders) {
