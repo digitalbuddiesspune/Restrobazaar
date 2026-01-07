@@ -63,6 +63,27 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> refreshUser({bool force = false}) async {
+    try {
+      final existing = state.user;
+      final hasProfileDetails = existing?.phone?.isNotEmpty == true &&
+          existing?.createdAt != null;
+
+      if (!force && hasProfileDetails) return;
+
+      state = state.copyWith(loading: true, error: null);
+      final user = await _repository.fetchCurrentUser();
+      if (user != null) {
+        await _storage.setJson(userInfoKey, user.toJson());
+        state = state.copyWith(user: user, loading: false);
+      } else {
+        state = state.copyWith(loading: false);
+      }
+    } catch (error) {
+      state = state.copyWith(loading: false, error: error.toString());
+    }
+  }
+
   Future<bool> signIn({required String email, required String password}) async {
     try {
       state = state.copyWith(loading: true, error: null);

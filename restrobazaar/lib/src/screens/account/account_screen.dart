@@ -6,13 +6,26 @@ import 'package:intl/intl.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/user.dart';
 
-class AccountScreen extends ConsumerWidget {
+class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
+  @override
+  ConsumerState<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends ConsumerState<AccountScreen> {
   static const _accent = Color(0xFFdc2626);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authControllerProvider.notifier).refreshUser();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
     final user = authState.user;
 
@@ -88,20 +101,10 @@ class AccountScreen extends ConsumerWidget {
                   value: _formatDate(user.createdAt),
                 ),
                 _InfoTile(
-                  icon: Icons.update,
-                  label: 'Last Updated',
-                  value: _formatDate(user.updatedAt ?? user.createdAt),
-                ),
-                _InfoTile(
                   icon: Icons.badge_outlined,
                   label: 'User ID',
                   value: user.id,
                   isMono: true,
-                ),
-                _InfoTile(
-                  icon: Icons.verified_user_outlined,
-                  label: 'Role',
-                  value: _roleLabel(user.role),
                 ),
               ],
             ),
@@ -158,13 +161,13 @@ class _HeaderCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: AccountScreen._accent.withOpacity(0.1),
+            backgroundColor: _AccountScreenState._accent.withOpacity(0.1),
             child: Text(
               _initials(user.name),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
-                color: AccountScreen._accent,
+                color: _AccountScreenState._accent,
               ),
             ),
           ),
@@ -192,14 +195,14 @@ class _HeaderCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AccountScreen._accent.withOpacity(0.1),
+                    color: _AccountScreenState._accent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     user.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: AccountScreen._accent,
+                      color: _AccountScreenState._accent,
                     ),
                   ),
                 ),
@@ -210,7 +213,7 @@ class _HeaderCard extends StatelessWidget {
           ElevatedButton(
             onPressed: onLogout,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AccountScreen._accent,
+              backgroundColor: _AccountScreenState._accent,
               foregroundColor: Colors.white,
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -317,10 +320,10 @@ class _InfoTile extends StatelessWidget {
             height: 36,
             width: 36,
             decoration: BoxDecoration(
-              color: AccountScreen._accent.withOpacity(0.08),
+              color: _AccountScreenState._accent.withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AccountScreen._accent),
+            child: Icon(icon, color: _AccountScreenState._accent),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -449,7 +452,7 @@ class _AuthPrompt extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: onSignin,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountScreen._accent,
+                    backgroundColor: _AccountScreenState._accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -501,7 +504,7 @@ class _LoadingAccount extends StatelessWidget {
             height: 48,
             width: 48,
             child: CircularProgressIndicator(
-              color: AccountScreen._accent,
+              color: _AccountScreenState._accent,
               strokeWidth: 3,
             ),
           ),
