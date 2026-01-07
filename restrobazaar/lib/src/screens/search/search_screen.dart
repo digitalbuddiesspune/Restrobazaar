@@ -51,7 +51,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () => context.push('/cart'),
+            onPressed: () => context.go('/cart'),
             icon: const Icon(Icons.shopping_cart_outlined),
           ),
         ],

@@ -114,17 +114,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 _ActionButton(
                   icon: Icons.receipt_long_outlined,
                   label: 'View Orders',
-                  onTap: () => context.push('/orders'),
+                  onTap: () => context.go('/orders'),
                 ),
                 _ActionButton(
                   icon: Icons.shopping_cart_outlined,
                   label: 'View Cart',
-                  onTap: () => context.push('/cart'),
+                  onTap: () => context.go('/cart'),
                 ),
                 _ActionButton(
                   icon: Icons.favorite_border,
                   label: 'Wishlist',
-                  onTap: () => context.push('/wishlist'),
+                  onTap: () => context.go('/wishlist'),
                 ),
               ],
             ),

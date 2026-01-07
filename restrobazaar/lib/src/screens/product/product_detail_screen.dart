@@ -220,7 +220,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         title: const Text('Product details'),
         actions: [
           IconButton(
-            onPressed: () => context.push('/cart'),
+            onPressed: () => context.go('/cart'),
             icon: const Icon(Icons.shopping_cart_outlined),
           ),
         ],

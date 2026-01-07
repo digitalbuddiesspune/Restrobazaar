@@ -38,7 +38,7 @@ class HomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.search),
           ),
           IconButton(
-            onPressed: () => context.push('/cart'),
+            onPressed: () => context.go('/cart'),
             icon: const Icon(Icons.shopping_cart_outlined),
           ),
         ],
