@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../controllers/catalog_providers.dart';
@@ -388,7 +389,7 @@ class _QualitySection extends StatelessWidget {
               crossAxisCount: 2,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 0.95,
+              mainAxisExtent: 220,
             ),
             itemBuilder: (context, index) {
               final feature = _qualityFeatures[index];
@@ -416,12 +417,22 @@ class _QualitySection extends StatelessWidget {
                         color: feature.accentColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(feature.icon, color: Colors.white),
+                      child: SvgPicture.string(
+                        feature.iconSvg,
+                        height: 24,
+                        width: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       feature.title,
                       textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                         height: 1.25,
@@ -431,6 +442,8 @@ class _QualitySection extends StatelessWidget {
                     Text(
                       feature.description,
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey.shade700,
                         height: 1.45,
@@ -623,7 +636,15 @@ class _CustomPrintingSection extends StatelessWidget {
                         color: const Color(0xFFfee2e2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(feature.icon, color: const Color(0xFFe11d48)),
+                      child: SvgPicture.string(
+                        feature.iconSvg,
+                        height: 24,
+                        width: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFFe11d48),
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -802,17 +823,22 @@ class _TestimonialsSection extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: const Color(0xFFfee2e2),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
-                            Icons.format_quote,
-                            color: Color(0xFFe11d48),
+                          child: SvgPicture.string(
+                            _quoteIconSvg,
+                            width: 32,
+                            height: 32,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFe11d48),
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         _RatingStars(rating: testimonial.rating),
                         const SizedBox(height: 12),
                         Expanded(
@@ -825,35 +851,51 @@ class _TestimonialsSection extends StatelessWidget {
                                 ),
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        Divider(color: Colors.grey.shade200),
                         const SizedBox(height: 12),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            CircleAvatar(
-                              radius: 26,
-                              backgroundImage: CachedNetworkImageProvider(
-                                testimonial.image,
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFFfee2e2),
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                color: Color(0xFFe11d48),
                               ),
                             ),
                             const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  testimonial.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    testimonial.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  testimonial.role,
-                                  style: TextStyle(color: Colors.grey.shade600),
-                                ),
-                                Text(
-                                  testimonial.location,
-                                  style: TextStyle(color: Colors.grey.shade500),
-                                ),
-                              ],
+                                  Text(
+                                    testimonial.role,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  Text(
+                                    testimonial.location,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -921,13 +963,22 @@ class _FaqSectionState extends State<_FaqSection> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Frequently Asked Questions',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade900,
+          const SizedBox(height: 12),
+          Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(text: 'Frequently Asked '),
+                TextSpan(
+                  text: 'Questions',
+                  style: TextStyle(color: Colors.red.shade600),
+                ),
+              ],
             ),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade900,
+                ),
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -936,70 +987,103 @@ class _FaqSectionState extends State<_FaqSection> {
               'Find answers to common questions about our products and services.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade700,
-                height: 1.4,
-              ),
+                    color: Colors.grey.shade700,
+                    height: 1.4,
+                  ),
             ),
           ),
-          const SizedBox(height: 14),
-          ..._faqItems.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final item = entry.value;
-            final isOpen = openIndex == idx;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 6),
+          const SizedBox(height: 16),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Column(
+              children: _faqItems.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                final isOpen = openIndex == idx;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: ExpansionTile(
-                tilePadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 4,
-                ),
-                initiallyExpanded: isOpen,
-                onExpansionChanged: (open) {
-                  setState(() {
-                    openIndex = open ? idx : null;
-                  });
-                },
-                title: Text(
-                  item.question,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                trailing: Icon(
-                  isOpen
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                ),
-                childrenPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      item.answer,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        height: 1.5,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        setState(() {
+                          openIndex = isOpen ? null : idx;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.question,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ),
+                                AnimatedRotation(
+                                  duration: const Duration(milliseconds: 200),
+                                  turns: isOpen ? 0.5 : 0,
+                                  child: const Icon(
+                                    Icons.expand_more,
+                                    color: Color(0xFFe11d48),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            AnimatedCrossFade(
+                              firstChild: const SizedBox.shrink(),
+                              secondChild: Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Text(
+                                  item.answer,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: Colors.grey.shade700,
+                                        height: 1.5,
+                                      ),
+                                ),
+                              ),
+                              crossFadeState: isOpen
+                                  ? CrossFadeState.showSecond
+                                  : CrossFadeState.showFirst,
+                              duration: const Duration(milliseconds: 200),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            );
-          }),
+                );
+              }).toList(),
+            ),
+          ),
         ],
       ),
     );
@@ -1010,13 +1094,13 @@ class _QualityFeature {
   const _QualityFeature({
     required this.title,
     required this.description,
-    required this.icon,
+    required this.iconSvg,
     required this.accentColor,
   });
 
   final String title;
   final String description;
-  final IconData icon;
+  final String iconSvg;
   final Color accentColor;
 }
 
@@ -1031,12 +1115,12 @@ class _CustomPrintingFeature {
   const _CustomPrintingFeature({
     required this.title,
     required this.description,
-    required this.icon,
+    required this.iconSvg,
   });
 
   final String title;
   final String description;
-  final IconData icon;
+  final String iconSvg;
 }
 
 class _Testimonial {
@@ -1064,29 +1148,51 @@ class _FaqItem {
   final String answer;
 }
 
+const _quoteIconSvg = '''
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.996 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.984zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+</svg>
+''';
+
 const List<_QualityFeature> _qualityFeatures = [
   _QualityFeature(
     title: 'Cost-Effective Single-Use Solutions',
     description: 'Premium quality at competitive pricing.',
-    icon: Icons.sell_outlined,
+    iconSvg: '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.57.393A9.065 9.065 0 0121 18.5M5 14.5l-1.57.393A9.065 9.065 0 003 18.5m15.75-4.196v5.714a2.25 2.25 0 01-.659 1.591L15 22.5m-10.5 0l-1.57-.393A9.065 9.065 0 013 18.5m15.75-4.196V18.5" />
+</svg>
+''',
     accentColor: _green600,
   ),
   _QualityFeature(
     title: 'Eco-Conscious Packaging',
     description: 'Sustainable, biodegradable choices.',
-    icon: Icons.eco_outlined,
+    iconSvg: '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+</svg>
+''',
     accentColor: _emerald600,
   ),
   _QualityFeature(
     title: 'Professional Brand Presentation',
     description: 'Clean, premium visual appeal.',
-    icon: Icons.workspace_premium_outlined,
+    iconSvg: '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+</svg>
+''',
     accentColor: _purple600,
   ),
   _QualityFeature(
     title: 'Durable, Leak-Proof & Reliable',
     description: 'Strong, spill-resistant build.',
-    icon: Icons.inventory_2_outlined,
+    iconSvg: '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+</svg>
+''',
     accentColor: _orange600,
   ),
 ];
@@ -1134,19 +1240,31 @@ const List<_CustomPrintingFeature> _customPrintingFeatures = [
     title: 'Custom logo printing',
     description:
         'Get your logo, brand colors, and messaging printed on containers, bags, cups, and more.',
-    icon: Icons.print_rounded,
+    iconSvg: '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+  <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+</svg>
+''',
   ),
   _CustomPrintingFeature(
     title: 'Food-grade ink & materials',
     description:
         'All printing uses food-safe, non-toxic inks and materials that meet health standards.',
-    icon: Icons.verified_outlined,
+    iconSvg: '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+  <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+</svg>
+''',
   ),
   _CustomPrintingFeature(
     title: 'Ideal for takeaway, delivery',
     description:
         'Perfect for building brand recognition across all customer touchpoints.',
-    icon: Icons.delivery_dining,
+    iconSvg: '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+  <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+</svg>
+''',
   ),
 ];
 
