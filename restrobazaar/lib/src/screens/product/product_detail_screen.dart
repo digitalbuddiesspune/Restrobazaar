@@ -216,8 +216,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.grey.shade50,
         elevation: 0,
-        title: const Text('Product'),
         foregroundColor: Colors.grey.shade900,
+        title: const Text('Product details'),
         actions: [
           IconButton(
             onPressed: () => context.push('/cart'),

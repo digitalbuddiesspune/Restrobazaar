@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../controllers/catalog_providers.dart';
 import '../../controllers/city_controller.dart';
 import '../../models/category.dart';
+import '../../widgets/restrobazaar_logo.dart';
 import '../../widgets/city_selector_sheet.dart';
 
 const _mobileHeroBanner =
@@ -30,8 +31,7 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('RestroBazaar'),
-        centerTitle: true,
+        title: const RestroBazaarLogo(height: 32),
         actions: [
           IconButton(
             onPressed: () => context.push('/search'),
