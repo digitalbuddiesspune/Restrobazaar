@@ -1,3 +1,4 @@
+import 'address.dart';
 import 'cart_item.dart';
 
 class OrderModel {
@@ -8,6 +9,11 @@ class OrderModel {
     this.createdAt,
     this.items = const [],
     this.paymentMethod,
+    this.paymentStatus,
+    this.cartTotal,
+    this.gstAmount,
+    this.shippingCharges,
+    this.deliveryAddress,
   });
 
   final String id;
@@ -16,8 +22,17 @@ class OrderModel {
   final DateTime? createdAt;
   final List<CartItem> items;
   final String? paymentMethod;
+  final String? paymentStatus;
+  final double? cartTotal;
+  final double? gstAmount;
+  final double? shippingCharges;
+  final AddressModel? deliveryAddress;
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    final billing = json['billingDetails'] is Map<String, dynamic>
+        ? json['billingDetails'] as Map<String, dynamic>
+        : <String, dynamic>{};
+
     final rawItems = json['items'] ?? json['products'];
     final items = <CartItem>[];
     if (rawItems is List) {
@@ -61,15 +76,32 @@ class OrderModel {
 
     return OrderModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
-      status: (json['status'] ?? 'created').toString(),
-      totalAmount: (json['totalAmount'] is num)
-          ? (json['totalAmount'] as num).toDouble()
-          : double.tryParse(json['totalAmount']?.toString() ?? '') ?? 0,
+      status: (json['orderStatus'] ?? json['status'] ?? 'created').toString(),
+      totalAmount: _toDouble(json['totalAmount']) ??
+          _toDouble(billing['totalAmount']) ??
+          0,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
       items: items,
       paymentMethod: json['paymentMethod']?.toString(),
+      paymentStatus: (json['paymentStatus'] ?? 'pending').toString(),
+      cartTotal: _toDouble(json['cartTotal']) ?? _toDouble(billing['cartTotal']),
+      gstAmount: _toDouble(json['gstAmount']) ?? _toDouble(billing['gstAmount']),
+      shippingCharges: _toDouble(json['shippingCharges']) ??
+          _toDouble(billing['shippingCharges']),
+      deliveryAddress:
+          json['deliveryAddress'] is Map<String, dynamic>
+              ? AddressModel.fromJson(
+                  json['deliveryAddress'] as Map<String, dynamic>,
+                )
+              : null,
     );
   }
+}
+
+double? _toDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
 }
