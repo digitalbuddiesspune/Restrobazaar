@@ -1,5 +1,6 @@
 import Order from '../../models/users/order.js';
 import VendorProduct from '../../models/vendor/vendorProductSchema.js';
+import Vendor from '../../models/admin/vendor.js';
 
 // @desc    Get orders for a vendor (orders containing vendor's products)
 // @route   GET /api/v1/vendor/orders
@@ -17,7 +18,46 @@ export const getVendorOrders = async (req, res) => {
       endDate,
     } = req.query;
 
-    // Get all vendor products for this vendor to extract productIds
+    // Get vendor's service cities for display purposes
+    const vendor = await Vendor.findById(vendorId).select('serviceCities').populate('serviceCities', 'name displayName');
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found',
+      });
+    }
+
+    const vendorServiceCityIds = vendor.serviceCities.map(city => 
+      city._id ? city._id.toString() : city.toString()
+    );
+
+    if (vendorServiceCityIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          pages: 0,
+        },
+      });
+    }
+
+    // Create a map of service city IDs to city data for display
+    const serviceCityMap = {};
+    vendor.serviceCities.forEach((city) => {
+      if (city && city._id) {
+        const cityIdStr = city._id.toString();
+        serviceCityMap[cityIdStr] = {
+          cityId: cityIdStr,
+          cityName: city.displayName || city.name || 'N/A',
+          cityData: city
+        };
+      }
+    });
+
+    // Get vendor products for filtering order items
     const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
     const vendorProductIds = vendorProducts.map((vp) => vp.productId);
 
@@ -34,9 +74,11 @@ export const getVendorOrders = async (req, res) => {
       });
     }
 
-    // Build query for orders that contain vendor's products
+    // Build query using the new vendorId and vendorServiceCityId fields
+    // This is much more efficient than the previous approach
     const query = {
-      'items.productId': { $in: vendorProductIds },
+      vendorId: vendorId,
+      vendorServiceCityId: { $in: vendorServiceCityIds },
     };
 
     // Add filters
@@ -71,18 +113,17 @@ export const getVendorOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
-      .populate('userId', 'name email phone');
-
-    // Get total count
-    const total = await Order.countDocuments(query);
+      .populate('userId', 'name email phone')
+      .populate('vendorServiceCityId', 'name displayName');
 
     // Filter order items to show only vendor's products
     const filteredOrders = orders.map((order) => {
-      const vendorOrderItems = order.items.filter((item) =>
-        vendorProductIds.some(
-          (vpId) => vpId.toString() === item.productId.toString()
-        )
-      );
+      const vendorOrderItems = order.items.filter((item) => {
+        const productIdStr = item.productId.toString();
+        return vendorProductIds.some(
+          (vpId) => vpId.toString() === productIdStr
+        );
+      });
 
       // Calculate vendor's portion of the order
       const vendorOrderTotal = vendorOrderItems.reduce(
@@ -91,6 +132,13 @@ export const getVendorOrders = async (req, res) => {
       );
 
       const orderObj = order.toObject();
+      
+      // Get city info from the populated vendorServiceCityId
+      const orderCityInfo = order.vendorServiceCityId ? {
+        cityId: order.vendorServiceCityId._id?.toString() || order.vendorServiceCityId.toString(),
+        cityName: order.vendorServiceCityId.displayName || order.vendorServiceCityId.name || 'N/A',
+        cityData: order.vendorServiceCityId
+      } : { cityName: 'N/A' };
       
       // Format order with all required fields for records view
       return {
@@ -113,9 +161,13 @@ export const getVendorOrders = async (req, res) => {
         Payment_status: orderObj.paymentStatus || 'pending',
         delivery_data: orderObj.deliveryDate || null,
         Email: orderObj.userId?.email || 'N/A',
-        City: orderObj.deliveryAddress?.city || orderObj.userId?.city || 'N/A',
+        // Show vendor's service city instead of customer's delivery address city
+        City: orderCityInfo.cityName || 'N/A',
       };
     });
+
+    // Get total count using the same query
+    const total = await Order.countDocuments(query);
 
     res.status(200).json({
       success: true,
@@ -460,11 +512,20 @@ export const getVendorOrderStats = async (req, res) => {
   try {
     const vendorId = req.user.userId;
 
-    // Get vendor's product IDs
-    const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
-    const vendorProductIds = vendorProducts.map((vp) => vp.productId);
+    // Get vendor's service cities
+    const vendor = await Vendor.findById(vendorId).select('serviceCities');
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found',
+      });
+    }
 
-    if (vendorProductIds.length === 0) {
+    const vendorServiceCityIds = vendor.serviceCities.map(city => 
+      city._id ? city._id.toString() : city.toString()
+    );
+
+    if (vendorServiceCityIds.length === 0) {
       return res.status(200).json({
         success: true,
         data: {
@@ -480,9 +541,14 @@ export const getVendorOrderStats = async (req, res) => {
       });
     }
 
-    // Build base query
+    // Get vendor products for calculating revenue
+    const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
+    const vendorProductIds = vendorProducts.map((vp) => vp.productId);
+
+    // Build base query using the new vendorId and vendorServiceCityId fields
     const baseQuery = {
-      'items.productId': { $in: vendorProductIds },
+      vendorId: vendorId,
+      vendorServiceCityId: { $in: vendorServiceCityIds },
     };
 
     // Get counts for each status
@@ -508,10 +574,11 @@ export const getVendorOrderStats = async (req, res) => {
     const deliveredOrdersList = await Order.find({
       ...baseQuery,
       orderStatus: 'delivered',
-    });
+    }).select('items');
 
     let totalRevenue = 0;
     deliveredOrdersList.forEach((order) => {
+      // Filter items to only include vendor's products
       const vendorItems = order.items.filter((item) =>
         vendorProductIds.some(
           (vpId) => vpId.toString() === item.productId.toString()

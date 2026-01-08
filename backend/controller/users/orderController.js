@@ -1,5 +1,8 @@
 import Order from '../../models/users/order.js';
 import Address from '../../models/users/address.js';
+import VendorProduct from '../../models/vendor/vendorProductSchema.js';
+import Vendor from '../../models/admin/vendor.js';
+import City from '../../models/admin/city.js';
 
 // @desc    Create a new order
 // @route   POST /api/v1/orders
@@ -41,6 +44,65 @@ export const createOrder = async (req, res) => {
       price: item.price,
       total: item.price * item.quantity,
     }));
+
+    // Determine vendorId and vendorServiceCityId from cart items
+    // Get productIds from cart items
+    const productIds = orderItems.map(item => item.productId);
+    
+    // Look up vendor products for these productIds
+    // Also check if cart items have vendorProductId or vendorId/cityId
+    let vendorId = null;
+    let vendorServiceCityId = null;
+
+    // First, try to get vendor info from cart items if available
+    if (cartItems.length > 0 && (cartItems[0].vendorId || cartItems[0].vendorProductId)) {
+      // If cart items have vendorId, use it
+      if (cartItems[0].vendorId) {
+        vendorId = cartItems[0].vendorId;
+      }
+      
+      // If cart items have cityId, use it
+      if (cartItems[0].cityId) {
+        vendorServiceCityId = cartItems[0].cityId;
+      }
+    }
+
+    // If not found in cart items, look up VendorProduct
+    if (!vendorId || !vendorServiceCityId) {
+      // Find vendor products for the first product (assuming all items are from same vendor/city)
+      const vendorProduct = await VendorProduct.findOne({
+        productId: productIds[0]
+      }).populate('vendorId', 'serviceCities').populate('cityId');
+
+      if (vendorProduct) {
+        vendorId = vendorProduct.vendorId?._id || vendorProduct.vendorId;
+        
+        // Get vendor to check service cities
+        const vendor = await Vendor.findById(vendorId).populate('serviceCities', 'name displayName');
+        
+        if (vendor && vendor.serviceCities && vendor.serviceCities.length > 0) {
+          // Match delivery address city with vendor's service cities
+          const deliveryCityName = address.city.toLowerCase();
+          
+          // Find matching service city
+          const matchingServiceCity = vendor.serviceCities.find(city => {
+            const cityName = city.name?.toLowerCase() || '';
+            const cityDisplayName = city.displayName?.toLowerCase() || '';
+            return cityName === deliveryCityName || cityDisplayName === deliveryCityName;
+          });
+
+          if (matchingServiceCity) {
+            vendorServiceCityId = matchingServiceCity._id || matchingServiceCity;
+          } else {
+            // If no match, use the vendor product's cityId
+            vendorServiceCityId = vendorProduct.cityId?._id || vendorProduct.cityId;
+          }
+        } else {
+          // Fallback to vendor product's cityId
+          vendorServiceCityId = vendorProduct.cityId?._id || vendorProduct.cityId;
+        }
+      }
+    }
 
     // Prepare billing details
     const billingDetails = {
@@ -99,6 +161,8 @@ export const createOrder = async (req, res) => {
       paymentId: paymentId || undefined,
       transactionId: transactionId || undefined,
       orderStatus: 'pending',
+      vendorId: vendorId || undefined,
+      vendorServiceCityId: vendorServiceCityId || undefined,
     });
 
     // Populate order with user details

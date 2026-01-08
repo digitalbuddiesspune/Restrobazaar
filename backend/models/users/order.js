@@ -126,6 +126,17 @@ const orderSchema = new mongoose.Schema(
     deliveryDate: {
       type: Date,
     },
+    // Vendor information - which vendor and service city this order belongs to
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
+      index: true,
+    },
+    vendorServiceCityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'City',
+      index: true,
+    },
   },
   { timestamps: true }
 );
@@ -135,6 +146,8 @@ orderSchema.index({ userId: 1 });
 orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ createdAt: -1 });
+orderSchema.index({ vendorId: 1, vendorServiceCityId: 1 });
+orderSchema.index({ vendorServiceCityId: 1 });
 
 // Note: orderNumber is generated in the controller (orderController.js)
 // to ensure uniqueness before order creation
