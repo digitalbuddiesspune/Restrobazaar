@@ -22,6 +22,7 @@ import {
   useOrderStats,
   useUpdateOrderStatus,
 } from '../hooks/useVendorQueries';
+import { useCategories } from '../hooks/useApiQueries';
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -35,6 +36,13 @@ const VendorDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const itemsPerPage = 10;
+
+  // Filter and Sort states for My Products
+  const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
+  const [stockFilter, setStockFilter] = useState('all'); // all, inStock, outOfStock, zeroQuantity
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest'); // newest, stockAsc, stockDesc, nameAsc, nameDesc
 
   // React Query hooks
   const {
@@ -52,6 +60,7 @@ const VendorDashboard = () => {
   );
 
   const { data: citiesData } = useCities();
+  const { data: categoriesData } = useCategories();
 
   // Orders
   const {
@@ -60,6 +69,14 @@ const VendorDashboard = () => {
   } = useVendorOrders(
     { page: ordersPage, limit: itemsPerPage },
     { enabled: activeTab === 'orders' }
+  );
+
+  // Fetch all orders for overview tab to calculate today's orders
+  const {
+    data: allOrdersData,
+  } = useVendorOrders(
+    { limit: 1000 },
+    { enabled: activeTab === 'overview' }
   );
 
   const { data: orderStatsData } = useOrderStats({
@@ -76,7 +93,9 @@ const VendorDashboard = () => {
   const vendorProducts = vendorProductsData?.data || [];
   const globalProducts = globalProductsData?.data || [];
   const cities = citiesData?.data || [];
+  const categories = categoriesData?.data || [];
   const orders = ordersData?.data || [];
+  const allOrders = allOrdersData?.data || [];
   const orderStats = orderStatsData?.data || {};
 
   // Get vendor's city from first product
@@ -96,21 +115,133 @@ const VendorDashboard = () => {
       lowStock: products.filter(
         (p) => p.notifyQuantity && p.availableStock <= p.notifyQuantity
       ).length,
-      totalStock: products.reduce((sum, p) => sum + (p.availableStock || 0), 0),
+      totalStock: products.reduce((sum, p) => {
+        // Handle different data types and ensure we get a valid number
+        let stock = 0;
+        if (p.availableStock !== null && p.availableStock !== undefined) {
+          if (typeof p.availableStock === 'number') {
+            stock = isNaN(p.availableStock) ? 0 : p.availableStock;
+          } else if (typeof p.availableStock === 'string') {
+            const parsed = parseFloat(p.availableStock);
+            stock = isNaN(parsed) ? 0 : parsed;
+          }
+        }
+        // Add all valid numbers (including 0)
+        return sum + stock;
+      }, 0),
     };
   }, [vendorProducts]);
 
-  // Filter products based on search
-  const filteredVendorProducts = useMemo(() => {
-    if (!searchQuery) return vendorProducts;
-    const query = searchQuery.toLowerCase();
-    return vendorProducts.filter(
-      (p) =>
-        p.productId?.productName?.toLowerCase().includes(query) ||
-        p.cityId?.name?.toLowerCase().includes(query) ||
-        p.productId?.shortDescription?.toLowerCase().includes(query)
+  // Calculate today's orders statistics
+  const todayOrdersStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const todayOrders = allOrders.filter((order) => {
+      const orderDate = new Date(order.createdAt);
+      return orderDate >= today && orderDate < tomorrow;
+    });
+    
+    return {
+      total: todayOrders.length,
+      canceled: todayOrders.filter((order) => order.orderStatus === 'cancelled').length,
+      delivered: todayOrders.filter((order) => order.orderStatus === 'delivered').length,
+      pending: todayOrders.filter((order) => order.orderStatus === 'pending').length,
+    };
+  }, [allOrders]);
+
+  // Get subcategories for selected category
+  const subCategories = useMemo(() => {
+    if (categoryFilter === 'all' || !categoryFilter) return [];
+    const selectedCategory = categories.find(cat => cat._id === categoryFilter);
+    if (!selectedCategory) return [];
+    
+    // Get unique subcategories from vendor products in this category
+    const categoryProducts = vendorProducts.filter(p => 
+      p.productId?.category?._id === categoryFilter || 
+      p.productId?.category === categoryFilter
     );
-  }, [vendorProducts, searchQuery]);
+    const uniqueSubCategories = [...new Set(
+      categoryProducts
+        .map(p => p.productId?.subCategory)
+        .filter(Boolean)
+    )];
+    return uniqueSubCategories;
+  }, [categoryFilter, categories, vendorProducts]);
+
+  // Filter and sort products
+  const filteredVendorProducts = useMemo(() => {
+    let filtered = [...vendorProducts];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.productId?.productName?.toLowerCase().includes(query) ||
+          p.cityId?.name?.toLowerCase().includes(query) ||
+          p.productId?.shortDescription?.toLowerCase().includes(query)
+      );
+    }
+
+    // Status filter
+    if (statusFilter === 'active') {
+      filtered = filtered.filter(p => p.status === true);
+    } else if (statusFilter === 'inactive') {
+      filtered = filtered.filter(p => p.status === false);
+    }
+
+    // Stock filter
+    if (stockFilter === 'inStock') {
+      filtered = filtered.filter(p => (p.availableStock || 0) > 0);
+    } else if (stockFilter === 'outOfStock') {
+      filtered = filtered.filter(p => (p.availableStock || 0) === 0);
+    } else if (stockFilter === 'zeroQuantity') {
+      filtered = filtered.filter(p => (p.availableStock || 0) === 0);
+    } else if (stockFilter === 'lowStock') {
+      filtered = filtered.filter(p => 
+        p.notifyQuantity && (p.availableStock || 0) <= p.notifyQuantity
+      );
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all' && categoryFilter) {
+      filtered = filtered.filter(p => 
+        p.productId?.category?._id === categoryFilter || 
+        p.productId?.category === categoryFilter
+      );
+    }
+
+    // Subcategory filter
+    if (subCategoryFilter !== 'all' && subCategoryFilter) {
+      filtered = filtered.filter(p => 
+        p.productId?.subCategory === subCategoryFilter
+      );
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'stockAsc':
+          return (a.availableStock || 0) - (b.availableStock || 0);
+        case 'stockDesc':
+          return (b.availableStock || 0) - (a.availableStock || 0);
+        case 'nameAsc':
+          return (a.productId?.productName || '').localeCompare(b.productId?.productName || '');
+        case 'nameDesc':
+          return (b.productId?.productName || '').localeCompare(a.productId?.productName || '');
+        case 'oldest':
+          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        case 'newest':
+        default:
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
+    });
+
+    return filtered;
+  }, [vendorProducts, searchQuery, statusFilter, stockFilter, categoryFilter, subCategoryFilter, sortBy]);
 
   const filteredGlobalProducts = useMemo(() => {
     if (!searchQuery) return globalProducts;
@@ -269,38 +400,58 @@ const VendorDashboard = () => {
               </div>
 
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
-                  title="Total Products"
-                  value={stats.totalProducts}
-                  icon="📦"
+                  title="Today's Canceled Orders"
+                  value={todayOrdersStats.canceled}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  }
+                  trend="down"
+                  trendValue="5%"
+                  color="red"
+                  comparisonText="vs yesterday"
+                />
+                <StatsCard
+                  title="Today's Orders"
+                  value={todayOrdersStats.total}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  }
                   trend="up"
                   trendValue="12%"
                   color="blue"
+                  comparisonText="vs yesterday"
                 />
                 <StatsCard
-                  title="Active Products"
-                  value={stats.activeProducts}
-                  icon="✅"
+                  title="Today's Delivered Orders"
+                  value={todayOrdersStats.delivered}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  }
                   trend="up"
                   trendValue="8%"
                   color="green"
+                  comparisonText="vs yesterday"
                 />
                 <StatsCard
-                  title="Low Stock"
-                  value={stats.lowStock}
-                  icon="⚠️"
+                  title="Today's Pending Orders"
+                  value={todayOrdersStats.pending}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
                   trend="down"
-                  trendValue="5%"
+                  trendValue="3%"
                   color="orange"
-                />
-                <StatsCard
-                  title="Total Stock"
-                  value={stats.totalStock.toLocaleString()}
-                  icon="📊"
-                  trend="up"
-                  trendValue="15%"
-                  color="purple"
+                  comparisonText="vs yesterday"
                 />
               </div>
 
@@ -334,6 +485,180 @@ const VendorDashboard = () => {
                 >
                   Add Product
                 </button>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                  title="Total Products"
+                  value={stats.totalProducts}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  }
+                  trend="up"
+                  trendValue="12%"
+                  color="blue"
+                />
+                <StatsCard
+                  title="Active Products"
+                  value={stats.activeProducts}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
+                  trend="up"
+                  trendValue="8%"
+                  color="green"
+                />
+                <StatsCard
+                  title="Low Stock"
+                  value={stats.lowStock}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  }
+                  trend="down"
+                  trendValue="5%"
+                  color="orange"
+                />
+                <StatsCard
+                  title="Total Stock"
+                  value={stats.totalStock.toLocaleString()}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  }
+                  trend="up"
+                  trendValue="15%"
+                  color="purple"
+                />
+              </div>
+
+              {/* Filters and Sort */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {/* Status Filter */}
+                  <div className="relative">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Filter by</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => {
+                        setStatusFilter(e.target.value);
+                        setMyProductsPage(1);
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+
+                  {/* Stock Filter */}
+                  <div className="relative">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Stock Status</label>
+                    <select
+                      value={stockFilter}
+                      onChange={(e) => {
+                        setStockFilter(e.target.value);
+                        setMyProductsPage(1);
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">All Stock</option>
+                      <option value="inStock">In Stock</option>
+                      <option value="lowStock">Low Stock</option>
+                      <option value="outOfStock">Out Of Stock</option>
+                      <option value="zeroQuantity">Zero Quantity</option>
+                    </select>
+                  </div>
+
+                  {/* Category Filter */}
+                  <div className="relative">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={categoryFilter}
+                      onChange={(e) => {
+                        setCategoryFilter(e.target.value);
+                        setSubCategoryFilter('all');
+                        setMyProductsPage(1);
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">All Categories</option>
+                      {categories.map((cat) => (
+                        <option key={cat._id} value={cat._id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Subcategory Filter */}
+                  <div className="relative">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Subcategory</label>
+                    <select
+                      value={subCategoryFilter}
+                      onChange={(e) => {
+                        setSubCategoryFilter(e.target.value);
+                        setMyProductsPage(1);
+                      }}
+                      disabled={categoryFilter === 'all' || subCategories.length === 0}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="all">All Subcategories</option>
+                      {subCategories.map((subCat, idx) => (
+                        <option key={idx} value={subCat}>
+                          {subCat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Sort By */}
+                  <div className="relative">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Sort by</label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => {
+                        setSortBy(e.target.value);
+                        setMyProductsPage(1);
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="newest">Newly Added first</option>
+                      <option value="oldest">Old Added first</option>
+                      <option value="stockAsc">Stock Ascending</option>
+                      <option value="stockDesc">Stock Descending</option>
+                      <option value="nameAsc">Product name Ascending</option>
+                      <option value="nameDesc">Product name Descending</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                {(statusFilter !== 'all' || stockFilter !== 'all' || categoryFilter !== 'all' || subCategoryFilter !== 'all' || sortBy !== 'newest') && (
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      onClick={() => {
+                        setStatusFilter('all');
+                        setStockFilter('all');
+                        setCategoryFilter('all');
+                        setSubCategoryFilter('all');
+                        setSortBy('newest');
+                        setMyProductsPage(1);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Clear all filters
+                    </button>
+                  </div>
+                )}
               </div>
 
               <ProductTable

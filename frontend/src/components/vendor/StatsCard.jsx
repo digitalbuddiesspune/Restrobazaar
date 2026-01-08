@@ -1,4 +1,4 @@
-const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue' }) => {
+const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue', comparisonText = 'vs last month' }) => {
   const colorClasses = {
     blue: 'bg-blue-500',
     green: 'bg-green-500',
@@ -26,11 +26,11 @@ const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue' }) =>
               <span className={`text-xs font-medium ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                 {trend === 'up' ? '↑' : '↓'} {trendValue}
               </span>
-              <span className="text-xs text-gray-500 ml-1">vs last month</span>
+              <span className="text-xs text-gray-500 ml-1">{comparisonText}</span>
             </div>
           )}
         </div>
-        <div className={`${colorClasses[color]} w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg`}>
+        <div className={`${colorClasses[color]} w-10 h-10 rounded-lg flex items-center justify-center text-white`}>
           {icon}
         </div>
       </div>
