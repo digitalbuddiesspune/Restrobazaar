@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import Sidebar from "../components/super_admin/Sidebar";
+import Header from "../components/super_admin/Header";
 import OrderRecords from "../components/OrderRecords";
+import OverviewStats from "../components/super_admin/OverviewStats";
+import ProductForm from "../components/super_admin/ProductForm";
+import CityForm from "../components/super_admin/CityForm";
+import CategoryForm from "../components/super_admin/CategoryForm";
+import VendorForm from "../components/super_admin/VendorForm";
+import ProductsTable from "../components/super_admin/ProductsTable";
+import CitiesTable from "../components/super_admin/CitiesTable";
+import CategoriesTable from "../components/super_admin/CategoriesTable";
+import VendorsTable from "../components/super_admin/VendorsTable";
 
 const SuperAdminDashboard = () => {
   const baseUrl =
@@ -13,6 +24,9 @@ const SuperAdminDashboard = () => {
   const [success, setSuccess] = useState("");
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Pagination state
   const [productsPage, setProductsPage] = useState(1);
@@ -781,195 +795,86 @@ const SuperAdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Super Admin Dashboard
-            </h1>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          setError("");
+          setSuccess("");
+          if (tab !== "add-product") {
+            setEditingProductId(null);
+          }
+          if (tab !== "add-category") {
+            setEditingCategoryId(null);
+          }
+        }}
+        onLogout={handleLogout}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Navigation Tabs */}
-        <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              {[
-                { id: "overview", label: "Overview" },
-                { id: "add-product", label: "Add Product" },
-                { id: "add-city", label: "Add City" },
-                { id: "add-category", label: "Add Category" },
-                { id: "add-vendor", label: "Add Vendor" },
-                { id: "products", label: "All Products" },
-                { id: "cities", label: "All Cities" },
-                { id: "categories", label: "All Categories" },
-                { id: "vendors", label: "All Vendors" },
-                { id: "order-records", label: "Order Records" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setError("");
-                    setSuccess("");
-                    if (tab.id !== "add-product") {
-                      setEditingProductId(null);
-                    }
-                    if (tab.id !== "add-category") {
-                      setEditingCategoryId(null);
-                    }
-                  }}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition ${
-                    activeTab === tab.id
-                      ? "border-purple-600 text-purple-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+        <Header
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onSearch={(query) => setSearchQuery(query)}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          isCollapsed={sidebarCollapsed}
+        />
 
-        {/* Messages */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
-            {success}
-          </div>
-        )}
-
-        {/* Overview Tab */}
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <svg
-                    className="w-8 h-8 text-blue-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Total Products</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stats.products}
-                  </p>
-                </div>
-              </div>
+        <main className="p-4">
+          {/* Messages */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
+              {error}
             </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <svg
-                    className="w-8 h-8 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Total Cities</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stats.cities}
-                  </p>
-                </div>
-              </div>
+          )}
+          {success && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
+              {success}
             </div>
+          )}
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <svg
-                    className="w-8 h-8 text-purple-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Total Categories</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stats.categories}
-                  </p>
-                </div>
+          {/* Overview Tab */}
+          {activeTab === "overview" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>
               </div>
+              <OverviewStats stats={stats} />
             </div>
+          )}
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <svg
-                    className="w-8 h-8 text-orange-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Total Vendors</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stats.vendors}
-                  </p>
-                </div>
+          {/* Add Product Tab */}
+          {activeTab === "add-product" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">
+                  {editingProductId ? "Edit Product" : "Add New Product"}
+                </h1>
               </div>
+              <ProductForm
+                productForm={productForm}
+                setProductForm={setProductForm}
+                categories={categories}
+                editingProductId={editingProductId}
+                handleProductSubmit={handleProductSubmit}
+                loading={loading}
+                setEditingProductId={setEditingProductId}
+                setError={setError}
+                setSuccess={setSuccess}
+                addImage={addImage}
+                removeImage={removeImage}
+                updateImage={updateImage}
+              />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Add Product Tab */}
-        {activeTab === "add-product" && (
+        {/* Add Product Tab - OLD */}
+        {false && activeTab === "add-product-old" && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold mb-6">
               {editingProductId ? "Edit Product" : "Add New Product"}
@@ -1664,111 +1569,45 @@ const SuperAdminDashboard = () => {
           </div>
         )}
 
-        {/* Add City Tab */}
-        {activeTab === "add-city" && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-6">Add New City</h2>
-            <form onSubmit={handleCitySubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City Name (lowercase) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={cityForm.name}
-                  onChange={(e) =>
-                    setCityForm({
-                      ...cityForm,
-                      name: e.target.value.toLowerCase(),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="e.g., pune"
-                />
+          {/* Add City Tab */}
+          {activeTab === "add-city" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">Add New City</h1>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Display Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={cityForm.displayName}
-                  onChange={(e) =>
-                    setCityForm({ ...cityForm, displayName: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="e.g., Pune"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  State *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={cityForm.state}
-                  onChange={(e) =>
-                    setCityForm({ ...cityForm, state: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Country
-                </label>
-                <input
-                  type="text"
-                  value={cityForm.country}
-                  onChange={(e) =>
-                    setCityForm({ ...cityForm, country: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={cityForm.isServiceable}
-                    onChange={(e) =>
-                      setCityForm({
-                        ...cityForm,
-                        isServiceable: e.target.checked,
-                      })
-                    }
-                    className="mr-2"
-                  />
-                  <span className="text-sm text-gray-700">Serviceable</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={cityForm.isActive}
-                    onChange={(e) =>
-                      setCityForm({ ...cityForm, isActive: e.target.checked })
-                    }
-                    className="mr-2"
-                  />
-                  <span className="text-sm text-gray-700">Active</span>
-                </label>
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                {loading ? "Creating..." : "Create City"}
-              </button>
-            </form>
-          </div>
-        )}
+              <CityForm
+                cityForm={cityForm}
+                setCityForm={setCityForm}
+                handleCitySubmit={handleCitySubmit}
+                loading={loading}
+              />
+            </div>
+          )}
 
-        {/* Add Category Tab */}
-        {activeTab === "add-category" && (
+          {/* Add Category Tab */}
+          {activeTab === "add-category" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">
+                  {editingCategoryId ? "Edit Category" : "Add New Category"}
+                </h1>
+              </div>
+              <CategoryForm
+                categoryForm={categoryForm}
+                setCategoryForm={setCategoryForm}
+                editingCategoryId={editingCategoryId}
+                handleCategorySubmit={handleCategorySubmit}
+                loading={loading}
+                setEditingCategoryId={setEditingCategoryId}
+                setError={setError}
+                setSuccess={setSuccess}
+                generateSlug={generateSlug}
+              />
+            </div>
+          )}
+
+        {/* Add Category Tab - OLD */}
+        {false && activeTab === "add-category-old" && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold mb-6">
               {editingCategoryId ? "Edit Category" : "Add New Category"}
@@ -1969,8 +1808,24 @@ const SuperAdminDashboard = () => {
           </div>
         )}
 
-        {/* Add Vendor Tab */}
-        {activeTab === "add-vendor" && (
+          {/* Add Vendor Tab */}
+          {activeTab === "add-vendor" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">Add New Vendor</h1>
+              </div>
+              <VendorForm
+                vendorForm={vendorForm}
+                setVendorForm={setVendorForm}
+                cities={cities}
+                handleVendorSubmit={handleVendorSubmit}
+                loading={loading}
+              />
+            </div>
+          )}
+
+        {/* Add Vendor Tab - OLD */}
+        {false && activeTab === "add-vendor-old" && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold mb-6">Add New Vendor</h2>
             <form onSubmit={handleVendorSubmit} className="space-y-6">
@@ -2492,8 +2347,25 @@ const SuperAdminDashboard = () => {
           </div>
         )}
 
-        {/* All Products Tab */}
-        {activeTab === "products" && (() => {
+          {/* All Products Tab */}
+          {activeTab === "products" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">All Products</h1>
+              </div>
+              <ProductsTable
+                products={products}
+                productsPage={productsPage}
+                setProductsPage={setProductsPage}
+                itemsPerPage={itemsPerPage}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+              />
+            </div>
+          )}
+
+        {/* All Products Tab - OLD */}
+        {false && activeTab === "products-old" && (() => {
           const totalPages = getTotalPages(products, itemsPerPage);
           const paginatedProducts = getPaginatedData(products, productsPage, itemsPerPage);
           
@@ -2658,8 +2530,18 @@ const SuperAdminDashboard = () => {
           );
         })()}
 
-        {/* All Cities Tab */}
-        {activeTab === "cities" && (
+          {/* All Cities Tab */}
+          {activeTab === "cities" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">All Cities</h1>
+              </div>
+              <CitiesTable cities={cities} handleDelete={handleDelete} />
+            </div>
+          )}
+
+        {/* All Cities Tab - OLD */}
+        {false && activeTab === "cities-old" && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Cities</h2>
@@ -2723,8 +2605,22 @@ const SuperAdminDashboard = () => {
           </div>
         )}
 
-        {/* All Categories Tab */}
-        {activeTab === "categories" && (
+          {/* All Categories Tab */}
+          {activeTab === "categories" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">All Categories</h1>
+              </div>
+              <CategoriesTable
+                categories={categories}
+                handleEditCategory={handleEditCategory}
+                handleDelete={handleDelete}
+              />
+            </div>
+          )}
+
+        {/* All Categories Tab - OLD */}
+        {false && activeTab === "categories-old" && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Categories</h2>
@@ -2798,15 +2694,30 @@ const SuperAdminDashboard = () => {
           </div>
         )}
 
-        {/* Order Records Tab */}
-        {activeTab === "order-records" && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <OrderRecords userRole="super_admin" />
-          </div>
-        )}
+          {/* Order Records Tab */}
+          {activeTab === "order-records" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">Order Records</h1>
+              </div>
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <OrderRecords userRole="super_admin" />
+              </div>
+            </div>
+          )}
 
-        {/* All Vendors Tab */}
-        {activeTab === "vendors" && (
+          {/* All Vendors Tab */}
+          {activeTab === "vendors" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">All Vendors</h1>
+              </div>
+              <VendorsTable vendors={vendors} handleDelete={handleDelete} />
+            </div>
+          )}
+
+          {/* All Vendors Tab - OLD */}
+          {false && activeTab === "vendors-old" && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Vendors</h2>
@@ -2875,6 +2786,7 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
         )}
+        </main>
       </div>
     </div>
   );
