@@ -116,13 +116,13 @@ export const getSelectedCityId = () => {
 };
 
 // Helper function to make authenticated API requests with Bearer token
+// User API sathi (cookie-only, localStorage nahi)
 const authenticatedApiRequest = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('token');
   const config = {
-    credentials: 'include',
+    credentials: 'include', // Cookie automatically send hotay
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      // Authorization header nahi - cookie use kara
       ...options.headers,
     },
     ...options,
@@ -133,6 +133,52 @@ const authenticatedApiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
     
     if (!response.ok) {
+      // Handle 401 - redirect to login
+      if (response.status === 401) {
+        // Clear user info if unauthorized
+        try {
+          const { removeUserInfo } = await import('./auth');
+          removeUserInfo();
+        } catch (e) {
+          console.error('Error clearing user info:', e);
+        }
+        window.location.href = '/signin';
+      }
+      throw {
+        response: {
+          data: data,
+          status: response.status,
+        },
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Vendor API sathi (cookie-only, localStorage nahi)
+const vendorAuthenticatedApiRequest = async (endpoint, options = {}) => {
+  const config = {
+    credentials: 'include', // Cookie automatically send hotay
+    headers: {
+      'Content-Type': 'application/json',
+      // Authorization header nahi - cookie use kara
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  try {
+    const response = await fetch(`${baseUrl}${endpoint}`, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      // Handle 401 - redirect to vendor login
+      if (response.status === 401) {
+        window.location.href = '/vendor/login';
+      }
       throw {
         response: {
           data: data,
@@ -338,20 +384,20 @@ export const globalProductAPI = {
 // Wishlist API
 export const wishlistAPI = {
   getWishlist: async () => {
-    return apiRequest('/users/wishlist', {
+    return authenticatedApiRequest('/users/wishlist', {
       method: 'GET',
     });
   },
 
   addToWishlist: async (productId) => {
-    return apiRequest('/users/wishlist', {
+    return authenticatedApiRequest('/users/wishlist', {
       method: 'POST',
       body: JSON.stringify({ productId }),
     });
   },
 
   removeFromWishlist: async (productId) => {
-    return apiRequest(`/users/wishlist/${productId}`, {
+    return authenticatedApiRequest(`/users/wishlist/${productId}`, {
       method: 'DELETE',
     });
   },
@@ -445,6 +491,96 @@ export const orderAPI = {
   },
 };
 
+// Coupon API (Vendor) - cookie-only authentication
+export const couponAPI = {
+  // Get all coupons for vendor
+  getVendorCoupons: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.isActive !== undefined) queryParams.append('isActive', filters.isActive);
+    if (filters.page) queryParams.append('page', filters.page);
+    if (filters.limit) queryParams.append('limit', filters.limit);
+    
+    const queryString = queryParams.toString();
+    return vendorAuthenticatedApiRequest(`/vendor/coupons${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+    });
+  },
+
+  // Get coupon by ID
+  getCouponById: async (couponId) => {
+    return vendorAuthenticatedApiRequest(`/vendor/coupons/${couponId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Create coupon
+  createCoupon: async (couponData) => {
+    return vendorAuthenticatedApiRequest('/vendor/coupons', {
+      method: 'POST',
+      body: JSON.stringify(couponData),
+    });
+  },
+
+  // Update coupon
+  updateCoupon: async (couponId, couponData) => {
+    return vendorAuthenticatedApiRequest(`/vendor/coupons/${couponId}`, {
+      method: 'PUT',
+      body: JSON.stringify(couponData),
+    });
+  },
+
+  // Delete coupon
+  deleteCoupon: async (couponId) => {
+    return vendorAuthenticatedApiRequest(`/vendor/coupons/${couponId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Toggle coupon status
+  toggleCouponStatus: async (couponId) => {
+    return vendorAuthenticatedApiRequest(`/vendor/coupons/${couponId}/status`, {
+      method: 'PATCH',
+    });
+  },
+
+  // Get customers for vendor to select
+  getCustomers: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.search) queryParams.append('search', filters.search);
+    if (filters.page) queryParams.append('page', filters.page);
+    if (filters.limit) queryParams.append('limit', filters.limit);
+    
+    const queryString = queryParams.toString();
+    return vendorAuthenticatedApiRequest(`/vendor/customers${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+    });
+  },
+};
+
+// Coupon API (User)
+export const userCouponAPI = {
+  // Get available coupons for user
+  getAvailableCoupons: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.vendorId) queryParams.append('vendorId', filters.vendorId);
+    if (filters.cartTotal) queryParams.append('cartTotal', filters.cartTotal);
+    if (filters.cartItems) queryParams.append('cartItems', filters.cartItems);
+    
+    const queryString = queryParams.toString();
+    return authenticatedApiRequest(`/coupons/available${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+    });
+  },
+
+  // Validate coupon
+  validateCoupon: async (code, cartTotal, vendorId, cartItems) => {
+    return authenticatedApiRequest('/coupons/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code, cartTotal, vendorId, cartItems }),
+    });
+  },
+};
+
 export default {
   authAPI,
   userAPI,
@@ -458,6 +594,8 @@ export default {
 
   addressAPI,
   orderAPI,
+  couponAPI,
+  userCouponAPI,
 
 };
 

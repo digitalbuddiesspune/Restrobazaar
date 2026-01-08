@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const OrderRecords = ({ userRole = 'vendor' }) => {
   const [orders, setOrders] = useState([]);
@@ -16,7 +15,6 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
   const itemsPerPage = 10;
 
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-  const getToken = () => localStorage.getItem('token');
 
   useEffect(() => {
     fetchOrders();
@@ -26,12 +24,6 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
     try {
       setLoading(true);
       setError('');
-      const token = getToken();
-      
-      if (!token) {
-        setError('Authentication required');
-        return;
-      }
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -47,11 +39,24 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
         ? `${baseUrl}/admin/orders`
         : `${baseUrl}/vendor/orders`;
 
-      const response = await axios.get(`${endpoint}?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      // Use fetch with credentials for cookie-only authentication
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include', // Cookie automatically send hotay
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (response.data.success) {
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Authentication required. Please login again.');
+          return;
+        }
+        throw new Error(data.message || 'Failed to fetch orders');
+      }
+
+      if (data.success) {
         // Format orders to match the required fields
         const formattedOrders = response.data.data.map((order) => ({
           order_id: order.order_id || order._id || order.orderNumber || 'N/A',
@@ -72,11 +77,11 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
         }));
 
         setOrders(formattedOrders);
-        setTotalPages(response.data.pagination?.pages || 1);
+        setTotalPages(data.pagination?.pages || 1);
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
-      setError(err.response?.data?.message || 'Failed to fetch orders');
+      setError(err.message || err.response?.data?.message || 'Failed to fetch orders');
     } finally {
       setLoading(false);
     }

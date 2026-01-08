@@ -10,6 +10,14 @@ const CatalogTable = ({
   onPageChange,
   searchQuery = '',
   onSearchChange,
+  categories = [],
+  subCategories = [],
+  categoryFilter = 'all',
+  subCategoryFilter = 'all',
+  onCategoryFilterChange,
+  onSubCategoryFilterChange,
+  sortBy = 'newest',
+  onSortByChange,
 }) => {
   if (isLoading) {
     return (
@@ -25,8 +33,8 @@ const CatalogTable = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      {/* Search Bar */}
-      <div className="p-3 border-b border-gray-200">
+      {/* Search Bar and Filters */}
+      <div className="p-3 border-b border-gray-200 space-y-3">
         <input
           type="text"
           placeholder="Search products..."
@@ -34,6 +42,81 @@ const CatalogTable = ({
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
+        
+        {/* Filters - All in one horizontal line */}
+        <div className="flex items-end gap-3 flex-wrap">
+          {/* Category Filter */}
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => onCategoryFilterChange(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subcategory Filter */}
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Subcategory
+            </label>
+            <select
+              value={subCategoryFilter}
+              onChange={(e) => onSubCategoryFilterChange(e.target.value)}
+              disabled={categoryFilter === 'all' || subCategories.length === 0}
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="all">All Subcategories</option>
+              {subCategories.map((subCategory, index) => (
+                <option key={index} value={subCategory}>
+                  {subCategory}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Sort by
+            </label>
+            <select
+              value={sortBy}
+              onChange={(e) => onSortByChange(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="newest">Newly Added first</option>
+              <option value="oldest">Old Added first</option>
+              <option value="nameAsc">Product name Ascending</option>
+              <option value="nameDesc">Product name Descending</option>
+            </select>
+          </div>
+
+          {/* Clear Filters Button */}
+          {(categoryFilter !== 'all' || subCategoryFilter !== 'all' || sortBy !== 'newest') && (
+            <div>
+              <button
+                onClick={() => {
+                  onCategoryFilterChange('all');
+                  onSubCategoryFilterChange('all');
+                  onSortByChange('newest');
+                }}
+                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
+              >
+                Clear Filters
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}

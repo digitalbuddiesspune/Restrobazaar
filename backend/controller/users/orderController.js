@@ -3,6 +3,7 @@ import Address from '../../models/users/address.js';
 import VendorProduct from '../../models/vendor/vendorProductSchema.js';
 import Vendor from '../../models/admin/vendor.js';
 import City from '../../models/admin/city.js';
+import Coupon from '../../models/vendor/coupon.js';
 
 // @desc    Create a new order
 // @route   POST /api/v1/orders
@@ -10,7 +11,7 @@ import City from '../../models/admin/city.js';
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { addressId, paymentMethod, cartItems, totalAmount, gstAmount, shippingCharges, cartTotal, paymentId, transactionId } = req.body;
+    const { addressId, paymentMethod, cartItems, totalAmount, gstAmount, shippingCharges, cartTotal, paymentId, transactionId, couponCode } = req.body;
 
     // Validate required fields
     if (!addressId) {
@@ -104,12 +105,74 @@ export const createOrder = async (req, res) => {
       }
     }
 
+    // Handle coupon if provided
+    let couponAmount = 0;
+    let appliedCouponId = null;
+    let appliedCouponCode = null;
+
+    if (couponCode) {
+      try {
+        const coupon = await Coupon.findOne({ code: couponCode.toUpperCase().trim() });
+        
+        if (coupon) {
+          // Check if coupon belongs to the vendor
+          if (vendorId && coupon.vendorId.toString() !== vendorId.toString()) {
+            return res.status(400).json({
+              success: false,
+              message: 'This coupon is not valid for this vendor',
+            });
+          }
+
+          // Check if user can use this coupon
+          const canUse = coupon.canBeUsedBy(userId);
+          if (!canUse.canUse) {
+            return res.status(400).json({
+              success: false,
+              message: canUse.reason,
+            });
+          }
+
+          // Calculate discount on cart total (before GST and shipping)
+          const discountResult = coupon.calculateDiscount(cartTotal || 0);
+          if (discountResult.reason) {
+            return res.status(400).json({
+              success: false,
+              message: discountResult.reason,
+            });
+          }
+
+          couponAmount = discountResult.discount;
+          appliedCouponId = coupon._id;
+          appliedCouponCode = coupon.code;
+
+          // Update coupon usage
+          coupon.usageCount += 1;
+          coupon.usedBy.push({
+            userId,
+            usedAt: new Date(),
+          });
+          await coupon.save();
+        }
+      } catch (couponError) {
+        console.error('Error applying coupon:', couponError);
+        // Don't fail the order if coupon validation fails, just skip it
+      }
+    }
+
+    // Calculate final amounts with coupon discount
+    // GST and shipping calculated on original cart total, then discount applied
+    const finalGstAmount = gstAmount || 0; // GST calculated on cart total (before coupon)
+    const finalShippingCharges = shippingCharges || 0;
+    const totalBeforeCoupon = (cartTotal || 0) + finalGstAmount + finalShippingCharges;
+    const finalTotalAmount = Math.max(0, totalBeforeCoupon - couponAmount);
+
     // Prepare billing details
     const billingDetails = {
       cartTotal: cartTotal || 0,
-      gstAmount: gstAmount || 0,
-      shippingCharges: shippingCharges || 0,
-      totalAmount: totalAmount,
+      gstAmount: finalGstAmount,
+      shippingCharges: finalShippingCharges,
+      totalAmount: finalTotalAmount,
+      couponDiscount: couponAmount, // Store coupon discount separately for reference
     };
 
     // Prepare delivery address
@@ -163,6 +226,9 @@ export const createOrder = async (req, res) => {
       orderStatus: 'pending',
       vendorId: vendorId || undefined,
       vendorServiceCityId: vendorServiceCityId || undefined,
+      couponAmount: couponAmount,
+      couponCode: appliedCouponCode || undefined,
+      couponId: appliedCouponId || undefined,
     });
 
     // Populate order with user details

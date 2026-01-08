@@ -378,13 +378,90 @@ export const getUserByEmail = async (req, res) => {
   }
 };
 
+// @desc    Get user cart
+// @route   GET /api/v1/users/:id/cart
+// @access  Private (User can get own cart)
+export const getUserCart = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId || req.user?.id;
+
+    // Users can only view their own cart
+    if (userId !== id) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this user's cart",
+      });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Find cart for the user
+    let cart = await Cart.findOne({ user: id })
+      .populate({
+        path: "items.product",
+        select: "-__v",
+        populate: {
+          path: "productId",
+          select: "productName images img unit",
+        },
+      })
+      .select("-__v");
+
+    // If cart doesn't exist, create an empty one
+    if (!cart) {
+      cart = new Cart({
+        user: id,
+        items: [],
+      });
+      await cart.save();
+      
+      // Update user's cart reference
+      user.cart = cart._id;
+      await user.save();
+
+      // Populate the newly created cart
+      cart = await Cart.findById(cart._id)
+        .populate({
+          path: "items.product",
+          select: "-__v",
+          populate: {
+            path: "productId",
+            select: "productName images img unit",
+          },
+        })
+        .select("-__v");
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        cart: cart,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching cart",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Update user cart
 // @route   PATCH /api/v1/users/:id/cart
 // @access  Private (User can update own cart)
 export const updateUserCart = async (req, res) => {
   try {
     const { id } = req.params;
-    const { cart } = req.body;
+    const { items, deliveryCity, deliveryPincode } = req.body; // Accept items array instead of cart object
     const userId = req.user?.userId || req.user?.id;
 
     // Users can only update their own cart
@@ -404,18 +481,81 @@ export const updateUserCart = async (req, res) => {
       });
     }
 
-    user.cart = cart;
+    // Validate items array
+    if (!Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: "Items must be an array",
+      });
+    }
+
+    // Find or create cart for the user
+    let cart = await Cart.findOne({ user: id });
+
+    if (!cart) {
+      // Create new cart if it doesn't exist
+      cart = new Cart({
+        user: id,
+        items: [],
+        deliveryCity: deliveryCity || null,
+        deliveryPincode: deliveryPincode || null,
+      });
+    }
+
+    // Map frontend cart items to Cart schema format
+    const cartItems = items.map((item) => {
+      // Validate required fields
+      if (!item.vendorProductId || !item.quantity || item.price === undefined) {
+        throw new Error(
+          "Each cart item must have vendorProductId, quantity, and price"
+        );
+      }
+
+      return {
+        product: item.vendorProductId, // Reference to VendorProduct
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        productName: item.productName || "Product",
+        productImage: item.productImage || "",
+      };
+    });
+
+    // Update cart items
+    cart.items = cartItems;
+
+    // Update delivery info if provided
+    if (deliveryCity !== undefined) {
+      cart.deliveryCity = deliveryCity;
+    }
+    if (deliveryPincode !== undefined) {
+      cart.deliveryPincode = deliveryPincode;
+    }
+
+    // Save cart (totalAmount will be calculated by pre-save hook)
+    await cart.save();
+
+    // Update user's cart reference
+    user.cart = cart._id;
     await user.save();
 
-    const updatedUser = await User.findById(id).populate({
-      path: "cart",
-      select: "-__v",
-    });
+    // Populate cart with product details
+    const populatedCart = await Cart.findById(cart._id)
+      .populate({
+        path: "items.product",
+        select: "-__v",
+        populate: {
+          path: "productId",
+          select: "productName images img unit",
+        },
+      })
+      .select("-__v");
 
     res.status(200).json({
       success: true,
       message: "Cart updated successfully",
-      data: updatedUser,
+      data: {
+        cart: populatedCart,
+      },
     });
   } catch (error) {
     res.status(500).json({

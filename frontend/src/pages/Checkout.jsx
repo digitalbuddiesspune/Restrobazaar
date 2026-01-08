@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectCartItems, selectCartTotal, clearCart } from '../store/slices/cartSlice';
-import { addressAPI, orderAPI } from '../utils/api';
+import { addressAPI, orderAPI, userCouponAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import Modal from '../components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
@@ -25,6 +25,12 @@ const Checkout = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderData, setOrderData] = useState(null);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [showCoupons, setShowCoupons] = useState(false);
+  const [couponDiscount, setCouponDiscount] = useState(0);
   const [addressForm, setAddressForm] = useState({
     name: '',
     phone: '',
@@ -37,20 +43,70 @@ const Checkout = () => {
     addressType: 'home', // home, work, other
   });
 
-  // Check if user is authenticated
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate('/signin');
+  // Fetch available coupons
+  const fetchAvailableCoupons = async () => {
+    try {
+      // Get vendorId from cart items if available
+      const vendorId = cartItems[0]?.vendorId || null;
+      
+      // Check if all items are from the same vendor
+      const allSameVendor = cartItems.every(item => {
+        const itemVendorId = item.vendorId?.toString() || item.vendorId;
+        return itemVendorId === vendorId?.toString() || itemVendorId === vendorId;
+      });
+
+      if (!allSameVendor || !vendorId) {
+        setAvailableCoupons([]);
+        return;
+      }
+
+      const response = await userCouponAPI.getAvailableCoupons({
+        vendorId,
+        cartTotal,
+        cartItems: JSON.stringify(cartItems), // Send cart items to verify vendor match
+      });
+      if (response.success) {
+        setAvailableCoupons(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      setAvailableCoupons([]);
+    }
+  };
+
+  // Apply coupon
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
       return;
     }
-    
-    if (cartItems.length === 0) {
-      navigate('/cart');
-      return;
+
+    try {
+      setCouponError('');
+      const vendorId = cartItems[0]?.vendorId || null;
+      
+      // Send cartItems to validate that all items belong to the coupon's vendor
+      const response = await userCouponAPI.validateCoupon(couponCode, cartTotal, vendorId, cartItems);
+      
+      if (response.success) {
+        setAppliedCoupon(response.data);
+        setCouponDiscount(response.data.discount);
+        setCouponCode('');
+      }
+    } catch (error) {
+      setCouponError(error?.response?.data?.message || 'Invalid coupon code');
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
     }
-    
-    fetchAddresses();
-  }, [navigate, cartItems.length]);
+  };
+
+  // Remove coupon
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+    setCouponCode('');
+    setCouponError('');
+  };
 
   const fetchAddresses = async () => {
     try {
@@ -168,10 +224,13 @@ const Checkout = () => {
   };
 
   // Calculate billing details (moved before handleConfirmOrder)
+  // GST and shipping calculated on original cart total (before coupon)
   const gstRate = 0.18; // 18% GST
   const gstAmount = cartTotal * gstRate;
   const shippingCharges = cartTotal > 1000 ? 0 : 50; // Free shipping above ₹1000
-  const totalAmount = cartTotal + gstAmount + shippingCharges;
+  // Apply coupon discount to final total
+  const totalBeforeCoupon = cartTotal + gstAmount + shippingCharges;
+  const totalAmount = Math.max(0, totalBeforeCoupon - couponDiscount);
 
   const handleConfirmOrder = async () => {
     if (!selectedAddress) {
@@ -202,6 +261,7 @@ const Checkout = () => {
         shippingCharges: shippingCharges,
         paymentId: qrCodeData?.paymentId || null,
         transactionId: qrCodeData?.transactionId || null,
+        couponCode: appliedCoupon?.code || null,
       };
 
       // Create order
@@ -265,6 +325,24 @@ const Checkout = () => {
       alert('Failed to generate QR code. Please try again.');
     }
   }, [paymentMethod, selectedAddress, totalAmount, addresses]);
+
+  // Fetch addresses and coupons on component mount
+  useEffect(() => {
+    // Check authentication first
+    if (!isAuthenticated()) {
+      navigate('/signin');
+      return;
+    }
+
+    // Fetch addresses
+    fetchAddresses();
+
+    // Fetch coupons if cart has items
+    if (cartItems && cartItems.length > 0) {
+      fetchAvailableCoupons();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate]);
 
   // Regenerate QR code when payment method is online and amount/address changes
   useEffect(() => {
@@ -615,6 +693,98 @@ const Checkout = () => {
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
                 <h2 className="text-lg font-bold text-gray-900 mb-6">BILLING DETAILS</h2>
 
+                {/* Coupon Section */}
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Have a Coupon?</h3>
+                    {availableCoupons.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowCoupons(!showCoupons)}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        {showCoupons ? 'Hide' : 'View'} Available ({availableCoupons.length})
+                      </button>
+                    )}
+                  </div>
+
+                  {showCoupons && availableCoupons.length > 0 && (
+                    <div className="mb-3 p-3 bg-gray-50 rounded-lg max-h-40 overflow-y-auto">
+                      {availableCoupons.map((coupon) => (
+                        <div
+                          key={coupon._id}
+                          className="mb-2 p-2 bg-white rounded border border-gray-200 cursor-pointer hover:border-blue-500"
+                          onClick={() => {
+                            setCouponCode(coupon.code);
+                            handleApplyCoupon();
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm text-gray-900">{coupon.code}</div>
+                              <div className="text-xs text-gray-600">
+                                {coupon.discountType === 'percentage'
+                                  ? `${coupon.discountValue}% OFF`
+                                  : `₹${coupon.discountValue} OFF`}
+                                {' • '}Min. ₹{coupon.minimumOrderAmount}
+                              </div>
+                            </div>
+                            <div className="text-xs font-semibold text-green-600">
+                              Save ₹{coupon.estimatedDiscount?.toFixed(2) || '0.00'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!appliedCoupon ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setCouponError('');
+                        }}
+                        placeholder="Enter coupon code"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-sm text-green-800">
+                            {appliedCoupon.code} Applied
+                          </div>
+                          <div className="text-xs text-green-600">
+                            You saved ₹{couponDiscount.toFixed(2)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {couponError && (
+                    <div className="mt-2 text-xs text-red-600">{couponError}</div>
+                  )}
+                </div>
+
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between text-sm text-gray-700">
                     <span>Cart Total (Excl. of all taxes)</span>
@@ -637,6 +807,12 @@ const Checkout = () => {
                       )}
                     </div>
                   </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Coupon Discount ({appliedCoupon.code})</span>
+                      <span className="font-medium">-₹{couponDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between text-lg font-bold text-gray-900">
                       <span>Total Amount</span>

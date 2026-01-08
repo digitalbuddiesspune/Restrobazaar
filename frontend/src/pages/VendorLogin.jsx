@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const VendorLogin = () => {
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
@@ -27,22 +26,28 @@ const VendorLogin = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(
-        `${baseUrl}/vendors/login`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Use fetch with credentials to ensure cookies are set properly
+      const response = await fetch(`${baseUrl}/vendors/login`, {
+        method: 'POST',
+        credentials: 'include', // Important: Send and receive cookies
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
       
-      if (response.data.token) {
-        // Store token in localStorage
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('userRole', 'vendor');
-        navigate('/vendor/dashboard'); // Redirect to vendor dashboard
-        window.location.reload();
+      const data = await response.json();
+      
+      if (data.token && response.ok) {
+        // localStorage madhe kahi store karaycha nahi - cookie automatically set hotay backend kadun
+        // Vendor login completely separate - cookie-only authentication
+        // Small delay to ensure cookie is set before navigation
+        setTimeout(() => {
+          navigate('/vendor/dashboard');
+          window.location.reload();
+        }, 100);
+      } else {
+        setError(data.message || 'Vendor login failed. Please try again.');
       }
     } catch (err) {
       setError(

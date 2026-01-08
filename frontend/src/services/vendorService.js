@@ -8,15 +8,15 @@ const vendorApi = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Cookie automatically send hotay
 });
 
-// Add request interceptor to include token
+// Add request interceptor - cookie-only, localStorage nahi
 vendorApi.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // localStorage.getItem('token') remove kara
+    // Cookie automatically send hotay withCredentials: true mule
+    config.withCredentials = true; // Ensure cookies are sent
     return config;
   },
   (error) => {
@@ -29,9 +29,7 @@ vendorApi.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      localStorage.removeItem('userRole');
+      // localStorage.removeItem remove kara - cookie clear kara backend kadun
       window.location.href = '/vendor/login';
     }
     return Promise.reject(error);

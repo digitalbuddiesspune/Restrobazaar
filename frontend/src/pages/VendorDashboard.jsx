@@ -10,6 +10,8 @@ import OrdersTable from '../components/vendor/OrdersTable';
 import OrderDetails from '../components/vendor/OrderDetails';
 import VendorAccount from '../components/vendor/VendorAccount';
 import OrderRecords from '../components/OrderRecords';
+import CouponForm from '../components/vendor/CouponForm';
+import CouponsTable from '../components/vendor/CouponsTable';
 import {
   useMyVendorProducts,
   useGlobalProducts,
@@ -23,6 +25,7 @@ import {
   useUpdateOrderStatus,
 } from '../hooks/useVendorQueries';
 import { useCategories } from '../hooks/useApiQueries';
+import { couponAPI } from '../utils/api';
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -35,6 +38,9 @@ const VendorDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [editingCoupon, setEditingCoupon] = useState(null);
+  const [coupons, setCoupons] = useState([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
   const itemsPerPage = 10;
 
   // Filter and Sort states for My Products
@@ -43,6 +49,11 @@ const VendorDashboard = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest'); // newest, stockAsc, stockDesc, nameAsc, nameDesc
+
+  // Filter states for Product Catalog
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState('all');
+  const [catalogSubCategoryFilter, setCatalogSubCategoryFilter] = useState('all');
+  const [catalogSortBy, setCatalogSortBy] = useState('newest'); // newest, oldest, nameAsc, nameDesc
 
   // React Query hooks
   const {
@@ -152,7 +163,7 @@ const VendorDashboard = () => {
     };
   }, [allOrders]);
 
-  // Get subcategories for selected category
+  // Get subcategories for selected category (My Products)
   const subCategories = useMemo(() => {
     if (categoryFilter === 'all' || !categoryFilter) return [];
     const selectedCategory = categories.find(cat => cat._id === categoryFilter);
@@ -170,6 +181,25 @@ const VendorDashboard = () => {
     )];
     return uniqueSubCategories;
   }, [categoryFilter, categories, vendorProducts]);
+
+  // Get subcategories for catalog based on selected category
+  const catalogSubCategories = useMemo(() => {
+    if (catalogCategoryFilter === 'all' || !catalogCategoryFilter) return [];
+    const selectedCategory = categories.find(cat => cat._id === catalogCategoryFilter);
+    if (!selectedCategory) return [];
+    
+    // Get unique subcategories from global products in this category
+    const categoryProducts = globalProducts.filter(p => 
+      p.category?._id === catalogCategoryFilter || 
+      p.category === catalogCategoryFilter
+    );
+    const uniqueSubCategories = [...new Set(
+      categoryProducts
+        .map(p => p.subCategory)
+        .filter(Boolean)
+    )];
+    return uniqueSubCategories;
+  }, [catalogCategoryFilter, categories, globalProducts]);
 
   // Filter and sort products
   const filteredVendorProducts = useMemo(() => {
@@ -244,15 +274,51 @@ const VendorDashboard = () => {
   }, [vendorProducts, searchQuery, statusFilter, stockFilter, categoryFilter, subCategoryFilter, sortBy]);
 
   const filteredGlobalProducts = useMemo(() => {
-    if (!searchQuery) return globalProducts;
-    const query = searchQuery.toLowerCase();
-    return globalProducts.filter(
-      (p) =>
-        p.productName?.toLowerCase().includes(query) ||
-        p.shortDescription?.toLowerCase().includes(query) ||
-        p.searchTags?.some((tag) => tag.toLowerCase().includes(query))
-    );
-  }, [globalProducts, searchQuery]);
+    let filtered = [...globalProducts];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.productName?.toLowerCase().includes(query) ||
+          p.shortDescription?.toLowerCase().includes(query) ||
+          p.searchTags?.some((tag) => tag.toLowerCase().includes(query))
+      );
+    }
+
+    // Category filter
+    if (catalogCategoryFilter !== 'all' && catalogCategoryFilter) {
+      filtered = filtered.filter(p => 
+        p.category?._id === catalogCategoryFilter || 
+        p.category === catalogCategoryFilter
+      );
+    }
+
+    // Subcategory filter
+    if (catalogSubCategoryFilter !== 'all' && catalogSubCategoryFilter) {
+      filtered = filtered.filter(p => 
+        p.subCategory === catalogSubCategoryFilter
+      );
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      switch (catalogSortBy) {
+        case 'nameAsc':
+          return (a.productName || '').localeCompare(b.productName || '');
+        case 'nameDesc':
+          return (b.productName || '').localeCompare(a.productName || '');
+        case 'oldest':
+          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+        case 'newest':
+        default:
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      }
+    });
+
+    return filtered;
+  }, [globalProducts, searchQuery, catalogCategoryFilter, catalogSubCategoryFilter, catalogSortBy]);
 
   // Pagination
   const paginatedVendorProducts = useMemo(() => {
@@ -275,26 +341,41 @@ const VendorDashboard = () => {
     (ordersData?.pagination?.total || orders.length) / itemsPerPage
   );
 
-  // Handle errors
+  // Handle errors - Don't redirect immediately on 401, might be cookie loading
   useEffect(() => {
     if (vendorProductsError) {
       const errorMessage =
         vendorProductsError?.response?.data?.message ||
         'Failed to fetch vendor products';
+      const status = vendorProductsError?.response?.status;
+      
+      // Only redirect if it's a clear authentication error (not just loading)
       if (
-        errorMessage.includes('Authentication') ||
-        vendorProductsError?.response?.status === 401
+        (errorMessage.includes('Authentication') || 
+         errorMessage.includes('Unauthorized') ||
+         errorMessage.includes('Forbidden')) &&
+        status === 401 &&
+        !vendorProductsLoading // Don't redirect while still loading
       ) {
+        console.error('Vendor authentication failed:', errorMessage);
         navigate('/vendor/login');
       }
     }
-  }, [vendorProductsError, navigate]);
+  }, [vendorProductsError, vendorProductsLoading, navigate]);
 
   // Handlers
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
+  const handleLogout = async () => {
+    // Cookie clear kara backend logout endpoint kadun
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'}/vendor/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     navigate('/vendor/login');
+    window.location.reload();
   };
 
   const handleProductSubmit = async (formData) => {
@@ -368,6 +449,28 @@ const VendorDashboard = () => {
       }
     }
   };
+
+  // Fetch coupons
+  const fetchCoupons = async () => {
+    setCouponsLoading(true);
+    try {
+      const response = await couponAPI.getVendorCoupons();
+      if (response.success) {
+        setCoupons(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+    } finally {
+      setCouponsLoading(false);
+    }
+  };
+
+  // Fetch coupons when coupons tab is active
+  useEffect(() => {
+    if (activeTab === 'coupons' || activeTab === 'add-coupon') {
+      fetchCoupons();
+    }
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -653,9 +756,9 @@ const VendorDashboard = () => {
                         setSortBy('newest');
                         setMyProductsPage(1);
                       }}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
                     >
-                      Clear all filters
+                      Clear Filters
                     </button>
                   </div>
                 )}
@@ -690,7 +793,28 @@ const VendorDashboard = () => {
                 totalPages={globalProductsTotalPages}
                 onPageChange={setCatalogPage}
                 searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
+                onSearchChange={(value) => {
+                  setSearchQuery(value);
+                  setCatalogPage(1);
+                }}
+                categories={categories}
+                subCategories={catalogSubCategories}
+                categoryFilter={catalogCategoryFilter}
+                subCategoryFilter={catalogSubCategoryFilter}
+                onCategoryFilterChange={(value) => {
+                  setCatalogCategoryFilter(value);
+                  setCatalogSubCategoryFilter('all');
+                  setCatalogPage(1);
+                }}
+                onSubCategoryFilterChange={(value) => {
+                  setCatalogSubCategoryFilter(value);
+                  setCatalogPage(1);
+                }}
+                sortBy={catalogSortBy}
+                onSortByChange={(value) => {
+                  setCatalogSortBy(value);
+                  setCatalogPage(1);
+                }}
               />
             </div>
           )}
@@ -768,6 +892,125 @@ const VendorDashboard = () => {
           {activeTab === 'order-records' && (
             <div className="space-y-4">
               <OrderRecords userRole="vendor" />
+            </div>
+          )}
+
+          {/* Coupons Tab */}
+          {activeTab === 'coupons' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">Coupons</h1>
+                {!editingCoupon && (
+                  <button
+                    onClick={() => {
+                      setEditingCoupon({});
+                      setActiveTab('add-coupon');
+                    }}
+                    className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Create Coupon
+                  </button>
+                )}
+              </div>
+
+              {editingCoupon ? (
+                <CouponForm
+                  coupon={editingCoupon}
+                  onSubmit={async (couponData) => {
+                    try {
+                      setCouponsLoading(true);
+                      if (editingCoupon._id) {
+                        await couponAPI.updateCoupon(editingCoupon._id, couponData);
+                      } else {
+                        await couponAPI.createCoupon(couponData);
+                      }
+                      await fetchCoupons();
+                      setEditingCoupon(null);
+                      setActiveTab('coupons');
+                    } catch (error) {
+                      alert(error?.response?.data?.message || 'Failed to save coupon');
+                    } finally {
+                      setCouponsLoading(false);
+                    }
+                  }}
+                  onCancel={() => {
+                    setEditingCoupon(null);
+                    setActiveTab('coupons');
+                  }}
+                  isLoading={couponsLoading}
+                />
+              ) : (
+                <CouponsTable
+                  coupons={coupons}
+                  isLoading={couponsLoading}
+                  onEdit={(coupon) => {
+                    setEditingCoupon(coupon);
+                    setActiveTab('add-coupon');
+                  }}
+                  onDelete={async (couponId) => {
+                    try {
+                      await couponAPI.deleteCoupon(couponId);
+                      await fetchCoupons();
+                    } catch (error) {
+                      alert(error?.response?.data?.message || 'Failed to delete coupon');
+                    }
+                  }}
+                  onToggleStatus={async (couponId) => {
+                    try {
+                      await couponAPI.toggleCouponStatus(couponId);
+                      await fetchCoupons();
+                    } catch (error) {
+                      alert(error?.response?.data?.message || 'Failed to update coupon status');
+                    }
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Add/Edit Coupon Tab */}
+          {activeTab === 'add-coupon' && editingCoupon !== null && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">
+                  {editingCoupon._id ? 'Edit Coupon' : 'Create Coupon'}
+                </h1>
+                <button
+                  onClick={() => {
+                    setEditingCoupon(null);
+                    setActiveTab('coupons');
+                  }}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <CouponForm
+                coupon={editingCoupon}
+                onSubmit={async (couponData) => {
+                  try {
+                    setCouponsLoading(true);
+                    if (editingCoupon._id) {
+                      await couponAPI.updateCoupon(editingCoupon._id, couponData);
+                    } else {
+                      await couponAPI.createCoupon(couponData);
+                    }
+                    await fetchCoupons();
+                    setEditingCoupon(null);
+                    setActiveTab('coupons');
+                  } catch (error) {
+                    alert(error?.response?.data?.message || 'Failed to save coupon');
+                  } finally {
+                    setCouponsLoading(false);
+                  }
+                }}
+                onCancel={() => {
+                  setEditingCoupon(null);
+                  setActiveTab('coupons');
+                }}
+                isLoading={couponsLoading}
+              />
             </div>
           )}
 
