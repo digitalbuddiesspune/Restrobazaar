@@ -100,6 +100,23 @@ export const vendorProductService = {
     const response = await vendorApi.patch(`/vendor-products/${id}/status`);
     return response.data;
   },
+
+  // Get vendor products by city ID
+  getVendorProductsByCity: async (cityId, filters = {}) => {
+    const params = new URLSearchParams();
+    params.append('cityId', cityId);
+    if (filters.vendorId) params.append('vendorId', filters.vendorId);
+    if (filters.status !== undefined) {
+      params.append('status', filters.status);
+    } else {
+      params.append('status', 'true'); // Default to active products
+    }
+    if (filters.page) params.append('page', filters.page);
+    if (filters.limit) params.append('limit', filters.limit);
+    
+    const response = await vendorApi.get(`/vendor-products/city/${cityId}?${params.toString()}`);
+    return response.data;
+  },
 };
 
 // Global Product Services

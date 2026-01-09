@@ -1,6 +1,8 @@
 import Order from '../../models/users/order.js';
 import VendorProduct from '../../models/vendor/vendorProductSchema.js';
 import Vendor from '../../models/admin/vendor.js';
+import Address from '../../models/users/address.js';
+import Coupon from '../../models/vendor/coupon.js';
 
 // @desc    Get orders for a vendor (orders containing vendor's products)
 // @route   GET /api/v1/vendor/orders
@@ -610,3 +612,212 @@ export const getVendorOrderStats = async (req, res) => {
   }
 };
 
+// @desc    Create order for a user (vendor creating order on behalf of user)
+// @route   POST /api/v1/vendor/orders/create-for-user
+// @access  Vendor
+export const createOrderForUser = async (req, res) => {
+  try {
+    const vendorId = req.user.userId; // Vendor creating the order
+    const { 
+      userId, // User for whom the order is being created
+      addressId, 
+      paymentMethod = 'cod', 
+      cartItems, 
+      totalAmount, 
+      gstAmount, 
+      shippingCharges, 
+      cartTotal,
+      couponCode 
+    } = req.body;
+
+    // Validate required fields
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User ID is required' 
+      });
+    }
+
+    if (!addressId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Delivery address is required' 
+      });
+    }
+
+    if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cart items are required' 
+      });
+    }
+
+    if (!totalAmount || totalAmount <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Total amount is required and must be greater than 0' 
+      });
+    }
+
+    // Validate payment method
+    if (!['cod', 'online'].includes(paymentMethod)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Valid payment method is required' 
+      });
+    }
+
+    // Fetch the delivery address and verify it belongs to the user
+    const address = await Address.findOne({ _id: addressId, userId });
+    if (!address) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Address not found or does not belong to the specified user' 
+      });
+    }
+
+    // Prepare order items
+    // Note: item.productId should be the global Product ID (not VendorProduct ID)
+    const orderItems = cartItems.map((item) => ({
+      productId: item.productId, // Use productId (global Product ID) - required by Order model
+      productName: item.name || item.productName || 'Product',
+      productImage: item.image || item.productImage || '',
+      quantity: item.quantity,
+      price: item.price,
+      total: item.price * item.quantity,
+    }));
+
+    // Get vendor's service cities
+    const vendor = await Vendor.findById(vendorId).populate('serviceCities', 'name displayName');
+    if (!vendor) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Vendor not found' 
+      });
+    }
+
+    // Determine vendorServiceCityId from address city
+    let vendorServiceCityId = null;
+    const deliveryCityName = address.city.toLowerCase();
+    
+    // Find matching service city
+    const matchingServiceCity = vendor.serviceCities.find(city => {
+      const cityName = city.name?.toLowerCase() || '';
+      const cityDisplayName = city.displayName?.toLowerCase() || '';
+      return cityName === deliveryCityName || cityDisplayName === deliveryCityName;
+    });
+
+    if (matchingServiceCity) {
+      vendorServiceCityId = matchingServiceCity._id || matchingServiceCity;
+    } else if (vendor.serviceCities.length > 0) {
+      // Use first service city as fallback
+      vendorServiceCityId = vendor.serviceCities[0]._id || vendor.serviceCities[0];
+    }
+
+    // Handle coupon if provided
+    let couponAmount = 0;
+    let appliedCouponId = null;
+    let appliedCouponCode = null;
+
+    if (couponCode) {
+      const coupon = await Coupon.findOne({
+        code: couponCode.toUpperCase(),
+        vendorId: vendorId,
+        isActive: true,
+        startDate: { $lte: new Date() },
+        endDate: { $gte: new Date() },
+      });
+
+      if (coupon) {
+        appliedCouponId = coupon._id;
+        appliedCouponCode = coupon.code;
+
+        // Calculate coupon discount
+        if (coupon.discountType === 'percentage') {
+          couponAmount = (cartTotal * coupon.discountValue) / 100;
+          if (coupon.maxDiscount && couponAmount > coupon.maxDiscount) {
+            couponAmount = coupon.maxDiscount;
+          }
+        } else if (coupon.discountType === 'fixed') {
+          couponAmount = coupon.discountValue;
+          if (couponAmount > cartTotal) {
+            couponAmount = cartTotal;
+          }
+        }
+      }
+    }
+
+    // Prepare delivery address
+    const deliveryAddress = {
+      name: address.name,
+      phone: address.phone,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      landmark: address.landmark || '',
+    };
+
+    // Prepare billing details (amounts)
+    const billingDetails = {
+      cartTotal: cartTotal || 0,
+      gstAmount: gstAmount || 0,
+      shippingCharges: shippingCharges || 0,
+      totalAmount: totalAmount || 0,
+    };
+
+    // Payment status
+    const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'pending';
+
+    // Generate unique order number
+    const generateOrderNumber = () => {
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 10000);
+      return `ORD-${timestamp}-${random}`;
+    };
+
+    let orderNumber;
+    let isUnique = false;
+    while (!isUnique) {
+      orderNumber = generateOrderNumber();
+      const existingOrder = await Order.findOne({ orderNumber });
+      if (!existingOrder) {
+        isUnique = true;
+      }
+    }
+
+    // Create order
+    const order = await Order.create({
+      userId,
+      orderNumber,
+      items: orderItems,
+      deliveryAddress,
+      billingDetails,
+      paymentMethod,
+      paymentStatus,
+      orderStatus: 'pending',
+      vendorId: vendorId,
+      vendorServiceCityId: vendorServiceCityId || undefined,
+      couponAmount: couponAmount,
+      couponCode: appliedCouponCode || undefined,
+      couponId: appliedCouponId || undefined,
+    });
+
+    // Populate order with user details
+    await order.populate('userId', 'name email phone');
+
+    res.status(201).json({
+      success: true,
+      message: 'Order created successfully',
+      data: order,
+    });
+  } catch (error) {
+    console.error('Error creating order for user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating order',
+      error: error.message,
+    });
+  }
+};

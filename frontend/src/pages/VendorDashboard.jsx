@@ -12,6 +12,8 @@ import VendorAccount from '../components/vendor/VendorAccount';
 import OrderRecords from '../components/OrderRecords';
 import CouponForm from '../components/vendor/CouponForm';
 import CouponsTable from '../components/vendor/CouponsTable';
+import UserForm from '../components/vendor/UserForm';
+import CreateOrder from '../components/vendor/CreateOrder';
 import {
   useMyVendorProducts,
   useGlobalProducts,
@@ -892,6 +894,24 @@ const VendorDashboard = () => {
           {activeTab === 'order-records' && (
             <div className="space-y-4">
               <OrderRecords userRole="vendor" />
+            </div>
+          )}
+
+          {/* Create Order Tab */}
+          {activeTab === 'create-order' && (
+            <div className="space-y-4">
+              <CreateOrder />
+            </div>
+          )}
+
+          {/* Create User Tab */}
+          {activeTab === 'create-user' && (
+            <div className="space-y-4">
+              <UserForm
+                onSuccess={() => {
+                  // Optionally refresh data or show success message
+                }}
+              />
             </div>
           )}
 

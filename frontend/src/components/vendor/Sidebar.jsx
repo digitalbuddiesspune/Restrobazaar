@@ -8,6 +8,8 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
     { id: 'overview', label: 'Dashboard', icon: '📊' },
     { id: 'orders', label: 'Orders', icon: '📋' },
     { id: 'order-records', label: 'Order Records', icon: '📄' },
+    { id: 'create-order', label: 'Create Order', icon: '🛒' },
+    { id: 'create-user', label: 'Create User', icon: '👥' },
     { id: 'coupons', label: 'Coupons', icon: '🎫' },
     { id: 'account', label: 'Account', icon: '👤' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
