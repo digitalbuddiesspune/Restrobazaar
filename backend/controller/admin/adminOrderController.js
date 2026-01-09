@@ -8,6 +8,7 @@ export const getAllOrders = async (req, res) => {
   try {
     const {
       vendorId,
+      cityId,
       status,
       orderStatus,
       paymentStatus,
@@ -39,6 +40,11 @@ export const getAllOrders = async (req, res) => {
           },
         });
       }
+    }
+
+    // Filter by service city if specified
+    if (cityId) {
+      query.vendorServiceCityId = cityId;
     }
 
     // Add filters
@@ -89,7 +95,7 @@ export const getAllOrders = async (req, res) => {
         user_id: orderObj.userId?._id?.toString() || orderObj.userId?.toString() || '',
         Customer_Name: orderObj.deliveryAddress?.name || orderObj.userId?.name || 'N/A',
         Phone: orderObj.deliveryAddress?.phone || orderObj.userId?.phone || 'N/A',
-        order_data_and_time: orderObj.createdAt || new Date(),
+        order_date_and_time: orderObj.createdAt || new Date(),
         sub_total: orderObj.billingDetails?.cartTotal || 0,
         Total_Tax: orderObj.billingDetails?.gstAmount || 0,
         Net_total: orderObj.billingDetails?.totalAmount || 0,
@@ -97,7 +103,7 @@ export const getAllOrders = async (req, res) => {
         Order_status: orderObj.orderStatus || 'pending',
         Payment_mode: orderObj.paymentMethod || 'N/A',
         Payment_status: orderObj.paymentStatus || 'pending',
-        delivery_data: orderObj.deliveryDate || null,
+        delivery_date: orderObj.deliveryDate || null,
         Email: orderObj.userId?.email || 'N/A',
         City: orderObj.deliveryAddress?.city || orderObj.userId?.city || 'N/A',
       };

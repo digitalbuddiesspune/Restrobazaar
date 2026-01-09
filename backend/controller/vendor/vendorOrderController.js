@@ -151,7 +151,7 @@ export const getVendorOrders = async (req, res) => {
         user_id: orderObj.userId?._id?.toString() || orderObj.userId?.toString() || '',
         Customer_Name: orderObj.deliveryAddress?.name || orderObj.userId?.name || 'N/A',
         Phone: orderObj.deliveryAddress?.phone || orderObj.userId?.phone || 'N/A',
-        order_data_and_time: orderObj.createdAt || new Date(),
+        order_date_and_time: orderObj.createdAt || new Date(),
         sub_total: orderObj.billingDetails?.cartTotal || 0,
         Total_Tax: orderObj.billingDetails?.gstAmount || 0,
         Net_total: orderObj.billingDetails?.totalAmount || 0,
@@ -159,7 +159,7 @@ export const getVendorOrders = async (req, res) => {
         Order_status: orderObj.orderStatus || 'pending',
         Payment_mode: orderObj.paymentMethod || 'N/A',
         Payment_status: orderObj.paymentStatus || 'pending',
-        delivery_data: orderObj.deliveryDate || null,
+        delivery_date: orderObj.deliveryDate || null,
         Email: orderObj.userId?.email || 'N/A',
         // Show vendor's service city instead of customer's delivery address city
         City: orderCityInfo.cityName || 'N/A',

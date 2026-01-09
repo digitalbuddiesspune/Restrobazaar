@@ -2697,12 +2697,7 @@ const SuperAdminDashboard = () => {
           {/* Order Records Tab */}
           {activeTab === "order-records" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">Order Records</h1>
-              </div>
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <OrderRecords userRole="super_admin" />
-              </div>
+              <OrderRecords userRole="super_admin" />
             </div>
           )}
 

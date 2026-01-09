@@ -6,11 +6,16 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [vendors, setVendors] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [loadingFilters, setLoadingFilters] = useState(false);
   const [filters, setFilters] = useState({
     orderStatus: '',
     paymentStatus: '',
     startDate: '',
     endDate: '',
+    vendorId: '',
+    cityId: '',
   });
   const itemsPerPage = 10;
 
@@ -19,6 +24,13 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
   useEffect(() => {
     fetchOrders();
   }, [page, filters, userRole]);
+
+  // Fetch vendors and cities for super_admin filters
+  useEffect(() => {
+    if (userRole === 'super_admin') {
+      fetchVendorsAndCities();
+    }
+  }, [userRole]);
 
   const fetchOrders = async () => {
     try {
@@ -34,19 +46,35 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
       if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
+      if (filters.vendorId) params.append('vendorId', filters.vendorId);
+      if (filters.cityId) params.append('cityId', filters.cityId);
 
       const endpoint = userRole === 'super_admin' 
         ? `${baseUrl}/admin/orders`
         : `${baseUrl}/vendor/orders`;
 
-      // Use fetch with credentials for cookie-only authentication
+      // Prepare headers - use Authorization header for super_admin, cookies for vendor
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add Authorization header for super_admin (token from localStorage)
+      if (userRole === 'super_admin') {
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+
+      // Use fetch with credentials for cookie-only authentication (vendor)
+      // or Authorization header (super_admin)
       const response = await fetch(`${endpoint}?${params.toString()}`, {
         method: 'GET',
-        credentials: 'include', // Cookie automatically send hotay
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: userRole === 'super_admin' ? 'same-origin' : 'include', // Cookie for vendor, same-origin for super_admin
+        headers,
       });
+
+      const data = await response.json();
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -58,12 +86,12 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
 
       if (data.success) {
         // Format orders to match the required fields
-        const formattedOrders = response.data.data.map((order) => ({
+        const formattedOrders = data.data.map((order) => ({
           order_id: order.order_id || order._id || order.orderNumber || 'N/A',
           user_id: order.user_id || order.userId?._id || order.userId || 'N/A',
           Customer_Name: order.Customer_Name || order.deliveryAddress?.name || order.userId?.name || 'N/A',
           Phone: order.Phone || order.deliveryAddress?.phone || order.userId?.phone || 'N/A',
-          order_data_and_time: order.order_data_and_time || order.createdAt || 'N/A',
+          order_date_and_time: order.order_date_and_time || order.order_data_and_time || order.createdAt || 'N/A',
           sub_total: order.sub_total || order.billingDetails?.cartTotal || 0,
           Total_Tax: order.Total_Tax || order.billingDetails?.gstAmount || 0,
           Net_total: order.Net_total || order.billingDetails?.totalAmount || 0,
@@ -71,7 +99,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
           Order_status: order.Order_status || order.orderStatus || 'pending',
           Payment_mode: order.Payment_mode || order.paymentMethod || 'N/A',
           Payment_status: order.Payment_status || order.paymentStatus || 'pending',
-          delivery_data: order.delivery_data || order.deliveryDate || null,
+          delivery_date: order.delivery_date || order.delivery_data || order.deliveryDate || null,
           Email: order.Email || order.userId?.email || 'N/A',
           City: order.City || order.deliveryAddress?.city || order.userId?.city || 'N/A',
         }));
@@ -84,6 +112,43 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
       setError(err.message || err.response?.data?.message || 'Failed to fetch orders');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchVendorsAndCities = async () => {
+    try {
+      setLoadingFilters(true);
+      const token = localStorage.getItem('token');
+
+      // Fetch vendors
+      const vendorsResponse = await fetch(`${baseUrl}/vendors?isActive=true&isApproved=true`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        credentials: 'same-origin',
+      });
+      const vendorsData = await vendorsResponse.json();
+      if (vendorsData.success) {
+        setVendors(vendorsData.data || []);
+      }
+
+      // Fetch cities
+      const citiesResponse = await fetch(`${baseUrl}/cities?isActive=true&isServiceable=true`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const citiesData = await citiesResponse.json();
+      if (citiesData.success) {
+        setCities(citiesData.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching vendors and cities:', err);
+    } finally {
+      setLoadingFilters(false);
     }
   };
 
@@ -140,6 +205,8 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
       paymentStatus: '',
       startDate: '',
       endDate: '',
+      vendorId: '',
+      cityId: '',
     });
     setPage(1);
   };
@@ -163,17 +230,17 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 ${userRole === 'super_admin' ? 'md:grid-cols-6' : 'md:grid-cols-4'} gap-4`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Order Status
+              Status
             </label>
             <select
               value={filters.orderStatus}
               onChange={(e) => handleFilterChange('orderStatus', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              <option value="">All Statuses</option>
+              <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
               <option value="processing">Processing</option>
@@ -191,7 +258,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
               onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              <option value="">All Payment Statuses</option>
+              <option value="">All Payment Status</option>
               <option value="pending">Pending</option>
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
@@ -220,8 +287,48 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
+          {userRole === 'super_admin' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Filter by Vendor
+                </label>
+                <select
+                  value={filters.vendorId}
+                  onChange={(e) => handleFilterChange('vendorId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  disabled={loadingFilters}
+                >
+                  <option value="">All Vendors</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor._id} value={vendor._id}>
+                      {vendor.businessName || vendor.legalName || vendor.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Filter by Service City
+                </label>
+                <select
+                  value={filters.cityId}
+                  onChange={(e) => handleFilterChange('cityId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  disabled={loadingFilters}
+                >
+                  <option value="">All Cities</option>
+                  {cities.map((city) => (
+                    <option key={city._id} value={city._id}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
         </div>
-        {(filters.orderStatus || filters.paymentStatus || filters.startDate || filters.endDate) && (
+        {(filters.orderStatus || filters.paymentStatus || filters.startDate || filters.endDate || filters.vendorId || filters.cityId) && (
           <button
             onClick={clearFilters}
             className="mt-4 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
@@ -313,7 +420,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
                       {order.Phone}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {formatDate(order.order_data_and_time)}
+                      {formatDate(order.order_date_and_time)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
                       {formatCurrency(order.sub_total)}
@@ -341,7 +448,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {formatDate(order.delivery_data)}
+                      {formatDate(order.delivery_date)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                       {order.Email}
