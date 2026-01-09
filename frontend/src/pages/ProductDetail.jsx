@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vendorProductAPI, categoryAPI, wishlistAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart } from '../store/slices/cartSlice';
+import { selectCartItems } from '../store/slices/cartSlice';
 import { isAuthenticated } from '../utils/auth';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const cartItems = useAppSelector(selectCartItems);
   const [product, setProduct] = useState(null);
   const [category, setCategory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -223,15 +225,24 @@ const ProductDetail = () => {
         return;
       }
       
+      // Check if product is already in cart
+      const cartItemId = `${product._id}_${selectedPrice?.type || 'single'}_${selectedPrice?.price || product.pricing?.single?.price || '0'}`;
+      const existingCartItem = cartItems.find(item => item.id === cartItemId);
+      const minQty = product.minimumOrderQuantity || 1;
+      
       // Dispatch add to cart action
       dispatch(addToCart({
         vendorProduct: product,
-        quantity: quantity,
+        quantity: existingCartItem ? minQty : quantity,
         selectedPrice: selectedPrice,
       }));
       
       // Show success message
-      alert(`Added ${quantity} item(s) to cart!`);
+      if (existingCartItem) {
+        alert(`Added ${minQty} more item(s) to cart!`);
+      } else {
+        alert(`Added ${quantity} item(s) to cart!`);
+      }
       
       // Optional: Navigate to cart
       // navigate('/cart');

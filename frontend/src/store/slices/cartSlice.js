@@ -38,8 +38,9 @@ const cartSlice = createSlice({
       const existingItem = state.items.find(item => item.id === itemId);
       
       if (existingItem) {
-        // Update quantity if item exists
-        existingItem.quantity += quantity;
+        // Update quantity if item exists - use minimumOrderQuantity instead of passed quantity
+        const minQty = existingItem.minimumOrderQuantity || vendorProduct.minimumOrderQuantity || 1;
+        existingItem.quantity += minQty;
       } else {
         // Add new item to cart
         const newItem = {

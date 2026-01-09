@@ -498,6 +498,20 @@ const Category = () => {
       } catch (error) {
         console.error('Error adding to cart:', error);
       }
+    } else {
+      // Product already in cart - add minimum orderable quantity
+      try {
+        const selectedPrice = getSelectedPriceForQuantity(product, minQty);
+        if (selectedPrice) {
+          dispatch(addToCart({
+            vendorProduct: product,
+            quantity: minQty,
+            selectedPrice: selectedPrice,
+          }));
+        }
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+      }
     }
     
     // Show quantity selector for this product
@@ -533,9 +547,10 @@ const Category = () => {
       const existingCartItem = cartItems.find(item => item.id === cartItemId);
       
       if (existingCartItem) {
-        // Update quantity if item exists
-        dispatch(updateQuantity({ itemId: cartItemId, quantity: existingCartItem.quantity + quantity }));
-        alert(`Added ${quantity} more item(s) to cart!`);
+        // Update quantity if item exists - use minimum orderable quantity
+        const minQty = product.minimumOrderQuantity || 1;
+        dispatch(updateQuantity({ itemId: cartItemId, quantity: existingCartItem.quantity + minQty }));
+        alert(`Added ${minQty} more item(s) to cart!`);
       } else {
         // Add new item to cart
         dispatch(addToCart({
