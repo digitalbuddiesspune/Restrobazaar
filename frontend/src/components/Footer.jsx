@@ -156,7 +156,7 @@ const Footer = () => {
               
               {/* Logo Image */}
               <img 
-                src="https://res.cloudinary.com/debhhnzgh/image/upload/v1767436047/IMG_20260103_151920_nujfb4.png" 
+                src="https://res.cloudinary.com/debhhnzgh/image/upload/v1767961742/RestroLogoBluebg_aevte3.png?v=2" 
                 alt="RestroBazaar Logo" 
                 className="h-8 sm:h-10 md:h-12 lg:h-14 xl:h-16 w-auto rounded-lg object-contain max-w-full"
               />
