@@ -48,7 +48,7 @@ function App() {
 
   // Check URL for modal routes
   useEffect(() => {
-    if (location.pathname === "/signin") {
+    if (location.pathname === "/signin" || location.pathname === "/sign-in") {
       setShowSignIn(true);
       navigate("/", { replace: true });
     } else if (location.pathname === "/signup") {

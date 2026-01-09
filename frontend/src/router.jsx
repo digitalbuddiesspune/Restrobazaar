@@ -46,6 +46,7 @@ const router = createBrowserRouter(
       <Route path="terms-of-service" element={<TermsOfService />} />
       <Route path="refund-policy" element={<RefundPolicy />} />
       <Route path="shipping-policy" element={<ShippingPolicy />} />
+      <Route path="sign-in" element={<SignIn />} />
       <Route path="signin" element={<SignIn />} />
       <Route path="signup" element={<SignUp />} />
       <Route path="account" element={<Account />} />

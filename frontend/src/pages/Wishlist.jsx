@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { wishlistAPI, cartAPI } from '../utils/api';
+import { wishlistAPI, vendorProductAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { addToCart } from '../store/slices/cartSlice';
+import { selectCartItems } from '../store/slices/cartSlice';
 
 const Wishlist = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const cartItems = useAppSelector(selectCartItems);
   const [wishlist, setWishlist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -54,13 +59,87 @@ const Wishlist = () => {
     }
   };
 
+  // Get selected price based on quantity
+  const getSelectedPriceForQuantity = (product, quantity) => {
+    if (product.priceType === 'single' && product.pricing?.single?.price) {
+      return {
+        type: 'single',
+        price: product.pricing.single.price,
+        display: `₹${product.pricing.single.price} per piece`,
+      };
+    } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
+      // Find the appropriate price slab for the quantity
+      const slab = product.pricing.bulk.find(
+        s => quantity >= s.minQty && quantity <= s.maxQty
+      );
+      if (slab) {
+        return {
+          type: 'bulk',
+          price: slab.price,
+          display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
+          slab: slab,
+        };
+      } else {
+        // If quantity exceeds all slabs, use the last (highest) slab
+        const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+        return {
+          type: 'bulk',
+          price: lastSlab.price,
+          display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
+          slab: lastSlab,
+        };
+      }
+    }
+    return null;
+  };
+
   const handleAddToCart = async (productId) => {
     setAddingToCart({ ...addingToCart, [productId]: true });
     try {
-      const response = await cartAPI.addToCart(productId, 1);
-      if (response.success) {
-        alert('Product added to cart!');
+      // Fetch full vendor product details
+      const response = await vendorProductAPI.getVendorProductById(productId);
+      
+      if (!response.success || !response.data) {
+        alert('Failed to fetch product details. Please try again.');
+        return;
       }
+
+      const product = response.data;
+      
+      // Check if product is in stock
+      if (product.availableStock === 0 || product.availableStock === undefined) {
+        alert('This product is out of stock');
+        return;
+      }
+
+      const minQty = product.minimumOrderQuantity || 1;
+      
+      // Get the selected price based on minimum quantity
+      const selectedPrice = getSelectedPriceForQuantity(product, minQty);
+      
+      if (!selectedPrice) {
+        alert('Unable to determine price. Please view product details.');
+        return;
+      }
+
+      // Check if product is already in cart
+      const cartItemId = `${product._id}_${selectedPrice.type}_${selectedPrice.price}`;
+      const existingCartItem = cartItems.find(item => item.id === cartItemId);
+
+      if (existingCartItem) {
+        // Product already in cart
+        alert('Product is already in cart!');
+        return;
+      }
+
+      // Add to cart using Redux
+      dispatch(addToCart({
+        vendorProduct: product,
+        quantity: minQty,
+        selectedPrice: selectedPrice,
+      }));
+
+      alert('Product added to cart!');
     } catch (err) {
       console.error('Failed to add to cart:', err);
       alert('Failed to add to cart. Please try again.');

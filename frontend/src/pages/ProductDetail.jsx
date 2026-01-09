@@ -321,6 +321,8 @@ const ProductDetail = () => {
 
   const handleWishlistToggle = async () => {
     if (!isAuthenticated()) {
+      // Store product ID to add to wishlist after login
+      localStorage.setItem('pendingWishlistProduct', product._id);
       navigate('/sign-in');
       return;
     }

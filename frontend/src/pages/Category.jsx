@@ -346,6 +346,8 @@ const Category = () => {
     e.stopPropagation(); // Prevent card click navigation
     
     if (!isAuthenticated()) {
+      // Store product ID to add to wishlist after login
+      localStorage.setItem('pendingWishlistProduct', product._id);
       navigate('/sign-in');
       return;
     }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../utils/api';
+import { authAPI, wishlistAPI } from '../utils/api';
 import { setUserInfo } from '../utils/auth';
 
 const SignInModal = ({ onClose, onSwitchToSignUp }) => {
@@ -30,6 +30,28 @@ const SignInModal = ({ onClose, onSwitchToSignUp }) => {
       const response = await authAPI.signIn(formData);
       if (response.success && response.data) {
         setUserInfo(response.data);
+        
+        // Check if there's a pending wishlist product to add
+        const pendingProductId = localStorage.getItem('pendingWishlistProduct');
+        if (pendingProductId) {
+          try {
+            // Add product to wishlist
+            await wishlistAPI.addToWishlist(pendingProductId);
+            // Remove the pending product ID from localStorage
+            localStorage.removeItem('pendingWishlistProduct');
+            // Close modal and redirect to wishlist page
+            onClose();
+            navigate('/wishlist');
+            window.dispatchEvent(new Event('authChange'));
+            return;
+          } catch (wishlistErr) {
+            console.error('Error adding product to wishlist:', wishlistErr);
+            // Even if wishlist add fails, continue with normal redirect
+            localStorage.removeItem('pendingWishlistProduct');
+          }
+        }
+        
+        // Normal redirect to home page
         onClose();
         navigate('/');
         window.dispatchEvent(new Event('authChange'));
