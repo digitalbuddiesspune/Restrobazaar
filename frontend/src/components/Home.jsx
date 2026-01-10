@@ -8,6 +8,10 @@ const Home = () => {
       <HeroSlider
         slides={[
           {
+            desktop:"https://res.cloudinary.com/debhhnzgh/image/upload/v1768073779/Artboard_1_copy_24x-100_1_eetqrq.jpg",
+            alt:"RestroBanner4",
+          },
+          {
             desktop:
               "https://res.cloudinary.com/debhhnzgh/image/upload/v1767119600/Artboard_1_4x-100_2__11zon_ps5omm.jpg",
             alt: "RestroBanner1",

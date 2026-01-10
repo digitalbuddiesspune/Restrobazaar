@@ -106,104 +106,113 @@ const ProductForm = ({
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Product Selection */}
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Select Product *
-          </label>
-          <select
-            required
-            value={formData.productId}
-            onChange={(e) =>
-              setFormData({ ...formData, productId: e.target.value })
-            }
-            disabled={!!product}
-            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-          >
-            <option value="">Select a product</option>
-            {globalProducts?.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.productName}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* City Selection */}
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            City *
-          </label>
-          {vendorCityId ? (
-            <input
-              type="text"
-              value={cities?.find((c) => c._id === vendorCityId)?.displayName || cities?.find((c) => c._id === vendorCityId)?.name || 'Your City'}
-              disabled
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
-            />
-          ) : (
+        {/* Row 1: Select Product and City */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Product Selection */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Select Product *
+            </label>
             <select
               required
-              value={formData.cityId}
+              value={formData.productId}
               onChange={(e) =>
-                setFormData({ ...formData, cityId: e.target.value })
+                setFormData({ ...formData, productId: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={!!product}
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
             >
-              <option value="">Select a city</option>
-              {cities?.map((city) => (
-                <option key={city._id} value={city._id}>
-                  {city.displayName || city.name}
+              <option value="">Select a product</option>
+              {globalProducts?.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.productName}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* City Selection */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              City *
+            </label>
+            {vendorCityId ? (
+              <input
+                type="text"
+                value={cities?.find((c) => c._id === vendorCityId)?.displayName || cities?.find((c) => c._id === vendorCityId)?.name || 'Your City'}
+                disabled
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+              />
+            ) : (
+              <select
+                required
+                value={formData.cityId}
+                onChange={(e) =>
+                  setFormData({ ...formData, cityId: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select a city</option>
+                {cities?.map((city) => (
+                  <option key={city._id} value={city._id}>
+                    {city.displayName || city.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Price Type and Price */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Price Type */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Price Type *
+            </label>
+            <select
+              required
+              value={formData.priceType}
+              onChange={(e) =>
+                setFormData({ ...formData, priceType: e.target.value })
+              }
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="single">Single Price</option>
+              <option value="bulk">Bulk Pricing</option>
+            </select>
+          </div>
+
+          {/* Pricing - Single Price */}
+          {formData.priceType === 'single' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Price *
+              </label>
+              <input
+                type="number"
+                required
+                min="0"
+                step="0.01"
+                value={formData.pricing.single.price}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    pricing: {
+                      ...formData.pricing,
+                      single: { price: e.target.value },
+                    },
+                  })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter price"
+              />
+            </div>
           )}
         </div>
 
-        {/* Price Type */}
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Price Type *
-          </label>
-          <select
-            required
-            value={formData.priceType}
-            onChange={(e) =>
-              setFormData({ ...formData, priceType: e.target.value })
-            }
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="single">Single Price</option>
-            <option value="bulk">Bulk Pricing</option>
-          </select>
-        </div>
-
-        {/* Pricing */}
-        {formData.priceType === 'single' ? (
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Price *
-            </label>
-            <input
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              value={formData.pricing.single.price}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  pricing: {
-                    ...formData.pricing,
-                    single: { price: e.target.value },
-                  },
-                })
-              }
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter price"
-            />
-          </div>
-        ) : (
+        {/* Bulk Pricing Section - Full Width */}
+        {formData.priceType === 'bulk' && (
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="block text-xs font-medium text-gray-700">
@@ -234,7 +243,7 @@ const ProductForm = ({
                   min="1"
                   value={slab.maxQty}
                   onChange={(e) => updateBulkSlab(index, 'maxQty', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Max Qty"
                 />
                 <input
@@ -244,13 +253,13 @@ const ProductForm = ({
                   step="0.01"
                   value={slab.price}
                   onChange={(e) => updateBulkSlab(index, 'price', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Price"
                 />
                 <button
                   type="button"
                   onClick={() => removeBulkSlab(index)}
-                  className="px-3 py-2 text-red-600 hover:text-red-800"
+                  className="px-3 py-1.5 text-xs text-red-600 hover:text-red-800 border border-red-300 rounded-lg hover:bg-red-50"
                 >
                   Remove
                 </button>
@@ -259,8 +268,8 @@ const ProductForm = ({
           </div>
         )}
 
-        {/* Stock Management */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Row 3: Stock Management - Two Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Available Stock
@@ -292,6 +301,10 @@ const ProductForm = ({
               className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
+        </div>
+
+        {/* Row 4: Low Stock Alert and Status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Low Stock Alert
@@ -307,21 +320,22 @@ const ProductForm = ({
               placeholder="Optional"
             />
           </div>
-        </div>
-
-        {/* Status */}
-        <div>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={formData.status}
-              onChange={(e) =>
-                setFormData({ ...formData, status: e.target.checked })
-              }
-              className="mr-2"
-            />
-            <span className="text-xs text-gray-700">Active</span>
-          </label>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <label className="flex items-center h-[34px]">
+              <input
+                type="checkbox"
+                checked={formData.status}
+                onChange={(e) =>
+                  setFormData({ ...formData, status: e.target.checked })
+                }
+                className="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-xs text-gray-700">Active</span>
+            </label>
+          </div>
         </div>
 
         {/* Actions */}

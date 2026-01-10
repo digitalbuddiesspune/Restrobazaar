@@ -153,7 +153,7 @@ const CatalogTable = ({
                       <img
                         src={product.img || product.images[0].url}
                         alt={product.images?.[0]?.alt || product.productName}
-                        className="h-8 w-8 object-cover rounded-lg"
+                        className="h-8 w-8 object-contain p-0.5 bg-white rounded-lg"
                       />
                     ) : (
                       <div className="h-8 w-8 bg-gray-200 rounded-lg flex items-center justify-center">

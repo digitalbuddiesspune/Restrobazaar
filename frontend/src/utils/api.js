@@ -52,6 +52,35 @@ export const authAPI = {
       method: 'POST',
     });
   },
+
+  // OTP endpoints
+  sendOTPForSignup: async (phone, email) => {
+    return apiRequest('/users/send-otp-signup', {
+      method: 'POST',
+      body: JSON.stringify({ phone, email }),
+    });
+  },
+
+  verifyOTPAndSignup: async (name, email, phone, password, otp) => {
+    return apiRequest('/users/verify-otp-signup', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, phone, password, otp }),
+    });
+  },
+
+  sendOTPForLogin: async (phone) => {
+    return apiRequest('/users/send-otp-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+  },
+
+  verifyOTPAndLogin: async (phone, otp) => {
+    return apiRequest('/users/verify-otp-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, otp }),
+    });
+  },
 };
 
 // User API

@@ -14,6 +14,7 @@ import CouponForm from '../components/vendor/CouponForm';
 import CouponsTable from '../components/vendor/CouponsTable';
 import UserForm from '../components/vendor/UserForm';
 import CreateOrder from '../components/vendor/CreateOrder';
+import UnpaidCustomersTable from '../components/vendor/UnpaidCustomersTable';
 import {
   useMyVendorProducts,
   useGlobalProducts,
@@ -92,6 +93,15 @@ const VendorDashboard = () => {
     { enabled: activeTab === 'overview' }
   );
 
+  // Fetch unpaid orders for unpaid customers section
+  const {
+    data: unpaidOrdersData,
+    isLoading: unpaidOrdersLoading,
+  } = useVendorOrders(
+    { paymentStatus: 'pending', limit: 1000 },
+    { enabled: activeTab === 'unpaid-customers' }
+  );
+
   const { data: orderStatsData } = useOrderStats({
     enabled: activeTab === 'overview' || activeTab === 'orders',
   });
@@ -109,6 +119,7 @@ const VendorDashboard = () => {
   const categories = categoriesData?.data || [];
   const orders = ordersData?.data || [];
   const allOrders = allOrdersData?.data || [];
+  const unpaidOrders = unpaidOrdersData?.data || [];
   const orderStats = orderStatsData?.data || {};
 
   // Get vendor's city from first product
@@ -851,6 +862,23 @@ const VendorDashboard = () => {
           )}
 
           {/* Orders Tab */}
+          {/* Unpaid Customers Tab */}
+          {activeTab === 'unpaid-customers' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">Unpaid Customers</h1>
+              </div>
+              <UnpaidCustomersTable
+                orders={unpaidOrders}
+                isLoading={unpaidOrdersLoading}
+                onOrderClick={(orderId) => {
+                  setSelectedOrderId(orderId);
+                  setActiveTab('orders');
+                }}
+              />
+            </div>
+          )}
+
           {activeTab === 'orders' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
@@ -1041,15 +1069,6 @@ const VendorDashboard = () => {
             </div>
           )}
 
-          {/* Analytics Tab */}
-          {activeTab === 'analytics' && (
-            <div className="space-y-4">
-              <h1 className="text-xl font-bold text-gray-900">Analytics</h1>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-                <p className="text-sm text-gray-500">Analytics coming soon...</p>
-              </div>
-            </div>
-          )}
         </main>
       </div>
     </div>

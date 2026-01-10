@@ -56,7 +56,7 @@ const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onTogg
                     setSearchQuery(e.target.value);
                     if (onSearch) onSearch(e.target.value);
                   }}
-                  className="w-full px-3 py-1.5 pl-9 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-1.5 pl-9 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
                 <svg
                   className="absolute left-2.5 top-2 h-4 w-4 text-gray-400"
@@ -100,7 +100,7 @@ const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onTogg
                   <div className="p-3 border-b border-gray-200">
                     <h3 className="font-semibold text-sm text-gray-900">Notifications</h3>
                   </div>
-                  <div className="max-h-96 overflow-y-auto">
+                  <div className="max-h-96 overflow-y-auto scrollbar-hide">
                     <div className="p-4 text-xs text-gray-500 text-center">
                       No new notifications
                     </div>
@@ -115,13 +115,24 @@ const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onTogg
                 <p className="text-xs font-semibold text-gray-900">Super Admin</p>
                 <p className="text-xs text-gray-500">Active</p>
               </div>
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
                 SA
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Hide Scrollbar Styles */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </header>
   );
 };

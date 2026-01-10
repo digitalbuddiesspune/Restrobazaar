@@ -894,7 +894,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                         <td className="px-4 py-3">
                           <div className="flex items-center space-x-3">
                             {item.productImage && (
-                              <img src={item.productImage} alt={item.productName} className="h-12 w-12 object-cover rounded" />
+                              <img src={item.productImage} alt={item.productName} className="h-12 w-12 object-contain p-1 bg-white rounded" />
                             )}
                             <div>
                               <p className="text-sm font-medium text-gray-900">{item.productName}</p>

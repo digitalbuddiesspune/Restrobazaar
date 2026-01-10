@@ -226,7 +226,7 @@ const Wishlist = () => {
                   key={product._id}
                   className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden transform hover:-translate-y-1 flex flex-col h-full"
                 >
-                  <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden relative flex-shrink-0">
+                  <div className="aspect-square bg-white overflow-hidden relative flex-shrink-0">
                     {discount > 0 && (
                       <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-10 bg-red-50 text-red-600 border border-red-200 text-[10px] sm:text-xs font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-lg">
                         {discount}% OFF
@@ -252,7 +252,7 @@ const Wishlist = () => {
                         <img
                           src={product.images[0]}
                           alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
                           onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';

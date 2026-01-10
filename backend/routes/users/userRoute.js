@@ -11,12 +11,24 @@ import {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
+  sendOTPForSignup,
+  verifyOTPAndSignup,
+  sendOTPForLogin,
+  verifyOTPAndLogin,
 } from "../../controller/users/userController.js";
 import { authenticate } from "../../middleware/authMiddleware.js";
 const userRouter = express.Router();
 
 // Public routes - Signup and Signin (must be defined before parameterized routes)
 // Note: Router is mounted at /api/v1, so these routes become /api/v1/users/signup, etc.
+
+// OTP routes (must be before signup/signin routes)
+userRouter.post("/users/send-otp-signup", sendOTPForSignup);
+userRouter.post("/users/verify-otp-signup", verifyOTPAndSignup);
+userRouter.post("/users/send-otp-login", sendOTPForLogin);
+userRouter.post("/users/verify-otp-login", verifyOTPAndLogin);
+
+// Traditional signup and signin routes (still available for backward compatibility)
 userRouter.post("/users/signup", userSignup);
 userRouter.post("/signup", userSignup); // Alternative path
 userRouter.post("/users/signin", userSignin);

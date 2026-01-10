@@ -711,7 +711,7 @@ const VendorAdminDashboard = () => {
                             <img
                               src={product.img || product.images[0].url}
                               alt={product.images?.[0]?.alt || product.productName}
-                              className="h-12 w-12 object-cover rounded"
+                              className="h-12 w-12 object-contain p-1 bg-white rounded"
                             />
                           ) : (
                             <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
@@ -1052,7 +1052,7 @@ const VendorAdminDashboard = () => {
                               <img
                                 src={product.productId.images?.[0]?.url || product.productId.img}
                                 alt={product.productId?.productName || "Product"}
-                                className="h-10 w-10 object-cover rounded mr-3"
+                                className="h-10 w-10 object-contain p-0.5 bg-white rounded mr-3"
                               />
                             ) : (
                               <div className="h-10 w-10 bg-gray-200 rounded mr-3 flex items-center justify-center">

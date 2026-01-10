@@ -24,7 +24,7 @@ const ProductsTable = ({
       <div className="p-6 border-b">
         <h2 className="text-xl font-bold">All Products</h2>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollbar-hide">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -53,7 +53,7 @@ const ProductsTable = ({
                     <img
                       src={product.img}
                       alt={product.productName || "Product"}
-                      className="h-12 w-12 object-cover rounded"
+                      className="h-12 w-12 object-contain p-1 bg-white rounded"
                       onError={(e) => {
                         e.target.style.display = "none";
                       }}

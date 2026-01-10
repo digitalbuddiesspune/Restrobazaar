@@ -424,11 +424,11 @@ const ProductDetail = () => {
           {/* Product Images */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="aspect-square bg-white rounded-lg shadow-md overflow-hidden relative">
+            <div className="aspect-square bg-white rounded-lg shadow-md overflow-hidden relative flex items-center justify-center">
               <img
                 src={images[selectedImageIndex]}
                 alt={product.productId?.productName || 'Product'}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-4"
                 onError={(e) => {
                   e.target.src = 'https://via.placeholder.com/600x600?text=Product+Image';
                 }}
@@ -496,7 +496,7 @@ const ProductDetail = () => {
                     <img
                       src={img}
                       alt={`${product.productId?.productName} ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain p-1 bg-white"
                       onError={(e) => {
                         e.target.src = 'https://via.placeholder.com/150x150?text=Image';
                       }}

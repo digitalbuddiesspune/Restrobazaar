@@ -861,11 +861,11 @@ const Category = () => {
                           }}
                         >
                           {/* Product Image */}
-                          <div className="aspect-square overflow-hidden bg-gray-100 relative">
+                          <div className="aspect-square overflow-hidden bg-white relative flex items-center justify-center">
                             <img
                               src={getProductImage(product)}
                               alt={product.productId?.productName || 'Product'}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
                                 e.target.src = 'https://via.placeholder.com/300x300?text=Product';
                               }}

@@ -1159,7 +1159,7 @@ const CreateOrder = () => {
                         <img
                           src={productImage}
                           alt={productName}
-                          className="w-12 h-12 object-cover rounded"
+                          className="w-12 h-12 object-contain p-1 bg-white rounded"
                           onError={(e) => {
                             e.target.src = 'https://via.placeholder.com/48x48?text=No+Image';
                             e.target.onerror = null; // Prevent infinite loop
@@ -1218,7 +1218,7 @@ const CreateOrder = () => {
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="w-16 h-16 object-cover rounded"
+                      className="w-16 h-16 object-contain p-1 bg-white rounded"
                       onError={(e) => {
                         e.target.src = 'https://via.placeholder.com/64x64?text=No+Image';
                         e.target.onerror = null; // Prevent infinite loop

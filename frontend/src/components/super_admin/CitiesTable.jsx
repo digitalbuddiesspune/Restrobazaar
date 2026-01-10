@@ -4,7 +4,7 @@ const CitiesTable = ({ cities, handleDelete }) => {
       <div className="p-6 border-b">
         <h2 className="text-xl font-bold">All Cities</h2>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollbar-hide">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

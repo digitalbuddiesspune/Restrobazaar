@@ -70,7 +70,7 @@ const ProductTable = ({
                       <img
                         src={product.productId.images?.[0]?.url || product.productId.img}
                         alt={product.productId?.productName || 'Product'}
-                        className="h-8 w-8 object-cover rounded-lg mr-2"
+                        className="h-8 w-8 object-contain p-0.5 bg-white rounded-lg mr-2"
                       />
                     ) : (
                       <div className="h-8 w-8 bg-gray-200 rounded-lg mr-2 flex items-center justify-center">

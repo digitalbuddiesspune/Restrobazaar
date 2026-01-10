@@ -13,6 +13,7 @@ import ProductsTable from "../components/super_admin/ProductsTable";
 import CitiesTable from "../components/super_admin/CitiesTable";
 import CategoriesTable from "../components/super_admin/CategoriesTable";
 import VendorsTable from "../components/super_admin/VendorsTable";
+import UsersTable from "../components/super_admin/UsersTable";
 
 const SuperAdminDashboard = () => {
   const baseUrl =
@@ -38,6 +39,21 @@ const SuperAdminDashboard = () => {
     cities: 0,
     categories: 0,
     vendors: 0,
+    users: 0,
+  });
+
+  // Today's order statistics
+  const [todayOrdersStats, setTodayOrdersStats] = useState({
+    total: 0,
+    pending: 0,
+    delivered: 0,
+    cancelled: 0,
+  });
+
+  // Filter state for today's orders
+  const [orderFilters, setOrderFilters] = useState({
+    cityId: '',
+    vendorId: '',
   });
 
   // Data lists
@@ -45,6 +61,8 @@ const SuperAdminDashboard = () => {
   const [cities, setCities] = useState([]);
   const [categories, setCategories] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   // Form states
   const [productForm, setProductForm] = useState({
@@ -142,7 +160,7 @@ const SuperAdminDashboard = () => {
         return;
       }
 
-      const [productsRes, citiesRes, categoriesRes, vendorsRes] =
+      const [productsRes, citiesRes, categoriesRes, vendorsRes, usersRes] =
         await Promise.all([
           axios
             .get(`${baseUrl}/products`, {
@@ -164,6 +182,12 @@ const SuperAdminDashboard = () => {
               headers: { Authorization: `Bearer ${token}` },
             })
             .catch(() => ({ data: { data: [] } })),
+          axios
+            .get(`${baseUrl}/admin/users`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { limit: 1 }, // Just get count
+            })
+            .catch(() => ({ data: { pagination: { total: 0 } } })),
         ]);
 
       setStats({
@@ -175,10 +199,101 @@ const SuperAdminDashboard = () => {
         categories:
           categoriesRes.data?.data?.length || categoriesRes.data?.count || 0,
         vendors: vendorsRes.data?.data?.length || vendorsRes.data?.count || 0,
+        users: usersRes.data?.pagination?.total || 0,
       });
     } catch (err) {
       console.error("Error fetching stats:", err);
     }
+  };
+
+  // Fetch today's order statistics
+  const fetchTodayOrdersStats = async (filters = {}) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        return;
+      }
+
+      // Get today's date range (start and end of today)
+      // Use local timezone but convert to ISO string for API
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      
+      // Convert to ISO string for API
+      const todayStartISO = todayStart.toISOString();
+      const todayEndISO = todayEnd.toISOString();
+
+      // Build params object
+      const params = {
+        startDate: todayStartISO,
+        endDate: todayEndISO,
+        limit: 10000, // Large limit to get all today's orders
+      };
+
+      // Add filters if provided
+      if (filters.cityId) {
+        params.cityId = filters.cityId;
+      }
+      if (filters.vendorId) {
+        params.vendorId = filters.vendorId;
+      }
+
+      // Fetch today's orders with optional filters
+      const response = await axios.get(`${baseUrl}/admin/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params,
+      });
+
+      if (response.data?.success) {
+        const orders = response.data.data || [];
+        
+        // Count orders by status - handle both Order_status and orderStatus field names
+        const stats = {
+          total: orders.length,
+          pending: orders.filter(order => {
+            const status = order.Order_status || order.orderStatus || '';
+            return status.toLowerCase() === 'pending';
+          }).length,
+          delivered: orders.filter(order => {
+            const status = order.Order_status || order.orderStatus || '';
+            return status.toLowerCase() === 'delivered';
+          }).length,
+          cancelled: orders.filter(order => {
+            const status = order.Order_status || order.orderStatus || '';
+            return status.toLowerCase() === 'cancelled';
+          }).length,
+        };
+
+        setTodayOrdersStats(stats);
+      }
+    } catch (err) {
+      console.error("Error fetching today's order stats:", err);
+      // Set default values on error
+      setTodayOrdersStats({
+        total: 0,
+        pending: 0,
+        delivered: 0,
+        cancelled: 0,
+      });
+    }
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    const newFilters = {
+      ...orderFilters,
+      [filterType]: value,
+    };
+    setOrderFilters(newFilters);
+    // Refetch stats with new filters
+    fetchTodayOrdersStats(newFilters);
+  };
+
+  // Reset filters
+  const handleResetFilters = () => {
+    setOrderFilters({ cityId: '', vendorId: '' });
+    fetchTodayOrdersStats({ cityId: '', vendorId: '' });
   };
 
   // Fetch all data
@@ -231,17 +346,50 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const token = getToken();
+      const res = await axios.get(`${baseUrl}/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 10000 }, // Fetch all users
+      });
+      setUsers(res.data?.data || []);
+    } catch (err) {
+      setError("Failed to fetch users");
+      console.error("Error fetching users:", err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
+    // Fetch today's order stats when overview tab is active
+    if (activeTab === "overview") {
+      // Fetch cities and vendors for filters
+      fetchCities();
+      fetchVendors();
+      // Fetch today's orders with current filters
+      fetchTodayOrdersStats(orderFilters);
+    }
     if (activeTab === "products") {
       fetchProducts();
       setProductsPage(1); // Reset pagination when switching to products tab
     }
+    if (activeTab === "product-catalog") {
+      fetchProducts(); // Fetch products for catalog view
+      fetchCategories(); // Fetch categories for catalog
+    }
     if (activeTab === "cities") fetchCities();
     if (activeTab === "categories") fetchCategories();
     if (activeTab === "vendors") fetchVendors();
+    if (activeTab === "users") fetchUsers();
     if (activeTab === "add-product") fetchCategories(); // Fetch categories for dropdown
+    if (activeTab === "add-city") fetchCities(); // Fetch cities for reference
+    if (activeTab === "add-category") fetchCategories(); // Fetch categories for reference
     if (activeTab === "add-vendor") fetchCities(); // Fetch cities for serviceCities dropdown
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Image management handlers
@@ -794,7 +942,7 @@ const SuperAdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 scrollbar-hide">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={(tab) => {
@@ -825,7 +973,7 @@ const SuperAdminDashboard = () => {
           isCollapsed={sidebarCollapsed}
         />
 
-        <main className="p-4">
+        <main className="p-4 scrollbar-hide">
           {/* Messages */}
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
@@ -844,7 +992,15 @@ const SuperAdminDashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>
               </div>
-              <OverviewStats stats={stats} />
+              <OverviewStats 
+                stats={stats} 
+                todayOrdersStats={todayOrdersStats}
+                filters={orderFilters}
+                onFilterChange={handleFilterChange}
+                onResetFilters={handleResetFilters}
+                cities={cities}
+                vendors={vendors}
+              />
             </div>
           )}
 
@@ -2364,6 +2520,73 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
+          {/* Product Catalog Tab */}
+          {activeTab === "product-catalog" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">Product Catalog</h1>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {products.length === 0 ? (
+                    <div className="col-span-full text-center py-12 text-gray-500">
+                      No products found in catalog
+                    </div>
+                  ) : (
+                    products.map((product) => (
+                      <div
+                        key={product._id}
+                        className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                      >
+                        <div className="aspect-square bg-white flex items-center justify-center">
+                          {product.images && product.images.length > 0 ? (
+                            <img
+                              src={product.images[0].url || product.images[0]}
+                              alt={product.productName}
+                              className="w-full h-full object-contain p-4"
+                            />
+                          ) : (
+                            <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-semibold text-gray-900 truncate mb-1">{product.productName}</h3>
+                          {product.category && (
+                            <p className="text-xs text-gray-500 mb-2">
+                              {product.category.categoryName || product.category}
+                            </p>
+                          )}
+                          {product.shortDescription && (
+                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                              {product.shortDescription}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between mt-3">
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              product.isActive
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {product.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className="text-xs text-red-600 hover:text-red-700 font-medium"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         {/* All Products Tab - OLD */}
         {false && activeTab === "products-old" && (() => {
           const totalPages = getTotalPages(products, itemsPerPage);
@@ -2374,7 +2597,7 @@ const SuperAdminDashboard = () => {
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Products</h2>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-hide">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -2403,7 +2626,7 @@ const SuperAdminDashboard = () => {
                           <img
                             src={product.img}
                             alt={product.productName || "Product"}
-                            className="h-12 w-12 object-cover rounded"
+                            className="h-12 w-12 object-contain p-1 bg-white rounded"
                             onError={(e) => {
                               e.target.style.display = "none";
                             }}
@@ -2546,7 +2769,7 @@ const SuperAdminDashboard = () => {
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Cities</h2>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-hide">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -2625,7 +2848,7 @@ const SuperAdminDashboard = () => {
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Categories</h2>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-hide">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -2711,13 +2934,23 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
+          {/* All Users Tab */}
+          {activeTab === "users" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold text-gray-900">All Users</h1>
+              </div>
+              <UsersTable users={users} loading={usersLoading} />
+            </div>
+          )}
+
           {/* All Vendors Tab - OLD */}
           {false && activeTab === "vendors-old" && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">All Vendors</h2>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-hide">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -2780,9 +3013,20 @@ const SuperAdminDashboard = () => {
               )}
             </div>
           </div>
-        )}
+          )}
         </main>
       </div>
+
+      {/* Global Scrollbar Hide Styles */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };

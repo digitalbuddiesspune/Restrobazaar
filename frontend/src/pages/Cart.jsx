@@ -138,7 +138,7 @@ const Cart = () => {
                           <img
                             src={item.productImage || 'https://via.placeholder.com/150?text=Product'}
                             alt={item.productName}
-                            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+                            className="w-16 h-16 sm:w-20 sm:h-20 object-contain p-1 bg-white rounded-lg"
                             onError={(e) => {
                               e.target.src = 'https://via.placeholder.com/150?text=Product';
                             }}

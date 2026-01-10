@@ -443,13 +443,13 @@ const Orders = () => {
                             <img
                               src={item.productImage}
                               alt={item.productName}
-                              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded border border-gray-200"
+                              className="w-20 h-20 sm:w-24 sm:h-24 object-contain p-1 bg-white rounded border border-gray-200"
                               onError={(e) => {
                                 e.target.src = 'https://via.placeholder.com/96?text=No+Image';
                               }}
                             />
                           ) : (
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded border border-gray-200 flex items-center justify-center">
                               <svg
                                 className="w-8 h-8 text-gray-400"
                                 fill="none"
@@ -567,7 +567,7 @@ const Orders = () => {
                         <img
                           src={item.productImage}
                           alt={item.productName}
-                          className="w-16 h-16 object-cover rounded"
+                          className="w-16 h-16 object-contain p-1 bg-white rounded"
                           onError={(e) => {
                             e.target.src = 'https://via.placeholder.com/64?text=No+Image';
                           }}
