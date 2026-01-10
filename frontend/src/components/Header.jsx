@@ -296,7 +296,7 @@ const Header = () => {
               <img 
                 src="https://res.cloudinary.com/debhhnzgh/image/upload/v1767956041/RestroLogo_vmcnsl.png?v=2" 
                 alt="RestroBazaar Logo" 
-                className="h-5 sm:h-7 md:h-8 lg:h-10 xl:h-12 w-auto rounded-lg object-contain max-w-full"
+                className="h-10 sm:h-7 md:h-8 lg:h-10 xl:h-12 w-auto rounded-lg object-contain max-w-full"
               />
             </NavLink>
           </div>
@@ -811,10 +811,8 @@ const Header = () => {
       {!isMenuOpen && !categoriesLoading && categories.length > 0 && (
         <div className="border-t border-gray-200 bg-gray-50">
           <div className="w-full px-1 sm:px-2 md:px-3">
-            <div className="flex items-center gap-1 sm:gap-1.5 py-1 sm:py-1.5 overflow-x-auto scrollbar-hide">
-              <span className="text-xs font-semibold text-gray-600 whitespace-nowrap shrink-0">
-                Categories:
-              </span>
+            <div className="flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2 overflow-x-auto scrollbar-hide">
+              
               <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
                 {categories.map((category) => (
                   <button
