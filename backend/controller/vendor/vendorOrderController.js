@@ -765,9 +765,7 @@ export const createOrderForUser = async (req, res) => {
       gstAmount: gstAmount || 0,
       shippingCharges: shippingCharges || 0,
       totalAmount: totalAmount || 0,
-    };
-
-    // Payment status
+    };    // Payment status
     const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'pending';
 
     // Generate unique order number

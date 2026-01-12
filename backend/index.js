@@ -18,10 +18,25 @@ dotenv.config();
 const app = express();
 
 // CORS configuration - allow credentials for cookie-based auth
+const allowedOrigins = [
+  "https://restrobazaar.in",
+  "https://www.restrobazaar.in",
+  "http://localhost:5173"
+];
+
 app.use(
   cors({
-    origin: "https://restrobazaar.in" || "https://www.restrobazaar.in" || "http://localhost:5173", // Update with your frontend URL
-    credentials: true, // Allow cookies to be sent
+    origin: function (origin, callback) {
+      // allow requests with no origin (like curl, mobile apps)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
