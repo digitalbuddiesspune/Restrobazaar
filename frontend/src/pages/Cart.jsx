@@ -10,6 +10,7 @@ import {
 } from '../store/slices/cartSlice';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { calculateShippingCharges } from '../utils/shipping';
+import Button from '../components/Button';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -107,12 +108,13 @@ const Cart = () => {
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-2xl font-bold text-gray-900">Shopping Cart</h1>
             {cartItems.length > 0 && (
-              <button
+              <Button
+                variant="text"
+                size="sm"
                 onClick={handleClearCart}
-                className="text-red-600 hover:text-red-700 font-medium text-xs"
               >
                 Clear Cart
-              </button>
+              </Button>
             )}
           </div>
 
@@ -122,10 +124,10 @@ const Cart = () => {
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="p-3 border-b border-gray-200">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-gray-900">
+                    <h2 className="text-base font-semibold text-gray-900">
                       Cart Items ({cartItems.length})
                     </h2>
-                    <span className="text-xs text-gray-600">Delivering to: {selectedCity}</span>
+                    <span className="text-sm text-gray-600">Delivering to: {selectedCity}</span>
                   </div>
                 </div>
 
@@ -151,22 +153,23 @@ const Cart = () => {
                             <div className="flex-1 min-w-0">
                               <Link
                                 to={`/product/${item.vendorProductId}`}
-                                className="text-sm font-semibold text-gray-900 hover:text-red-600 transition-colors line-clamp-2"
+                                className="text-base font-semibold text-gray-900 hover:text-red-600 transition-colors line-clamp-2"
                               >
                                 {item.productName}
                               </Link>
-                              <p className="text-xs text-gray-600 mt-0.5">
+                              <p className="text-sm text-gray-600 mt-0.5">
                                 Vendor: {item.vendorName}
                               </p>
                               {item.cityName && (
-                                <p className="text-xs text-gray-500 mt-0.5">
+                                <p className="text-sm text-gray-500 mt-0.5">
                                   City: {item.cityName}
                                 </p>
                               )}
                             </div>
-                            <button
+                            <Button
+                              variant="icon"
                               onClick={() => handleRemoveItem(item.id)}
-                              className="ml-2 text-red-600 hover:text-red-700 transition-colors flex-shrink-0"
+                              className="ml-2 flex-shrink-0"
                               title="Remove item"
                             >
                               <svg
@@ -182,17 +185,17 @@ const Cart = () => {
                                   d="M6 18L18 6M6 6l12 12"
                                 />
                               </svg>
-                            </button>
+                            </Button>
                           </div>
 
                           {/* Price and Quantity */}
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2">
                             <div>
-                              <p className="text-sm font-bold text-red-600">
+                              <p className="text-base font-bold text-red-600">
                                 ₹{item.price.toFixed(2)} / {item.unit}
                               </p>
                               {item.priceType === 'bulk' && item.selectedPrice && (
-                                <p className="text-xs text-gray-500 mt-0.5">
+                                <p className="text-sm text-gray-500 mt-0.5">
                                   {item.selectedPrice.display}
                                 </p>
                               )}
@@ -200,9 +203,11 @@ const Cart = () => {
 
                               <div className="flex items-center gap-2">
                               <div className="flex items-center gap-1">
-                                <label className="text-xs text-gray-700">Qty:</label>
+                                <label className="text-sm text-gray-700">Qty:</label>
                                 <div className="flex items-center border border-gray-300 rounded">
-                                  <button
+                                  <Button
+                                    variant="textGray"
+                                    size="sm"
                                     onClick={() => {
                                       const minOrderQty = item.minimumOrderQuantity || 1;
                                       const newQty = Math.max(
@@ -212,11 +217,11 @@ const Cart = () => {
                                       handleQuantityChange(item.id, newQty);
                                     }}
                                     disabled={item.quantity <= item.minimumOrderQuantity}
-                                    className="px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="px-2 py-0.5 hover:bg-gray-100 border-0 rounded-none"
                                     title={`Decrease by ${item.minimumOrderQuantity || 1}`}
                                   >
                                     −
-                                  </button>
+                                  </Button>
                                   <input
                                     type="number"
                                     min={item.minimumOrderQuantity}
@@ -229,9 +234,11 @@ const Cart = () => {
                                     onChange={(e) =>
                                       handleQuantityChange(item.id, parseInt(e.target.value) || item.minimumOrderQuantity)
                                     }
-                                    className="w-12 px-1 py-0.5 text-xs text-center border-0 focus:ring-1 focus:ring-red-500 focus:outline-none"
+                                    className="w-12 px-1 py-0.5 text-sm text-center border-0 focus:ring-1 focus:ring-red-500 focus:outline-none"
                                   />
-                                  <button
+                                  <Button
+                                    variant="textGray"
+                                    size="sm"
                                     onClick={() => {
                                       const minOrderQty = item.minimumOrderQuantity || 1;
                                       // Calculate maximum valid quantity (round down available stock to nearest multiple of minOrderQty)
@@ -247,24 +254,24 @@ const Cart = () => {
                                       const maxValidQty = Math.floor(item.availableStock / minOrderQty) * minOrderQty;
                                       return item.quantity >= maxValidQty;
                                     })()}
-                                    className="px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="px-2 py-0.5 hover:bg-gray-100 border-0 rounded-none"
                                     title={`Increase by ${item.minimumOrderQuantity || 1}`}
                                   >
                                     +
-                                  </button>
+                                  </Button>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-bold text-gray-900">
+                                <p className="text-base font-bold text-gray-900">
                                   ₹{(item.price * item.quantity).toFixed(2)}
                                 </p>
                                 {item.availableStock < 10 && item.availableStock > 0 && (
-                                  <p className="text-xs text-orange-600 mt-0.5">
+                                  <p className="text-sm text-orange-600 mt-0.5">
                                     Only {item.availableStock} left
                                   </p>
                                 )}
                                 {item.availableStock === 0 && (
-                                  <p className="text-xs text-red-600 mt-0.5">Out of Stock</p>
+                                  <p className="text-sm text-red-600 mt-0.5">Out of Stock</p>
                                 )}
                               </div>
                             </div>
@@ -280,14 +287,14 @@ const Cart = () => {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-4 sticky top-4">
-                <h2 className="text-base font-semibold text-gray-900 mb-3">Order Summary</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">Order Summary</h2>
 
                 <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-xs text-gray-700">
+                  <div className="flex justify-between text-sm text-gray-700">
                     <span>Subtotal ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
                     <span className="font-medium">₹{cartTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-700">
+                  <div className="flex justify-between text-sm text-gray-700">
                     <span>Shipping Charges</span>
                     <div className="text-right">
                       {shippingCharges === 0 ? (
@@ -298,23 +305,26 @@ const Cart = () => {
                     </div>
                   </div>
                   <div className="border-t border-gray-200 pt-2">
-                    <div className="flex justify-between text-base font-bold text-gray-900">
+                    <div className="flex justify-between text-lg font-bold text-gray-900">
                       <span>Total</span>
                       <span className="text-red-600">₹{grandTotal.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
 
-                <button
+                <Button
+                  variant="primary"
+                  size="md"
+                  fullWidth
                   onClick={handleCheckout}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm mb-3"
+                  className="mb-3"
                 >
                   Place Order
-                </button>
+                </Button>
 
                 <Link
                   to="/"
-                  className="block text-center text-xs text-gray-600 hover:text-red-600 transition-colors font-medium"
+                  className="block text-center text-sm text-gray-600 hover:text-red-600 transition-colors font-medium"
                 >
                   Continue Shopping
                 </Link>

@@ -1,56 +1,42 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { wishlistAPI, vendorProductAPI } from '../utils/api';
+import { vendorProductAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
+import { useWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
 
 const Wishlist = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const cartItems = useAppSelector(selectCartItems);
-  const [wishlist, setWishlist] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [removing, setRemoving] = useState({});
   const [addingToCart, setAddingToCart] = useState({});
+
+  // React Query hooks for wishlist with caching
+  const { data: wishlistResponse, isLoading: loading, error: wishlistError, refetch } = useWishlist({
+    enabled: isAuthenticated(),
+    retry: false,
+  });
+
+  const removeFromWishlistMutation = useRemoveFromWishlist();
 
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/sign-in');
       return;
     }
-    fetchWishlist();
   }, [navigate]);
 
-  const fetchWishlist = async () => {
-    try {
-      setLoading(true);
-      const response = await wishlistAPI.getWishlist();
-      if (response.success) {
-        setWishlist(response.data);
-      } else {
-        setError('Failed to fetch wishlist');
-      }
-    } catch (err) {
-      if (err.response?.status === 401) {
-        navigate('/sign-in');
-      } else {
-        setError(err.message || 'Failed to fetch wishlist');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const wishlist = wishlistResponse?.success ? wishlistResponse.data : null;
+  const error = wishlistError ? (wishlistError.message || 'Failed to fetch wishlist') : null;
 
   const handleRemoveFromWishlist = async (productId) => {
     setRemoving({ ...removing, [productId]: true });
     try {
-      const response = await wishlistAPI.removeFromWishlist(productId);
-      if (response.success) {
-        setWishlist(response.data);
-      }
+      await removeFromWishlistMutation.mutateAsync(productId);
+      // Query will automatically refetch due to invalidation in the mutation
     } catch (err) {
       console.error('Failed to remove from wishlist:', err);
       alert('Failed to remove from wishlist. Please try again.');
@@ -165,7 +151,7 @@ const Wishlist = () => {
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
-            onClick={fetchWishlist}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
             Retry
@@ -181,7 +167,7 @@ const Wishlist = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-6">
           Wishlist
         </h1>
 
@@ -200,7 +186,7 @@ const Wishlist = () => {
                 d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
               />
             </svg>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
               Your wishlist is empty
             </h2>
             <p className="text-gray-600 mb-6">
@@ -214,8 +200,8 @@ const Wishlist = () => {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-            {products.map((product) => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
+            {products.slice(0, 5).map((product) => {
               if (!product) return null;
               const discount = product.originalPrice && product.originalPrice > product.price
                 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -278,17 +264,17 @@ const Wishlist = () => {
                   </div>
                   <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-end bg-gradient-to-b from-gray-100 to-gray-50">
                     <Link to={`/product/${product._id}`}>
-                      <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-1.5 line-clamp-2 group-hover:text-red-600 transition-colors">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900 mb-1.5 line-clamp-2 group-hover:text-red-600 transition-colors">
                         {product.name}
                       </h3>
                     </Link>
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-lg sm:text-xl font-bold text-gray-900">
+                        <span className="text-base sm:text-lg font-bold text-gray-900">
                           ₹{product.price}
                         </span>
                         {product.originalPrice && product.originalPrice > product.price && (
-                          <span className="text-sm text-gray-400 line-through">
+                          <span className="text-xs text-gray-400 line-through">
                             ₹{product.originalPrice}
                           </span>
                         )}
@@ -296,7 +282,7 @@ const Wishlist = () => {
                       <button
                         onClick={() => handleAddToCart(product._id)}
                         disabled={addingToCart[product._id]}
-                        className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-[10px] sm:text-xs font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {addingToCart[product._id] ? 'Adding...' : 'Add to Cart'}
                       </button>

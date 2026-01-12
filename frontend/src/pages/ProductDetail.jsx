@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { vendorProductAPI, categoryAPI, wishlistAPI } from '../utils/api';
+import { vendorProductAPI, categoryAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { isAuthenticated } from '../utils/auth';
+import { useWishlist, useAddToWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
@@ -21,8 +22,20 @@ const ProductDetail = () => {
   const [selectedCity, setSelectedCity] = useState('');
   const [quantityError, setQuantityError] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
-  const [isInWishlist, setIsInWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  // React Query hooks for wishlist
+  const { data: wishlistData } = useWishlist({ 
+    enabled: isAuthenticated() && !!productId 
+  });
+  
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+
+  // Check if product is in wishlist
+  const isInWishlist = wishlistData?.success && wishlistData?.data?.products
+    ? wishlistData.data.products.some(item => item._id === productId)
+    : false;
 
   useEffect(() => {
     // Get selected city
@@ -263,26 +276,6 @@ const ProductDetail = () => {
     }
   }, [product?._id]); // Only reset when product changes
 
-  // Check if product is in wishlist
-  useEffect(() => {
-    const checkWishlistStatus = async () => {
-      if (!isAuthenticated() || !product?._id) return;
-      
-      try {
-        const response = await wishlistAPI.getWishlist();
-        if (response.success && response.data?.products) {
-          const productInWishlist = response.data.products.some(
-            (item) => item._id === product._id
-          );
-          setIsInWishlist(productInWishlist);
-        }
-      } catch (err) {
-        console.error('Error checking wishlist:', err);
-      }
-    };
-    
-    checkWishlistStatus();
-  }, [product?._id]);
 
   const handleShareProduct = async () => {
     if (!product?._id) return;
@@ -343,14 +336,13 @@ const ProductDetail = () => {
     setWishlistLoading(true);
     try {
       if (isInWishlist) {
-        await wishlistAPI.removeFromWishlist(product._id);
-        setIsInWishlist(false);
+        await removeFromWishlistMutation.mutateAsync(product._id);
         alert('Removed from wishlist');
       } else {
-        await wishlistAPI.addToWishlist(product._id);
-        setIsInWishlist(true);
+        await addToWishlistMutation.mutateAsync(product._id);
         alert('Added to wishlist');
       }
+      // React Query will automatically refetch and update isInWishlist via cache invalidation
     } catch (err) {
       console.error('Error updating wishlist:', err);
       alert('Failed to update wishlist. Please try again.');

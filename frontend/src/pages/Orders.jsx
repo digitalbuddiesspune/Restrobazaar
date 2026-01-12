@@ -1,42 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { orderAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import Modal from '../components/Modal';
 import jsPDF from 'jspdf';
+import { useOrders, useCancelOrder } from '../hooks/useApiQueries';
+import Button from '../components/Button';
 
 const Orders = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(null);
+
+  // React Query hooks for orders with caching
+  const { data: ordersResponse, isLoading: loading, error: ordersError } = useOrders({}, {
+    enabled: isAuthenticated(),
+    retry: false,
+  });
+
+  const cancelOrderMutation = useCancelOrder();
 
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/signin');
       return;
     }
-    fetchOrders();
   }, [navigate]);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await orderAPI.getUserOrders();
-      if (response.success && response.data) {
-        setOrders(response.data);
-      }
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-      setError(err.response?.data?.message || 'Failed to load orders');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const orders = ordersResponse?.success && ordersResponse?.data ? ordersResponse.data : [];
+  const error = ordersError ? (ordersError.response?.data?.message || 'Failed to load orders') : '';
 
   const handleViewOrder = (order) => {
     setSelectedOrder(order);
@@ -50,11 +42,9 @@ const Orders = () => {
 
     try {
       setCancellingOrder(orderId);
-      const response = await orderAPI.cancelOrder(orderId);
-      if (response.success) {
-        await fetchOrders();
-        alert('Order cancelled successfully');
-      }
+      await cancelOrderMutation.mutateAsync(orderId);
+      // Query will automatically refetch due to invalidation in the mutation
+      alert('Order cancelled successfully');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to cancel order');
     } finally {
@@ -410,12 +400,13 @@ const Orders = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">Order #{order.orderNumber}</span>
-                      <button
+                      <Button
+                        variant="text"
+                        size="sm"
                         onClick={() => handleViewOrder(order)}
-                        className="text-sm text-red-600 hover:text-red-700 font-medium"
                       >
                         Order Details
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -486,39 +477,44 @@ const Orders = () => {
                   {/* Action Buttons */}
                   <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-2">
                     {order.orderStatus === 'delivered' && (
-                      <button className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Button variant="secondary" size="md">
                         Buy Again
-                      </button>
+                      </Button>
                     )}
                     {order.orderStatus !== 'delivered' && order.orderStatus !== 'cancelled' && (
                       <>
-                        <button className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                        <Button variant="secondary" size="md">
                           Track Package
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="md"
                           onClick={() => handleCancelOrder(order._id)}
                           disabled={cancellingOrder === order._id}
-                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          loading={cancellingOrder === order._id}
                         >
-                          {cancellingOrder === order._id ? 'Cancelling...' : 'Cancel Order'}
-                        </button>
+                          Cancel Order
+                        </Button>
                       </>
                     )}
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="md"
                       onClick={() => handleViewOrder(order)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       View Order Details
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="md"
                       onClick={() => handleDownloadInvoice(order)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+                      className="flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       Download Invoice
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -653,21 +649,24 @@ const Orders = () => {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => handleDownloadInvoice(selectedOrder)}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium flex items-center gap-2"
+                className="flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Download Invoice
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => setShowOrderModal(false)}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         )}

@@ -17,7 +17,7 @@ import orderRouter from "./routes/users/orderRoute.js";
 dotenv.config();
 const app = express();
 
-// CORS configuration - allow credentials for cookie-based auth
+// CORS configuration - support multiple origins
 const allowedOrigins = [
   "https://restrobazaar.in",
   "https://www.restrobazaar.in",
@@ -27,13 +27,13 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (like curl, mobile apps)
+      // Allow requests with no origin (like mobile apps, Postman, curl)
       if (!origin) return callback(null, true);
-
+      
       if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+        callback(null, true);
       } else {
-        return callback(new Error("Not allowed by CORS"));
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
@@ -41,7 +41,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Parse cookies from request

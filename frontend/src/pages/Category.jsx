@@ -1,28 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { categoryAPI, vendorProductAPI, getSelectedCityId, wishlistAPI } from '../utils/api';
+import { getSelectedCityId } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { isAuthenticated } from '../utils/auth';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
+import { useCategories, useCategoryBySlug, useVendorProductsByCityAndCategory, useWishlist, useAddToWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
 
 const Category = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [productsLoading, setProductsLoading] = useState(false);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedCity, setSelectedCity] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
-  const [allProducts, setAllProducts] = useState([]);
-  const [wishlistItems, setWishlistItems] = useState(new Set());
   const [wishlistLoading, setWishlistLoading] = useState({});
   const [addingToCart, setAddingToCart] = useState({});
   const [quantities, setQuantities] = useState({});
@@ -33,180 +27,130 @@ const Category = () => {
   const dispatch = useAppDispatch();
   const cartItems = useAppSelector(selectCartItems);
 
-  // Fetch categories for sidebar
+  // Get city ID from localStorage
+  const cityId = getSelectedCityId();
+
+  // React Query hooks for categories with caching
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
+  const { data: categoryBySlugData, isLoading: categoryBySlugLoading } = useCategoryBySlug(
+    slug || '',
+    { enabled: !!slug } // Only fetch if slug is provided
+  );
+
+  // Process categories - filter active and sort by priority
+  const categories = useMemo(() => {
+    if (!categoriesData?.success || !categoriesData?.data) return [];
+    return categoriesData.data
+      .filter(cat => cat.isActive !== false)
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  }, [categoriesData]);
+
+  // React Query hooks for products with caching
+  const productFilters = useMemo(() => ({
+    cityId: cityId || undefined,
+    page: selectedSubcategory === 'all' ? page : 1,
+    limit: selectedSubcategory === 'all' ? 20 : 1000, // Fetch all when filtering by subcategory
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  }), [cityId, page, selectedSubcategory]);
+
+  const { 
+    data: productsResponse, 
+    isLoading: productsLoading,
+    error: productsError 
+  } = useVendorProductsByCityAndCategory(
+    selectedCategory?._id || '',
+    productFilters,
+    { 
+      enabled: !!selectedCategory?._id && !!cityId, // Only fetch if category and city are selected
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+    }
+  );
+
+  // Process products data
+  const allProducts = productsResponse?.success && productsResponse?.data 
+    ? productsResponse.data 
+    : [];
+  
+  const totalPages = productsResponse?.pagination?.pages || 1;
+
+  // Filter products by subcategory
+  const products = useMemo(() => {
+    if (selectedSubcategory === 'all') {
+      return allProducts;
+    }
+    return allProducts.filter((product) => {
+      const productSubCategory = product.productId?.subCategory || product.subCategory;
+      return productSubCategory?.trim() === selectedSubcategory.trim();
+    });
+  }, [allProducts, selectedSubcategory]);
+
+  // React Query hook for wishlist with caching
+  const { data: wishlistData } = useWishlist({ 
+    enabled: isAuthenticated() && products.length > 0,
+  });
+
+  // Process wishlist items
+  const wishlistItems = useMemo(() => {
+    if (!wishlistData?.success || !wishlistData?.data?.products) {
+      return new Set();
+    }
+    return new Set(wishlistData.data.products.map(item => item._id));
+  }, [wishlistData]);
+
+  const loading = categoriesLoading || categoryBySlugLoading;
+
+  // Handle category selection based on slug
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await categoryAPI.getAllCategories();
-        if (response.success && response.data) {
-          const activeCategories = response.data
-            .filter(cat => cat.isActive !== false)
-            .sort((a, b) => (b.priority || 0) - (a.priority || 0));
-          setCategories(activeCategories);
-
-          // If slug is provided, find and select that category
-          if (slug) {
-            const category = activeCategories.find(
-              cat => cat.slug === slug || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug
-            );
-            if (category) {
-              console.log('Category found in list:', category.name, 'Subcategories:', category.subcategories);
-              setSelectedCategory(category);
-            } else {
-              // Try to fetch category by slug from API
-              try {
-                const categoryResponse = await categoryAPI.getCategoryBySlug(slug);
-                if (categoryResponse.success && categoryResponse.data) {
-                  console.log('Category fetched by slug:', categoryResponse.data.name, 'Subcategories:', categoryResponse.data.subcategories);
-                  setSelectedCategory(categoryResponse.data);
-                } else {
-                  setError('Category not found');
-                }
-              } catch (err) {
-                console.error('Error fetching category by slug:', err);
-                setError('Category not found');
-              }
-            }
-          } else if (activeCategories.length > 0) {
-            // If no slug, select first category by default
-            setSelectedCategory(activeCategories[0]);
-            navigate(`/category/${activeCategories[0].slug}`, { replace: true });
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-        setError('Failed to load categories');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-
     // Get selected city
     const savedCity = localStorage.getItem(CITY_STORAGE_KEY) || 'Select City';
     setSelectedCity(savedCity);
-  }, [slug]);
 
-  const fetchProducts = async (categoryId, pageNum = 1, fetchAll = false) => {
-    try {
-      setProductsLoading(true);
-      setError('');
-
-      const cityId = getSelectedCityId();
-      if (!cityId) {
-        setError('Please select a city to view products');
-        setProductsLoading(false);
-        return;
-      }
-
-      // If filtering by subcategory, fetch all products (use a large limit)
-      const limit = fetchAll ? 1000 : 20;
-
-      const response = await vendorProductAPI.getVendorProductsByCityAndCategory(categoryId, {
-        page: pageNum,
-        limit: limit,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
-      });
-
-      if (response.success) {
-        const fetchedProducts = response.data || [];
-        console.log('Fetched products count:', fetchedProducts.length);
-        console.log('Sample product:', fetchedProducts[0]);
-        setAllProducts(fetchedProducts); // Store all products
-        
-        // Apply subcategory filter if one is selected
-        if (selectedSubcategory && selectedSubcategory !== 'all') {
-          const filtered = fetchedProducts.filter((product) => {
-            // Check both possible locations for subCategory
-            const productSubCategory = product.productId?.subCategory || product.subCategory;
-            // Trim and compare (in case of whitespace issues)
-            const matches = productSubCategory?.trim() === selectedSubcategory.trim();
-            if (matches) {
-              console.log('Product matches subcategory:', product.productId?.productName, productSubCategory);
-            }
-            return matches;
-          });
-          console.log('Filtered products count:', filtered.length);
-          setProducts(filtered);
-        } else {
-          setProducts(fetchedProducts);
-        }
-        setTotalPages(response.pagination?.pages || 1);
-      } else {
-        console.error('Failed to fetch products:', response.message);
-        setError(response.message || 'Failed to fetch products');
-      }
-    } catch (err) {
-      console.error('Error fetching products:', err);
-      setError(err.message || 'Failed to load products. Please try again.');
-      setProducts([]);
-    } finally {
-      setProductsLoading(false);
+    if (!categories.length && !categoryBySlugLoading && !categoriesLoading) {
+      return;
     }
-  };
 
-  // Fetch products when category is selected
+    if (slug) {
+      // Try to find category in the categories list first (cached)
+      const category = categories.find(
+        cat => cat.slug === slug || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug
+      );
+      
+      if (category) {
+        console.log('Category found in list:', category.name, 'Subcategories:', category.subcategories);
+        setSelectedCategory(category);
+      } else if (categoryBySlugData?.success && categoryBySlugData?.data) {
+        // Use the category fetched by slug (also cached)
+        console.log('Category fetched by slug:', categoryBySlugData.data.name, 'Subcategories:', categoryBySlugData.data.subcategories);
+        setSelectedCategory(categoryBySlugData.data);
+      } else if (!categoryBySlugLoading) {
+        setError('Category not found');
+      }
+    } else if (categories.length > 0) {
+      // If no slug, select first category by default
+      setSelectedCategory(categories[0]);
+      navigate(`/category/${categories[0].slug}`, { replace: true });
+    }
+  }, [slug, categories, categoryBySlugData, categoryBySlugLoading, categoriesLoading, navigate]);
+
+  // Handle product errors
+  useEffect(() => {
+    if (productsError) {
+      setError(productsError.message || 'Failed to load products. Please try again.');
+    } else if (!cityId && selectedCategory) {
+      setError('Please select a city to view products');
+    } else {
+      setError('');
+    }
+  }, [productsError, cityId, selectedCategory]);
+
+  // Reset subcategory when category changes
   useEffect(() => {
     if (selectedCategory) {
-      setSelectedSubcategory('all'); // Reset subcategory when category changes
-      fetchProducts(selectedCategory._id, page, false);
+      setSelectedSubcategory('all');
+      setPage(1); // Reset to first page when category changes
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, page]);
-
-  // When subcategory changes, refetch all products to filter properly
-  useEffect(() => {
-    if (selectedCategory && selectedSubcategory && selectedSubcategory !== 'all') {
-      // Fetch all products when filtering by subcategory
-      fetchProducts(selectedCategory._id, 1, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubcategory]);
-
-  // Filter products when subcategory changes (client-side filter as backup)
-  useEffect(() => {
-    if (selectedSubcategory && selectedSubcategory !== 'all' && allProducts.length > 0) {
-      const filtered = allProducts.filter((product) => {
-        // Check both possible locations for subCategory
-        const productSubCategory = product.productId?.subCategory || product.subCategory;
-        // Trim and compare (in case of whitespace issues)
-        return productSubCategory?.trim() === selectedSubcategory.trim();
-      });
-      setProducts(filtered);
-    } else if (selectedSubcategory === 'all') {
-      setProducts(allProducts);
-    }
-  }, [selectedSubcategory, allProducts]);
-
-  // Fetch wishlist items when products change
-  useEffect(() => {
-    const fetchWishlist = async () => {
-      if (!isAuthenticated() || products.length === 0) {
-        setWishlistItems(new Set());
-        return;
-      }
-      
-      try {
-        const response = await wishlistAPI.getWishlist();
-        if (response.success && response.data?.products) {
-          const wishlistProductIds = new Set(
-            response.data.products.map(item => item._id)
-          );
-          setWishlistItems(wishlistProductIds);
-        }
-      } catch (err) {
-        // Silently fail if user is not authenticated
-        if (err.response?.status !== 401 && err.response?.status !== 403) {
-          console.error('Error fetching wishlist:', err);
-        }
-        setWishlistItems(new Set());
-      }
-    };
-    
-    fetchWishlist();
-  }, [products]);
+  }, [selectedCategory?._id]); // Only when category ID changes
 
   // Initialize quantities and show quantity selector for products in cart
   useEffect(() => {
@@ -258,15 +202,10 @@ const Category = () => {
 
   const checkScrollButtons = () => {
     if (subcategoryScrollRef.current) {
-      // Hide arrows on desktop (lg and above)
-      if (window.innerWidth >= 1024) {
-        setShowLeftArrow(false);
-        setShowRightArrow(false);
-        return;
-      }
       const { scrollLeft, scrollWidth, clientWidth } = subcategoryScrollRef.current;
-      setShowLeftArrow(scrollLeft > 0);
-      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 1);
+      const canScroll = scrollWidth > clientWidth;
+      setShowLeftArrow(canScroll && scrollLeft > 0);
+      setShowRightArrow(canScroll && scrollLeft < scrollWidth - clientWidth - 1);
     }
   };
 
@@ -292,26 +231,8 @@ const Category = () => {
       // Add scroll listener
       scrollElement.addEventListener('scroll', checkScrollButtons);
       
-      // On desktop, remove width constraint to show all items
+      // Check scroll buttons on resize
       const handleResize = () => {
-        if (window.innerWidth >= 1024) {
-          const innerDiv = scrollElement.querySelector('div');
-          if (innerDiv) {
-            innerDiv.style.width = 'auto';
-          }
-          // Remove maxHeight on desktop
-          scrollElement.style.maxHeight = 'none';
-          // Hide arrows on desktop
-          setShowLeftArrow(false);
-          setShowRightArrow(false);
-        } else {
-          const innerDiv = scrollElement.querySelector('div');
-          if (innerDiv) {
-            innerDiv.style.width = 'max-content';
-          }
-          // Restore maxHeight on mobile
-          scrollElement.style.maxHeight = '4.5rem';
-        }
         checkScrollButtons();
       };
       
@@ -342,6 +263,10 @@ const Category = () => {
     return 'https://via.placeholder.com/300x300?text=Product';
   };
 
+  // React Query mutation hooks for wishlist
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+
   const handleWishlistToggle = async (e, product) => {
     e.stopPropagation(); // Prevent card click navigation
     
@@ -360,15 +285,11 @@ const Category = () => {
       const isInWishlist = wishlistItems.has(product._id);
       
       if (isInWishlist) {
-        await wishlistAPI.removeFromWishlist(product._id);
-        setWishlistItems(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(product._id);
-          return newSet;
-        });
+        await removeFromWishlistMutation.mutateAsync(product._id);
+        // React Query will automatically refetch and update wishlistItems via cache invalidation
       } else {
-        await wishlistAPI.addToWishlist(product._id);
-        setWishlistItems(prev => new Set(prev).add(product._id));
+        await addToWishlistMutation.mutateAsync(product._id);
+        // React Query will automatically refetch and update wishlistItems via cache invalidation
       }
     } catch (err) {
       console.error('Error updating wishlist:', err);
@@ -754,10 +675,10 @@ const Category = () => {
                         <div className="relative">
                           <div
                             ref={subcategoryScrollRef}
-                            className="overflow-x-auto lg:overflow-x-visible hide-scrollbar lg:max-h-none"
-                            style={{ WebkitOverflowScrolling: 'touch', maxHeight: '4.5rem' }}
+                            className="overflow-x-auto hide-scrollbar"
+                            style={{ WebkitOverflowScrolling: 'touch' }}
                           >
-                            <div className="flex flex-wrap gap-2" style={{ width: 'max-content' }}>
+                            <div className="flex gap-2">
                               <button
                                 onClick={() => handleSubcategorySelect('all')}
                                 className={`px-3 py-1 rounded text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${

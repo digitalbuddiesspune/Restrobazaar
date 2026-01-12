@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { CITY_STORAGE_KEY, CITY_ID_KEY } from './CitySelectionPopup'
 import { isAuthenticated, logout } from '../utils/auth'
-import { cityAPI, wishlistAPI } from '../utils/api'
 import { useAppSelector } from '../store/hooks'
 import { selectCartItemsCount } from '../store/slices/cartSlice'
+import { useCategories, useServiceableCities, useWishlist } from '../hooks/useApiQueries'
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -12,20 +12,33 @@ const Header = () => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [deliveryLocation, setDeliveryLocation] = useState({ city: '', pincode: '' })
-  const [categories, setCategories] = useState([])
-  const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [userAuthenticated, setUserAuthenticated] = useState(false)
-  const [cities, setCities] = useState([])
-  const [citiesLoading, setCitiesLoading] = useState(false)
   const [selectedCityId, setSelectedCityId] = useState('')
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
-  const [wishlistCount, setWishlistCount] = useState(0)
   const navigate = useNavigate()
   
   // Get cart items count from Redux
   const cartItemsCount = useAppSelector(selectCartItemsCount)
 
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+  // React Query hooks for data fetching with caching
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories()
+  const { data: citiesData, isLoading: citiesLoading } = useServiceableCities()
+  const { data: wishlistData } = useWishlist({ enabled: userAuthenticated })
+
+  // Process categories - filter active and sort by priority
+  const categories = categoriesData?.success 
+    ? (categoriesData.data || [])
+        .filter(cat => cat.isActive !== false)
+        .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+    : []
+
+  // Get cities from response
+  const cities = citiesData?.success && citiesData?.data ? citiesData.data : []
+
+  // Get wishlist count
+  const wishlistCount = wishlistData?.success && wishlistData?.data?.products
+    ? wishlistData.data.products.length
+    : 0
 
   // Check authentication status on mount and when auth changes
   useEffect(() => {
@@ -65,77 +78,6 @@ const Header = () => {
     };
   }, [])
 
-  useEffect(() => {
-    // Fetch categories
-    const fetchCategories = async () => {
-      try {
-        setCategoriesLoading(true);
-        const response = await fetch(`${baseUrl}/categories`);
-        const data = await response.json();
-        
-        if (data.success) {
-          // Filter only active categories and sort by priority
-          const activeCategories = data.data
-            .filter(cat => cat.isActive !== false)
-            .sort((a, b) => (b.priority || 0) - (a.priority || 0));
-          setCategories(activeCategories);
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      } finally {
-        setCategoriesLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, [baseUrl])
-
-  useEffect(() => {
-    // Fetch cities for dropdown
-    const fetchCities = async () => {
-      try {
-        setCitiesLoading(true);
-        const response = await cityAPI.getServiceableCities();
-        if (response.success && response.data) {
-          setCities(response.data);
-        }
-      } catch (err) {
-        console.error('Error fetching cities:', err);
-      } finally {
-        setCitiesLoading(false);
-      }
-    };
-
-    fetchCities();
-  }, [])
-
-  // Fetch wishlist count
-  useEffect(() => {
-    const fetchWishlistCount = async () => {
-      if (!userAuthenticated) {
-        setWishlistCount(0);
-        return;
-      }
-      
-      try {
-        const response = await wishlistAPI.getWishlist();
-        if (response.success && response.data?.products) {
-          setWishlistCount(response.data.products.length);
-        } else {
-          setWishlistCount(0);
-        }
-      } catch (err) {
-        // Silently fail if user is not authenticated or other errors
-        // Only log if it's not a 401/403 error (unauthorized/forbidden)
-        if (err.response?.status !== 401 && err.response?.status !== 403) {
-          console.error('Error fetching wishlist count:', err);
-        }
-        setWishlistCount(0);
-      }
-    };
-    
-    fetchWishlistCount();
-  }, [userAuthenticated]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
