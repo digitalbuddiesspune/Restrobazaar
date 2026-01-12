@@ -20,7 +20,7 @@ const app = express();
 // CORS configuration - allow credentials for cookie-based auth
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173", // Update with your frontend URL
+    origin: "https://restrobazaar.in" || "https://www.restrobazaar.in" || "http://localhost:5173", // Update with your frontend URL
     credentials: true, // Allow cookies to be sent
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
