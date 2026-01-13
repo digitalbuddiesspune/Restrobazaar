@@ -574,7 +574,7 @@ const Category = () => {
               sidebarOpen ? 'block' : 'hidden'
             } lg:block`}
           >
-            <div className="bg-white rounded-lg shadow-md p-4 lg:sticky lg:top-4">
+            <div className="bg-white rounded-lg shadow-md p-4 sticky top-[88px] sm:top-[96px] md:top-[104px] lg:top-[104px] self-start z-20">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <svg
                   className="w-5 h-5 text-red-600"
@@ -830,12 +830,12 @@ const Category = () => {
 
                           {/* Product Info */}
                           <div className="p-4 flex flex-col flex-1">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-1 truncate">
                               {product.productId?.productName || 'Product Name'}
                             </h3>
 
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-base sm:text-lg font-bold text-red-600">
+                              <span className="text-base sm:text-lg font-bold text-red-600 whitespace-nowrap truncate">
                                 {product.priceType === 'single' && product.pricing?.single?.price ? (
                                   `₹${product.pricing.single.price}`
                                 ) : product.priceType === 'bulk' && product.pricing?.bulk?.length > 0 ? (
@@ -852,7 +852,7 @@ const Category = () => {
                             </div>
 
                             {/* Add to Cart Button / Quantity Selector */}
-                            <div className="mt-auto">
+                            <div className="mt-2">
                             {product.availableStock > 0 ? (
                               (() => {
                                 // Check if product is in cart
@@ -861,7 +861,7 @@ const Category = () => {
                                 
                                 return shouldShowQuantitySelector ? (
                                 // Show Quantity Selector with light gray background and black border (same size as Add to Cart button)
-                                <div className="w-full bg-gray-50 border border-black rounded-lg flex items-stretch overflow-hidden" style={{ minHeight: '40px' }}>
+                                <div className="w-full bg-gray-50 border border-black rounded-lg flex items-stretch overflow-hidden" style={{ minHeight: '32px' }}>
                                   <button
                                     onClick={(e) => handleQuantityChange(e, product, -(product.minimumOrderQuantity || 1))}
                                     disabled={false}
@@ -912,7 +912,8 @@ const Category = () => {
                                 // Show initial Add to Cart Button
                                 <button
                                   onClick={(e) => handleAddToCartClick(e, product)}
-                                  className="w-full py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
+                                  className="w-full bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
+                                  style={{ minHeight: '32px' }}
                                 >
                                   <svg
                                     className="w-4 h-4"
@@ -934,7 +935,8 @@ const Category = () => {
                             ) : (
                               <button
                                 disabled
-                                className="w-full py-2 bg-gray-400 text-white rounded-lg font-semibold cursor-not-allowed text-xs sm:text-sm"
+                                className="w-full bg-gray-400 text-white rounded-lg font-semibold cursor-not-allowed text-xs sm:text-sm"
+                                style={{ minHeight: '32px' }}
                               >
                                 Out of Stock
                               </button>

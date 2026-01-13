@@ -406,17 +406,35 @@ const ProductDetail = () => {
   const minOrderQty = product?.minimumOrderQuantity || 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 pt-4 pb-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-      
-
-      
-
+        {/* Back to Products Button */}
+        <div className="mb-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            <span>Back to Products</span>
+          </button>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Product Images */}
-          <div className="space-y-4">
+          <div className="space-y-4 lg:sticky lg:top-[104px] self-start z-20">
             {/* Main Image */}
-            <div className="aspect-square bg-white rounded-lg shadow-md overflow-hidden relative flex items-center justify-center">
+            <div className="aspect-[5/4] bg-white rounded-lg shadow-md overflow-hidden relative flex items-center justify-center max-w-lg mx-auto">
               <img
                 src={images[selectedImageIndex]}
                 alt={product.productId?.productName || 'Product'}
@@ -428,11 +446,11 @@ const ProductDetail = () => {
               {/* Share Product Button - Top Right Corner (Left of Wishlist) */}
               <button
                 onClick={handleShareProduct}
-                className="absolute top-3 right-16 p-2.5 rounded-full shadow-lg transition-all z-10 bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+                className="absolute top-2 right-12 sm:top-2.5 sm:right-14 md:top-3 md:right-16 p-1.5 sm:p-2 md:p-2.5 rounded-full shadow-lg transition-all z-10 bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
                 title="Share product"
               >
                 <svg
-                  className="w-6 h-6"
+                  className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -449,7 +467,7 @@ const ProductDetail = () => {
               <button
                 onClick={handleWishlistToggle}
                 disabled={wishlistLoading}
-                className={`absolute top-3 right-3 p-2.5 rounded-full shadow-lg transition-all z-10 ${
+                className={`absolute top-2 right-2 sm:top-2.5 sm:right-2.5 md:top-3 md:right-3 p-1.5 sm:p-2 md:p-2.5 rounded-full shadow-lg transition-all z-10 ${
                   isInWishlist
                     ? 'bg-red-600 text-white hover:bg-red-700'
                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-300'
@@ -457,7 +475,7 @@ const ProductDetail = () => {
                 title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
               >
                 <svg
-                  className="w-6 h-6"
+                  className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5"
                   fill={isInWishlist ? 'currentColor' : 'none'}
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -514,6 +532,28 @@ const ProductDetail = () => {
               <h1 className="text-xl font-bold text-gray-900 mb-2">
                 {product.productId?.productName || 'Product Name'}
               </h1>
+              {/* Price Display */}
+              {priceInfo?.type === 'single' ? (
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-bold text-black">
+                    ₹{priceInfo.price}
+                  </span>
+                  <span className="text-gray-500 text-sm">per piece</span>
+                </div>
+              ) : priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 ? (
+                <div className="mb-2">
+                  <span className="text-3xl font-bold text-black">
+                    ₹{priceInfo.slabs[0].price}
+                  </span>
+                  <span className="text-gray-500 text-sm ml-2">
+                    ({priceInfo.slabs[0].minQty}-{priceInfo.slabs[0].maxQty} pcs)
+                  </span>
+                </div>
+              ) : (
+                <div className="mb-2">
+                  <span className="text-sm font-semibold text-gray-600">Price on request</span>
+                </div>
+              )}
               {product.productId?.shortDescription && (
                 <p className="text-gray-600 text-sm">
                   {product.productId.shortDescription}
@@ -793,29 +833,6 @@ const ProductDetail = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Back Button */}
-        <div className="mt-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-6 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            <span>Back to Products</span>
-          </button>
         </div>
       </div>
     </div>

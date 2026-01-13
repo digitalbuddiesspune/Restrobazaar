@@ -219,6 +219,7 @@ const Header = () => {
   }, [isAccountDropdownOpen, isCityDropdownOpen])
 
   return (
+    <>
     <header className="bg-white shadow-md sticky top-0 z-50">
       {/* Main Header Navigation */}
       <div className="w-full px-1 sm:px-2 md:px-3">
@@ -749,28 +750,30 @@ const Header = () => {
         )}
       </div>
 
-      {/* Categories Strip - Horizontal (All screen sizes) */}
-      {!isMenuOpen && !categoriesLoading && categories.length > 0 && (
-        <div className="border-t border-gray-200 bg-gray-50">
-          <div className="w-full px-1 sm:px-2 md:px-3">
-            <div className="flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2 overflow-x-auto scrollbar-hide">
-              
-              <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
-                {categories.map((category) => (
-                  <button
-                    key={category._id || category.name}
-                    onClick={() => handleCategoryClick(category)}
-                    className="px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors whitespace-nowrap shrink-0"
-                  >
-                    {category.name}
-                  </button>
-                ))}
-              </div>
+    </header>
+
+    {/* Categories Strip - Horizontal (All screen sizes) - Separate sticky element */}
+    {!isMenuOpen && !categoriesLoading && categories.length > 0 && (
+      <div className="border-t border-gray-200 bg-gray-50 sticky top-[48px] sm:top-[56px] md:top-[64px] z-40 shadow-sm">
+        <div className="w-full px-1 sm:px-2 md:px-3">
+          <div className="flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2 overflow-x-auto scrollbar-hide">
+            
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
+              {categories.map((category) => (
+                <button
+                  key={category._id || category.name}
+                  onClick={() => handleCategoryClick(category)}
+                  className="px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors whitespace-nowrap shrink-0"
+                >
+                  {category.name}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-      )}
-    </header>
+      </div>
+    )}
+    </>
   )
 }
 
