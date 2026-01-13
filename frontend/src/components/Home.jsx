@@ -27,7 +27,7 @@ const Home = () => {
             alt: "Restrobanner3",
           },
         ]}
-        mobileSrc="https://res.cloudinary.com/debhhnzgh/image/upload/v1766925734/IMG_20251228_181115_c6o3io.png"
+        mobileSrc="https://res.cloudinary.com/debhhnzgh/image/upload/v1768310507/a0ce3721-87d7-40a5-a833-2bb76357c351.png"
       />
       
       {/* FAQ Section */}

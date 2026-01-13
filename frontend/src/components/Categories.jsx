@@ -133,7 +133,7 @@ const Categories = () => {
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-bold font-poppins text-gray-900">
               Explore our categories
             </h2>
-            <p className="mt-2 text-sm sm:text-base md:text-lg font-body text-gray-600 max-w-2xl">
+            <p className="mt-2 text-xs sm:text-base md:text-lg font-body text-gray-600 max-w-2xl">
               Quick access to all supply categories for your restaurant and
               catering needs.
             </p>
@@ -153,7 +153,7 @@ const Categories = () => {
             <div className="text-gray-600">No categories available</div>
           </div>
         ) : (
-          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {categories.map((category) => (
               <Link
                 key={category._id || category.slug}
@@ -172,7 +172,7 @@ const Categories = () => {
                   />
                 </div>
                 <div className="p-4">
-                  <h3 className="text-sm sm:text-base font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
+                  <h3 className="text-xs sm:text-base font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
                     {category.name}
                   </h3>
                 </div>
