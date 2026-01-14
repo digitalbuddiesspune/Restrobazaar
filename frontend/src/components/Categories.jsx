@@ -172,7 +172,7 @@ const Categories = () => {
                   />
                 </div>
                 <div className="p-2 md:p-2">
-                  <h3 className="line-clamp-1 text-xs sm:text-sm font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
+                  <h3 className="line-clamp-1 text-[10px] sm:text-sm font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
                     {category.name}
                   </h3>
                 </div>
