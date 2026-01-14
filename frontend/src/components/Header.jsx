@@ -754,7 +754,7 @@ const Header = () => {
 
     {/* Categories Strip - Horizontal (All screen sizes) - Separate sticky element */}
     {!isMenuOpen && !categoriesLoading && categories.length > 0 && (
-      <div className="border-t border-gray-200 bg-gray-50 sticky top-[48px] sm:top-[56px] md:top-[64px] z-40 shadow-sm">
+      <div className="border-t border-gray-200 bg-gray-50 sticky top-[56px] sm:top-[56px] md:top-[64px] z-40 shadow-sm">
         <div className="w-full px-1 sm:px-2 md:px-3">
           <div className="flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2 overflow-x-auto scrollbar-hide">
             
