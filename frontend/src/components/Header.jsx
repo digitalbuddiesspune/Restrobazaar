@@ -223,7 +223,7 @@ const Header = () => {
     <header className="bg-white shadow-md sticky top-0 z-50">
       {/* Main Header Navigation */}
       <div className="w-full px-1 sm:px-2 md:px-3">
-        <div className="flex items-center justify-between h-12 sm:h-14 md:h-16 gap-1.5 sm:gap-2 md:gap-3">
+        <div className="flex items-center justify-between h-14 sm:h-14 md:h-16 gap-1.5 sm:gap-2 md:gap-3">
           {/* Logo - Left Side */}
           <div className="shrink-0">
             <NavLink 

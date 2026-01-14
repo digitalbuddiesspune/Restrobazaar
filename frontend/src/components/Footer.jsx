@@ -1,7 +1,19 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { isAuthenticated } from "../utils/auth";
+import { useAppSelector } from "../store/hooks";
+import { selectCartItemsCount } from "../store/slices/cartSlice";
+import { useWishlist } from "../hooks/useApiQueries";
 
 const Footer = () => {
   const location = useLocation();
+  const userAuthenticated = isAuthenticated();
+  const cartItemsCount = useAppSelector(selectCartItemsCount);
+  const { data: wishlistData } = useWishlist({ enabled: userAuthenticated });
+  
+  // Get wishlist count
+  const wishlistCount = wishlistData?.success && wishlistData?.data?.products
+    ? wishlistData.data.products.length
+    : 0;
   
   const scrollToTop = () => {
     window.scrollTo({
@@ -102,7 +114,7 @@ const Footer = () => {
       ),
     },
     {
-      to: "/signin",
+      to: userAuthenticated ? "/account" : "/signin",
       label: "Account",
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,6 +127,10 @@ const Footer = () => {
   const isActive = (path) => {
     if (path === "/") {
       return location.pathname === "/";
+    }
+    // For Account item, check both /account and /signin paths regardless of which one is the current route
+    if (path === "/account" || path === "/signin") {
+      return location.pathname === "/account" || location.pathname === "/signin" || location.pathname === "/sign-in";
     }
     return location.pathname.startsWith(path);
   };
@@ -135,7 +151,19 @@ const Footer = () => {
                   : "text-gray-600 hover:text-red-600"
               }`}
             >
-              <div className="mb-1">{item.icon}</div>
+              <div className="mb-1 relative">
+                {item.icon}
+                {item.to === "/cart" && cartItemsCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartItemsCount > 99 ? '99+' : cartItemsCount}
+                  </span>
+                )}
+                {item.to === "/wishlist" && wishlistCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
+                  </span>
+                )}
+              </div>
               <span className="text-xs font-medium">{item.label}</span>
             </NavLink>
           ))}
