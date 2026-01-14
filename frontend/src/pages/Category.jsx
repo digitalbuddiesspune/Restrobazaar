@@ -673,9 +673,53 @@ const Category = () => {
                       <>
                         <h3 className="text-xs font-semibold text-gray-700 mb-2">Filter by Subcategory:</h3>
                         <div className="relative">
+                          {/* Left Scroll Button - Desktop Only */}
+                          {showLeftArrow && (
+                            <button
+                              onClick={() => scrollSubcategories('left')}
+                              className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full p-1 shadow-md transition-all hover:shadow-lg"
+                              aria-label="Scroll left"
+                            >
+                              <svg
+                                className="w-4 h-4 text-red-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 19l-7-7 7-7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                          {/* Right Scroll Button - Desktop Only */}
+                          {showRightArrow && (
+                            <button
+                              onClick={() => scrollSubcategories('right')}
+                              className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full p-1 shadow-md transition-all hover:shadow-lg"
+                              aria-label="Scroll right"
+                            >
+                              <svg
+                                className="w-4 h-4 text-red-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </button>
+                          )}
                           <div
                             ref={subcategoryScrollRef}
-                            className="overflow-x-auto hide-scrollbar"
+                            className={`overflow-x-auto hide-scrollbar ${showLeftArrow ? 'lg:pl-10' : ''} ${showRightArrow ? 'lg:pr-10' : ''}`}
                             style={{ WebkitOverflowScrolling: 'touch' }}
                           >
                             <div className="flex gap-2">
