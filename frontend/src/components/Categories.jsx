@@ -153,7 +153,7 @@ const Categories = () => {
             <div className="text-gray-600">No categories available</div>
           </div>
         ) : (
-          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-4 md:grid-cols-4 lg:grid-cols-6">
             {categories.map((category) => (
               <Link
                 key={category._id || category.slug}
@@ -171,8 +171,8 @@ const Categories = () => {
                     }}
                   />
                 </div>
-                <div className="p-4">
-                  <h3 className="text-xs sm:text-base font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
+                <div className="p-2 md:p-2">
+                  <h3 className="line-clamp-1 text-xs sm:text-sm font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
                     {category.name}
                   </h3>
                 </div>
