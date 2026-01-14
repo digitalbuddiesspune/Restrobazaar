@@ -15,7 +15,6 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
       subItems: [
         { id: 'products', label: 'View Products', icon: '👁️' },
         { id: 'add-product', label: 'Add Product', icon: '➕' },
-        { id: 'product-catalog', label: 'Product Catalog', icon: '📚' },
       ],
     },
     {
@@ -51,6 +50,15 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
       icon: '👤',
       subItems: [
         { id: 'users', label: 'View Users', icon: '👁️' },
+      ],
+    },
+    {
+      id: 'testimonials',
+      label: 'Testimonials',
+      icon: '⭐',
+      subItems: [
+        { id: 'testimonials', label: 'View All Reviews', icon: '👁️' },
+        { id: 'add-testimonial', label: 'Add Review', icon: '➕' },
       ],
     },
   ];

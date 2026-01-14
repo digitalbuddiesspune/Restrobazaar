@@ -13,6 +13,14 @@ const ProductForm = ({
     productId: product?.productId?._id || product?.productId || '',
     cityId: product?.cityId?._id || product?.cityId || vendorCityId || '',
     priceType: product?.priceType || 'single',
+    defaultPrice: product?.defaultPrice || 0,
+    productPurchasedFrom: product?.productPurchasedFrom || '',
+    purchasedMode: product?.purchasedMode || '',
+    purchasedAmount: product?.purchasedAmount || '',
+    gst: product?.gst || 0,
+    cgst: product?.cgst || 0,
+    sgst: product?.sgst || 0,
+    igst: product?.igst || 0,
     pricing: product?.pricing || {
       single: { price: '' },
       bulk: [],
@@ -33,6 +41,14 @@ const ProductForm = ({
         productId: product.productId?._id || product.productId || '',
         cityId: product.cityId?._id || product.cityId || vendorCityId || '',
         priceType: product.priceType || 'single',
+        defaultPrice: product.defaultPrice || 0,
+        productPurchasedFrom: product.productPurchasedFrom || '',
+        purchasedMode: product.purchasedMode || '',
+        purchasedAmount: product.purchasedAmount || '',
+        gst: product.gst || 0,
+        cgst: product.cgst || 0,
+        sgst: product.sgst || 0,
+        igst: product.igst || 0,
         pricing: product.pricing || {
           single: { price: '' },
           bulk: [],
@@ -73,6 +89,14 @@ const ProductForm = ({
       productId: formData.productId,
       cityId: formData.cityId,
       priceType: formData.priceType,
+      defaultPrice: parseFloat(formData.defaultPrice) || 0,
+      productPurchasedFrom: formData.productPurchasedFrom || undefined,
+      purchasedMode: formData.purchasedMode || undefined,
+      purchasedAmount: formData.purchasedAmount || undefined,
+      gst: parseFloat(formData.gst) || 0,
+      cgst: parseFloat(formData.cgst) || 0,
+      sgst: parseFloat(formData.sgst) || 0,
+      igst: parseFloat(formData.igst) || 0,
       pricing: pricingData,
       availableStock: parseFloat(formData.availableStock) || 0,
       minimumOrderQuantity: parseFloat(formData.minimumOrderQuantity) || 1,
@@ -101,9 +125,7 @@ const ProductForm = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">
-        {product ? 'Edit Product' : 'Add New Product'}
-      </h2>
+     
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Row 1: Select Product and City */}
@@ -335,6 +357,142 @@ const ProductForm = ({
               />
               <span className="text-xs text-gray-700">Active</span>
             </label>
+          </div>
+        </div>
+
+        {/* Purchase Information */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Purchase Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Default Price
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.defaultPrice}
+                onChange={(e) =>
+                  setFormData({ ...formData, defaultPrice: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Purchased From
+              </label>
+              <input
+                type="text"
+                value={formData.productPurchasedFrom}
+                onChange={(e) =>
+                  setFormData({ ...formData, productPurchasedFrom: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="Where was it purchased"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Purchase Mode
+              </label>
+              <input
+                type="text"
+                value={formData.purchasedMode}
+                onChange={(e) =>
+                  setFormData({ ...formData, purchasedMode: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Cash, Online"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Purchase Amount
+              </label>
+              <input
+                type="text"
+                value={formData.purchasedAmount}
+                onChange={(e) =>
+                  setFormData({ ...formData, purchasedAmount: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter amount"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Tax Information */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Tax Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                GST (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.gst}
+                onChange={(e) =>
+                  setFormData({ ...formData, gst: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                CGST (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.cgst}
+                onChange={(e) =>
+                  setFormData({ ...formData, cgst: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                SGST (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.sgst}
+                onChange={(e) =>
+                  setFormData({ ...formData, sgst: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                IGST (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.igst}
+                onChange={(e) =>
+                  setFormData({ ...formData, igst: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
           </div>
         </div>
 

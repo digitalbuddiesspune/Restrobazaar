@@ -14,6 +14,7 @@ import couponRouter from "./routes/vendor/couponRoute.js";
 import userRouter from "./routes/users/userRoute.js";
 import addressRouter from "./routes/users/addressRoute.js";
 import orderRouter from "./routes/users/orderRoute.js";
+import testimonialRouter from "./routes/admin/testimonialRoute.js";
 dotenv.config();
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/api/v1", couponRouter);
 app.use("/api/v1", userRouter);
 app.use("/api/v1", addressRouter);
 app.use("/api/v1", orderRouter);
+app.use("/api/v1", testimonialRouter);
 
 
 

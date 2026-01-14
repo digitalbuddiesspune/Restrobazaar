@@ -63,14 +63,13 @@ const SuperAdminDashboard = () => {
   const [vendors, setVendors] = useState([]);
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [testimonials, setTestimonials] = useState([]);
+  const [editingTestimonialId, setEditingTestimonialId] = useState(null);
 
   // Form states
   const [productForm, setProductForm] = useState({
     productName: "",
     searchTags: "",
-    productPurchasedFrom: "",
-    purchasedMode: "",
-    purchasedAmount: "",
     shortDescription: "",
     category: "",
     subCategory: "",
@@ -84,10 +83,6 @@ const SuperAdminDashboard = () => {
       base: "",
     },
     hsnCode: "",
-    gst: 0,
-    cgst: 0,
-    sgst: 0,
-    igst: 0,
     isReturnable: false,
     showOnSpecialPage: false,
     status: true,
@@ -146,6 +141,14 @@ const SuperAdminDashboard = () => {
     },
     isActive: true,
     isApproved: false,
+  });
+
+  const [testimonialForm, setTestimonialForm] = useState({
+    review: "",
+    name: "",
+    businessType: "",
+    location: "",
+    status: true,
   });
 
   // Get auth token
@@ -346,6 +349,19 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const fetchTestimonials = async () => {
+    try {
+      const token = getToken();
+      const res = await axios.get(`${baseUrl}/testimonials`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 10000 }, // Fetch all testimonials
+      });
+      setTestimonials(res.data?.data || []);
+    } catch (err) {
+      setError("Failed to fetch testimonials");
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
@@ -389,6 +405,8 @@ const SuperAdminDashboard = () => {
     if (activeTab === "add-city") fetchCities(); // Fetch cities for reference
     if (activeTab === "add-category") fetchCategories(); // Fetch categories for reference
     if (activeTab === "add-vendor") fetchCities(); // Fetch cities for serviceCities dropdown
+    if (activeTab === "testimonials") fetchTestimonials();
+    if (activeTab === "add-testimonial") fetchTestimonials(); // Fetch testimonials for reference
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -455,9 +473,6 @@ const SuperAdminDashboard = () => {
           searchTags: Array.isArray(product.searchTags)
             ? product.searchTags.join(", ")
             : product.searchTags || "",
-          productPurchasedFrom: product.productPurchasedFrom || "",
-          purchasedMode: product.purchasedMode || "",
-          purchasedAmount: product.purchasedAmount || "",
           shortDescription: product.shortDescription || "",
           category: product.category?._id || product.category || "",
           subCategory: product.subCategory || "",
@@ -471,10 +486,6 @@ const SuperAdminDashboard = () => {
             base: "",
           },
           hsnCode: product.hsnCode || "",
-          gst: product.gst || 0,
-          cgst: product.cgst || 0,
-          sgst: product.sgst || 0,
-          igst: product.igst || 0,
           isReturnable: product.isReturnable || false,
           showOnSpecialPage: product.showOnSpecialPage || false,
           status: product.status !== undefined ? product.status : true,
@@ -528,11 +539,6 @@ const SuperAdminDashboard = () => {
               .map((tag) => tag.trim())
               .filter((tag) => tag)
           : [],
-        // Convert numeric fields
-        gst: parseFloat(productForm.gst) || 0,
-        cgst: parseFloat(productForm.cgst) || 0,
-        sgst: parseFloat(productForm.sgst) || 0,
-        igst: parseFloat(productForm.igst) || 0,
         // Handle size object - only include if at least one field is filled
         size:
           productForm.size.height ||
@@ -548,16 +554,6 @@ const SuperAdminDashboard = () => {
                 ...(productForm.size.base && { base: productForm.size.base }),
               }
             : undefined,
-        // Remove empty string fields
-        ...(productForm.productPurchasedFrom && {
-          productPurchasedFrom: productForm.productPurchasedFrom,
-        }),
-        ...(productForm.purchasedMode && {
-          purchasedMode: productForm.purchasedMode,
-        }),
-        ...(productForm.purchasedAmount && {
-          purchasedAmount: productForm.purchasedAmount,
-        }),
         ...(productForm.subCategory && {
           subCategory: productForm.subCategory,
         }),
@@ -595,9 +591,6 @@ const SuperAdminDashboard = () => {
       setProductForm({
         productName: "",
         searchTags: "",
-        productPurchasedFrom: "",
-        purchasedMode: "",
-        purchasedAmount: "",
         shortDescription: "",
         category: "",
         subCategory: "",
@@ -611,10 +604,6 @@ const SuperAdminDashboard = () => {
           base: "",
         },
         hsnCode: "",
-        gst: 0,
-        cgst: 0,
-        sgst: 0,
-        igst: 0,
         isReturnable: false,
         showOnSpecialPage: false,
         status: true,
@@ -917,9 +906,94 @@ const SuperAdminDashboard = () => {
       if (type === "cities") fetchCities();
       if (type === "categories") fetchCategories();
       if (type === "vendors") fetchVendors();
+      if (type === "testimonials") fetchTestimonials();
       fetchStats();
     } catch (err) {
       setError(`Failed to delete ${type}`);
+    }
+  };
+
+  // Testimonial handlers
+  const handleTestimonialEdit = (testimonial) => {
+    setEditingTestimonialId(testimonial._id);
+    setTestimonialForm({
+      review: testimonial.review || "",
+      name: testimonial.name || "",
+      businessType: testimonial.businessType || "",
+      location: testimonial.location || "",
+      status: testimonial.status !== undefined ? testimonial.status : true,
+    });
+    setActiveTab("add-testimonial");
+  };
+
+  const handleTestimonialSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const token = getToken();
+      const formData = {
+        review: testimonialForm.review,
+        name: testimonialForm.name,
+        businessType: testimonialForm.businessType,
+        location: testimonialForm.location,
+        status: testimonialForm.status,
+      };
+
+      if (editingTestimonialId) {
+        await axios.put(
+          `${baseUrl}/testimonials/${editingTestimonialId}`,
+          formData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setSuccess("Testimonial updated successfully!");
+      } else {
+        await axios.post(`${baseUrl}/testimonials`, formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuccess("Testimonial created successfully!");
+      }
+
+      setTestimonialForm({
+        review: "",
+        name: "",
+        businessType: "",
+        location: "",
+        status: true,
+      });
+      setEditingTestimonialId(null);
+      fetchTestimonials();
+      setActiveTab("testimonials");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          (editingTestimonialId
+            ? "Failed to update testimonial"
+            : "Failed to create testimonial")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleTestimonialStatus = async (id) => {
+    try {
+      const token = getToken();
+      await axios.patch(
+        `${baseUrl}/testimonials/${id}/toggle-status`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setSuccess("Testimonial status updated successfully!");
+      fetchTestimonials();
+    } catch (err) {
+      setError("Failed to update testimonial status");
     }
   };
 
@@ -1007,11 +1081,6 @@ const SuperAdminDashboard = () => {
           {/* Add Product Tab */}
           {activeTab === "add-product" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">
-                  {editingProductId ? "Edit Product" : "Add New Product"}
-                </h1>
-              </div>
               <ProductForm
                 productForm={productForm}
                 setProductForm={setProductForm}
@@ -1228,66 +1297,6 @@ const SuperAdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Purchase Information */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">
-                  Purchase Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Purchased From
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.productPurchasedFrom}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          productPurchasedFrom: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Where was it purchased"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Purchase Mode
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.purchasedMode}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          purchasedMode: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="e.g., Cash, Online"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Purchase Amount
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.purchasedAmount}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          purchasedAmount: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter amount"
-                    />
-                  </div>
-                </div>
-              </div>
-
               {/* Unit & Weight */}
               <div className="border-b pb-4">
                 <h3 className="text-lg font-semibold mb-4">Unit & Weight</h3>
@@ -1425,7 +1434,7 @@ const SuperAdminDashboard = () => {
               {/* Tax Information */}
               <div className="border-b pb-4">
                 <h3 className="text-lg font-semibold mb-4">Tax Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       HSN Code
@@ -1441,70 +1450,6 @@ const SuperAdminDashboard = () => {
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       placeholder="Enter HSN code"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      GST (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productForm.gst}
-                      onChange={(e) =>
-                        setProductForm({ ...productForm, gst: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CGST (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productForm.cgst}
-                      onChange={(e) =>
-                        setProductForm({ ...productForm, cgst: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      SGST (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productForm.sgst}
-                      onChange={(e) =>
-                        setProductForm({ ...productForm, sgst: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      IGST (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productForm.igst}
-                      onChange={(e) =>
-                        setProductForm({ ...productForm, igst: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="0"
                     />
                   </div>
                 </div>
@@ -1687,9 +1632,6 @@ const SuperAdminDashboard = () => {
                       setProductForm({
                         productName: "",
                         searchTags: "",
-                        productPurchasedFrom: "",
-                        purchasedMode: "",
-                        purchasedAmount: "",
                         shortDescription: "",
                         category: "",
                         subCategory: "",
@@ -1703,10 +1645,6 @@ const SuperAdminDashboard = () => {
                           base: "",
                         },
                         hsnCode: "",
-                        gst: 0,
-                        cgst: 0,
-                        sgst: 0,
-                        igst: 0,
                         isReturnable: false,
                         showOnSpecialPage: false,
                         status: true,
@@ -1728,9 +1666,6 @@ const SuperAdminDashboard = () => {
           {/* Add City Tab */}
           {activeTab === "add-city" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">Add New City</h1>
-              </div>
               <CityForm
                 cityForm={cityForm}
                 setCityForm={setCityForm}
@@ -1743,11 +1678,6 @@ const SuperAdminDashboard = () => {
           {/* Add Category Tab */}
           {activeTab === "add-category" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">
-                  {editingCategoryId ? "Edit Category" : "Add New Category"}
-                </h1>
-              </div>
               <CategoryForm
                 categoryForm={categoryForm}
                 setCategoryForm={setCategoryForm}
@@ -1967,9 +1897,6 @@ const SuperAdminDashboard = () => {
           {/* Add Vendor Tab */}
           {activeTab === "add-vendor" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">Add New Vendor</h1>
-              </div>
               <VendorForm
                 vendorForm={vendorForm}
                 setVendorForm={setVendorForm}
@@ -2506,9 +2433,6 @@ const SuperAdminDashboard = () => {
           {/* All Products Tab */}
           {activeTab === "products" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">All Products</h1>
-              </div>
               <ProductsTable
                 products={products}
                 productsPage={productsPage}
@@ -2523,9 +2447,6 @@ const SuperAdminDashboard = () => {
           {/* Product Catalog Tab */}
           {activeTab === "product-catalog" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">Product Catalog</h1>
-              </div>
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {products.length === 0 ? (
@@ -2555,7 +2476,7 @@ const SuperAdminDashboard = () => {
                           <h3 className="font-semibold text-gray-900 truncate mb-1">{product.productName}</h3>
                           {product.category && (
                             <p className="text-xs text-gray-500 mb-2">
-                              {product.category.categoryName || product.category}
+                              {product.category.name || (typeof product.category === 'string' ? product.category : 'N/A')}
                             </p>
                           )}
                           {product.shortDescription && (
@@ -2756,9 +2677,6 @@ const SuperAdminDashboard = () => {
           {/* All Cities Tab */}
           {activeTab === "cities" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">All Cities</h1>
-              </div>
               <CitiesTable cities={cities} handleDelete={handleDelete} />
             </div>
           )}
@@ -2831,9 +2749,6 @@ const SuperAdminDashboard = () => {
           {/* All Categories Tab */}
           {activeTab === "categories" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">All Categories</h1>
-              </div>
               <CategoriesTable
                 categories={categories}
                 handleEditCategory={handleEditCategory}
@@ -2927,9 +2842,6 @@ const SuperAdminDashboard = () => {
           {/* All Vendors Tab */}
           {activeTab === "vendors" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">All Vendors</h1>
-              </div>
               <VendorsTable vendors={vendors} handleDelete={handleDelete} />
             </div>
           )}
@@ -2937,10 +2849,240 @@ const SuperAdminDashboard = () => {
           {/* All Users Tab */}
           {activeTab === "users" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">All Users</h1>
-              </div>
               <UsersTable users={users} loading={usersLoading} />
+            </div>
+          )}
+
+          {/* Add Testimonial Tab */}
+          {activeTab === "add-testimonial" && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <form onSubmit={handleTestimonialSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Review *
+                  </label>
+                  <textarea
+                    value={testimonialForm.review}
+                    onChange={(e) =>
+                      setTestimonialForm({
+                        ...testimonialForm,
+                        review: e.target.value,
+                      })
+                    }
+                    required
+                    rows={6}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter the review/testimonial text"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={testimonialForm.name}
+                    onChange={(e) =>
+                      setTestimonialForm({
+                        ...testimonialForm,
+                        name: e.target.value,
+                      })
+                    }
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Business Type *
+                  </label>
+                  <input
+                    type="text"
+                    value={testimonialForm.businessType}
+                    onChange={(e) =>
+                      setTestimonialForm({
+                        ...testimonialForm,
+                        businessType: e.target.value,
+                      })
+                    }
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter business type"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Location *
+                  </label>
+                  <input
+                    type="text"
+                    value={testimonialForm.location}
+                    onChange={(e) =>
+                      setTestimonialForm({
+                        ...testimonialForm,
+                        location: e.target.value,
+                      })
+                    }
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter location"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="testimonialStatus"
+                    checked={testimonialForm.status}
+                    onChange={(e) =>
+                      setTestimonialForm({
+                        ...testimonialForm,
+                        status: e.target.checked,
+                      })
+                    }
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="testimonialStatus"
+                    className="ml-2 block text-sm text-gray-700"
+                  >
+                    Active Status
+                  </label>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading
+                      ? "Saving..."
+                      : editingTestimonialId
+                      ? "Update Testimonial"
+                      : "Create Testimonial"}
+                  </button>
+                  {editingTestimonialId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTestimonialId(null);
+                        setTestimonialForm({
+                          review: "",
+                          name: "",
+                          businessType: "",
+                          location: "",
+                          status: true,
+                        });
+                        setActiveTab("testimonials");
+                      }}
+                      className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* All Testimonials Tab */}
+          {activeTab === "testimonials" && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Business Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Location
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Review
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {testimonials.map((testimonial) => (
+                      <tr key={testimonial._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {testimonial.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {testimonial.businessType}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {testimonial.location}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                          {testimonial.review}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              testimonial.status
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {testimonial.status ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleTestimonialEdit(testimonial)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleToggleTestimonialStatus(testimonial._id)
+                              }
+                              className={`${
+                                testimonial.status
+                                  ? "text-orange-600 hover:text-orange-900"
+                                  : "text-green-600 hover:text-green-900"
+                              }`}
+                            >
+                              {testimonial.status ? "Deactivate" : "Activate"}
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDelete("testimonials", testimonial._id)
+                              }
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {testimonials.length === 0 && (
+                  <div className="p-6 text-center text-gray-500">
+                    No testimonials found
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

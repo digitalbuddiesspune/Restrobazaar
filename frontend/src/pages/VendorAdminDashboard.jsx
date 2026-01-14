@@ -83,6 +83,14 @@ const VendorAdminDashboard = () => {
     productId: "",
     cityId: "",
     priceType: "single",
+    defaultPrice: 0,
+    productPurchasedFrom: "",
+    purchasedMode: "",
+    purchasedAmount: "",
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
     pricing: {
       single: {
         price: "",
@@ -202,6 +210,14 @@ const VendorAdminDashboard = () => {
       productId: product.productId._id || product.productId,
       cityId: cityId,
       priceType: product.priceType,
+      defaultPrice: product.defaultPrice || 0,
+      productPurchasedFrom: product.productPurchasedFrom || "",
+      purchasedMode: product.purchasedMode || "",
+      purchasedAmount: product.purchasedAmount || "",
+      gst: product.gst || 0,
+      cgst: product.cgst || 0,
+      sgst: product.sgst || 0,
+      igst: product.igst || 0,
       pricing: product.pricing || {
         single: { price: "" },
         bulk: [],
@@ -295,6 +311,14 @@ const VendorAdminDashboard = () => {
         productId: productForm.productId,
         cityId: vendorInfo?.cityId || productForm.cityId,
         priceType: productForm.priceType,
+        defaultPrice: parseFloat(productForm.defaultPrice) || 0,
+        productPurchasedFrom: productForm.productPurchasedFrom || undefined,
+        purchasedMode: productForm.purchasedMode || undefined,
+        purchasedAmount: productForm.purchasedAmount || undefined,
+        gst: parseFloat(productForm.gst) || 0,
+        cgst: parseFloat(productForm.cgst) || 0,
+        sgst: parseFloat(productForm.sgst) || 0,
+        igst: parseFloat(productForm.igst) || 0,
         pricing: pricingData,
         availableStock: parseFloat(productForm.availableStock) || 0,
         minimumOrderQuantity:
@@ -329,6 +353,14 @@ const VendorAdminDashboard = () => {
         productId: "",
         cityId: vendorInfo?.cityId || "",
         priceType: "single",
+        defaultPrice: 0,
+        productPurchasedFrom: "",
+        purchasedMode: "",
+        purchasedAmount: "",
+        gst: 0,
+        cgst: 0,
+        sgst: 0,
+        igst: 0,
         pricing: {
           single: {
             price: "",
@@ -1494,6 +1526,154 @@ const VendorAdminDashboard = () => {
                 )}
               </div>
 
+              {/* Purchase Information */}
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold mb-4">Purchase Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Default Price
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={productForm.defaultPrice}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          defaultPrice: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Purchased From
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.productPurchasedFrom}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          productPurchasedFrom: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="Where was it purchased"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Purchase Mode
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.purchasedMode}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          purchasedMode: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="e.g., Cash, Online"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Purchase Amount
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.purchasedAmount}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          purchasedAmount: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tax Information */}
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold mb-4">Tax Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      GST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.gst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, gst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CGST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.cgst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, cgst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SGST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.sgst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, sgst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      IGST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.igst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, igst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Stock Management */}
               <div className="border-b border-gray-200 pb-6">
                 <h3 className="text-lg font-semibold mb-4">Stock Management</h3>
@@ -1583,6 +1763,14 @@ const VendorAdminDashboard = () => {
                       productId: "",
                       cityId: vendorInfo?.cityId || "",
                       priceType: "single",
+                      defaultPrice: 0,
+                      productPurchasedFrom: "",
+                      purchasedMode: "",
+                      purchasedAmount: "",
+                      gst: 0,
+                      cgst: 0,
+                      sgst: 0,
+                      igst: 0,
                       pricing: {
                         single: {
                           price: "",

@@ -114,6 +114,14 @@ export const createVendorProduct = async (req, res) => {
       vendorId: bodyVendorId,
       cityId,
       priceType,
+      defaultPrice,
+      productPurchasedFrom,
+      purchasedMode,
+      purchasedAmount,
+      gst,
+      cgst,
+      sgst,
+      igst,
       pricing,
       availableStock,
       minimumOrderQuantity,
@@ -209,6 +217,14 @@ export const createVendorProduct = async (req, res) => {
       vendorId,
       cityId,
       priceType,
+      defaultPrice: defaultPrice !== undefined ? defaultPrice : 0,
+      productPurchasedFrom,
+      purchasedMode,
+      purchasedAmount,
+      gst: gst !== undefined ? gst : 0,
+      cgst: cgst !== undefined ? cgst : 0,
+      sgst: sgst !== undefined ? sgst : 0,
+      igst: igst !== undefined ? igst : 0,
       pricing: pricingData,
       availableStock: availableStock !== undefined ? availableStock : 0,
       minimumOrderQuantity: minimumOrderQuantity !== undefined ? minimumOrderQuantity : 1,
@@ -278,6 +294,14 @@ export const updateVendorProduct = async (req, res) => {
     const { id } = req.params;
     const {
       priceType,
+      defaultPrice,
+      productPurchasedFrom,
+      purchasedMode,
+      purchasedAmount,
+      gst,
+      cgst,
+      sgst,
+      igst,
       pricing,
       availableStock,
       minimumOrderQuantity,
@@ -355,6 +379,14 @@ export const updateVendorProduct = async (req, res) => {
       updateData.pricing = pricing;
     }
 
+    if (defaultPrice !== undefined) updateData.defaultPrice = defaultPrice;
+    if (productPurchasedFrom !== undefined) updateData.productPurchasedFrom = productPurchasedFrom;
+    if (purchasedMode !== undefined) updateData.purchasedMode = purchasedMode;
+    if (purchasedAmount !== undefined) updateData.purchasedAmount = purchasedAmount;
+    if (gst !== undefined) updateData.gst = gst;
+    if (cgst !== undefined) updateData.cgst = cgst;
+    if (sgst !== undefined) updateData.sgst = sgst;
+    if (igst !== undefined) updateData.igst = igst;
     if (availableStock !== undefined) updateData.availableStock = availableStock;
     if (minimumOrderQuantity !== undefined) updateData.minimumOrderQuantity = minimumOrderQuantity;
     if (notifyQuantity !== undefined) updateData.notifyQuantity = notifyQuantity;
