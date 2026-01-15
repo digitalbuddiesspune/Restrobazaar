@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { CITY_STORAGE_KEY, CITY_ID_KEY } from './CitySelectionPopup'
 import { isAuthenticated, logout } from '../utils/auth'
@@ -15,6 +15,9 @@ const Header = () => {
   const [userAuthenticated, setUserAuthenticated] = useState(false)
   const [selectedCityId, setSelectedCityId] = useState('')
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
+  const [showLeftArrow, setShowLeftArrow] = useState(false)
+  const [showRightArrow, setShowRightArrow] = useState(true)
+  const categoriesScrollRef = useRef(null)
   const navigate = useNavigate()
   
   // Get cart items count from Redux
@@ -165,6 +168,28 @@ const Header = () => {
     closeMenu();
   }
 
+  const checkCategoriesScrollButtons = () => {
+    if (categoriesScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = categoriesScrollRef.current;
+      const canScroll = scrollWidth > clientWidth;
+      setShowLeftArrow(canScroll && scrollLeft > 0);
+      setShowRightArrow(canScroll && scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  const scrollCategories = (direction) => {
+    if (categoriesScrollRef.current) {
+      const scrollAmount = 200; // pixels to scroll
+      const newScrollLeft = categoriesScrollRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+      categoriesScrollRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+      // Check button visibility after scroll
+      setTimeout(checkCategoriesScrollButtons, 100);
+    }
+  };
+
   const toggleAccountDropdown = () => {
     setIsAccountDropdownOpen(!isAccountDropdownOpen)
   }
@@ -217,6 +242,24 @@ const Header = () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isAccountDropdownOpen, isCityDropdownOpen])
+
+  // Check scroll position for categories on mount and when categories change
+  useEffect(() => {
+    const scrollElement = categoriesScrollRef.current;
+    if (scrollElement) {
+      // Initial check
+      setTimeout(checkCategoriesScrollButtons, 100);
+      // Add scroll listener
+      scrollElement.addEventListener('scroll', checkCategoriesScrollButtons);
+      // Check on window resize
+      window.addEventListener('resize', checkCategoriesScrollButtons);
+      
+      return () => {
+        scrollElement.removeEventListener('scroll', checkCategoriesScrollButtons);
+        window.removeEventListener('resize', checkCategoriesScrollButtons);
+      };
+    }
+  }, [categories])
 
   return (
     <>
@@ -756,9 +799,56 @@ const Header = () => {
     {!isMenuOpen && !categoriesLoading && categories.length > 0 && (
       <div className="border-t border-gray-200 bg-gray-50 sticky top-[56px] sm:top-[56px] md:top-[64px] z-40 shadow-sm">
         <div className="w-full px-1 sm:px-2 md:px-3">
-          <div className="flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2 overflow-x-auto scrollbar-hide">
-            
-            <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
+          <div className="relative flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2">
+            {/* Left Scroll Button - Desktop Only */}
+            {showLeftArrow && (
+              <button
+                onClick={() => scrollCategories('left')}
+                className="hidden lg:flex absolute left-1 sm:left-2 md:left-3 top-1/2 -translate-y-1/2 z-10 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full p-1 shadow-md transition-all hover:shadow-lg"
+                aria-label="Scroll left"
+              >
+                <svg
+                  className="w-4 h-4 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+            )}
+            {/* Right Scroll Button - Desktop Only */}
+            {showRightArrow && (
+              <button
+                onClick={() => scrollCategories('right')}
+                className="hidden lg:flex absolute right-1 sm:right-2 md:right-3 top-1/2 -translate-y-1/2 z-10 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full p-1 shadow-md transition-all hover:shadow-lg"
+                aria-label="Scroll right"
+              >
+                <svg
+                  className="w-4 h-4 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            )}
+            <div
+              ref={categoriesScrollRef}
+              className={`flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0 overflow-x-auto scrollbar-hide ${showLeftArrow ? 'lg:pl-10' : ''} ${showRightArrow ? 'lg:pr-10' : ''}`}
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {categories.map((category) => (
                 <button
                   key={category._id || category.name}
