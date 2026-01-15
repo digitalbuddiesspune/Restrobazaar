@@ -226,9 +226,21 @@ const Checkout = () => {
   };
 
   // Calculate billing details (moved before handleConfirmOrder)
-  // GST and shipping calculated on original cart total (before coupon)
-  const gstRate = 0.18; // 18% GST
-  const gstAmount = cartTotal * gstRate;
+  // Calculate GST per product based on each product's GST percentage
+  const gstBreakdown = cartItems.map(item => {
+    const itemTotal = item.price * item.quantity;
+    const gstPercentage = item.gst || 0;
+    const gstAmount = (itemTotal * gstPercentage) / 100;
+    return {
+      itemId: item.id,
+      productName: item.productName,
+      gstPercentage,
+      gstAmount: parseFloat(gstAmount.toFixed(2)),
+      itemTotal,
+    };
+  });
+  
+  const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
   const shippingCharges = calculateShippingCharges(cartTotal);
   // Apply coupon discount to final total
   const totalBeforeCoupon = cartTotal + gstAmount + shippingCharges;
@@ -804,6 +816,19 @@ const Checkout = () => {
                     <span>GST</span>
                     <span className="font-medium">₹{gstAmount.toFixed(2)}</span>
                   </div>
+                  {/* GST Breakdown */}
+                  {gstBreakdown.some(item => item.gstPercentage > 0) && (
+                    <div className="pl-2 border-l-2 border-gray-200 space-y-1">
+                      {gstBreakdown
+                        .filter(item => item.gstPercentage > 0)
+                        .map((item, index) => (
+                          <div key={item.itemId || index} className="flex justify-between text-xs text-gray-600">
+                            <span>{item.productName} ({item.gstPercentage}%):</span>
+                            <span>₹{item.gstAmount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm text-gray-700">
                     <span>Shipping Charges</span>
                     <div className="text-right">

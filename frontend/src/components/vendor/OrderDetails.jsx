@@ -279,13 +279,33 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
   const calculateBillingDetails = () => {
     const cartTotal = editedItems.reduce((sum, item) => sum + (item.total || 0), 0);
-    const gstAmount = cartTotal * 0.18;
+    
+    // Calculate GST per product based on each product's GST percentage
+    const gstBreakdown = editedItems.map(item => {
+      const itemTotal = item.total || 0;
+      // Get GST from item if it exists (from order), otherwise from vendorProduct
+      const gstPercentage = item.gstPercentage !== undefined 
+        ? item.gstPercentage 
+        : (item.vendorProduct?.gst || 0);
+      const gstAmount = item.gstAmount !== undefined 
+        ? item.gstAmount 
+        : (itemTotal * gstPercentage) / 100;
+      
+      return {
+        productName: item.productName,
+        gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
+      };
+    });
+    
+    const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
     const shippingCharges = 0; // Free shipping
     const totalAmount = cartTotal + gstAmount + shippingCharges;
 
     return {
       cartTotal,
       gstAmount,
+      gstBreakdown,
       shippingCharges,
       totalAmount,
     };
@@ -459,23 +479,31 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           doc.setFont(undefined, 'bold');
           doc.text('S.No.', leftMargin + 2, yPos);
           doc.text('Item', leftMargin + 20, yPos);
-          doc.text('Qty', leftMargin + 110, yPos, { align: 'center' });
-          doc.text('Unit Price', leftMargin + 135, yPos, { align: 'right' });
+          doc.text('Qty', leftMargin + 100, yPos, { align: 'center' });
+          doc.text('Unit Price', leftMargin + 120, yPos, { align: 'right' });
+          doc.text('GST', leftMargin + 160, yPos, { align: 'right' });
           doc.text('Total', rightMargin - 2, yPos, { align: 'right' });
           yPos += 8;
           doc.setFont(undefined, 'normal');
         }
 
         doc.text((index + 1).toString(), leftMargin + 2, yPos);
-        const productName = item.productName?.length > 35 
-          ? item.productName.substring(0, 32) + '...' 
+        const productName = item.productName?.length > 30 
+          ? item.productName.substring(0, 27) + '...' 
           : item.productName || 'Product';
         doc.text(productName, leftMargin + 20, yPos);
         const quantity = String(item.quantity || 0);
         const price = String(Number(item.price || 0).toFixed(2));
-        const total = String(Number(item.total || 0).toFixed(2));
-        doc.text(quantity, leftMargin + 110, yPos, { align: 'center' });
-        doc.text(`Rs. ${price}`, leftMargin + 135, yPos, { align: 'right' });
+        const gstPercentage = item.gstPercentage || 0;
+        const itemTotal = item.total || (item.price * item.quantity);
+        const gstAmount = item.gstAmount || (itemTotal * gstPercentage / 100);
+        const total = String(Number(itemTotal).toFixed(2));
+        const gstDisplay = gstPercentage > 0 
+          ? `${Number(gstAmount.toFixed(2))} (${gstPercentage}%)`
+          : '-';
+        doc.text(quantity, leftMargin + 100, yPos, { align: 'center' });
+        doc.text(`Rs. ${price}`, leftMargin + 120, yPos, { align: 'right' });
+        doc.text(gstDisplay, leftMargin + 160, yPos, { align: 'right' });
         doc.text(`Rs. ${total}`, rightMargin - 2, yPos, { align: 'right' });
         yPos += 7;
       });
@@ -497,10 +525,25 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       doc.text(`Rs. ${cartTotal}`, rightMargin - 2, yPos, { align: 'right' });
       yPos += 7;
 
-      doc.text('GST (18%):', summaryX, yPos);
-      const gstAmount = String(Number(billing?.gstAmount || 0).toFixed(2));
-      doc.text(`Rs. ${gstAmount}`, rightMargin - 2, yPos, { align: 'right' });
+      doc.text('GST:', summaryX, yPos);
+      const totalGstAmount = String(Number(billing?.gstAmount || 0).toFixed(2));
+      doc.text(`Rs. ${totalGstAmount}`, rightMargin - 2, yPos, { align: 'right' });
       yPos += 7;
+      
+      // GST Breakdown
+      const gstBreakdown = order.items?.filter(item => item.gstPercentage > 0);
+      if (gstBreakdown && gstBreakdown.length > 0) {
+        doc.setFontSize(8);
+        gstBreakdown.forEach(item => {
+          const itemGstAmount = item.gstAmount || ((item.total || 0) * (item.gstPercentage || 0) / 100);
+          const itemName = item.productName?.length > 25 
+            ? item.productName.substring(0, 22) + '...' 
+            : item.productName || 'Product';
+          doc.text(`  ${itemName} (${item.gstPercentage}%): Rs. ${itemGstAmount.toFixed(2)}`, summaryX, yPos);
+          yPos += 5;
+        });
+        doc.setFontSize(10);
+      }
 
       doc.text('Shipping Charges:', summaryX, yPos);
       doc.setTextColor(0, 128, 0);
@@ -882,6 +925,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantity</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">GST</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                       {isEditMode && (
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -971,6 +1015,27 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             `₹${item.price?.toLocaleString() || 0}`
                           )}
                         </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-900">
+                          {(() => {
+                            const itemTotal = item.total || (item.price * item.quantity);
+                            const gstPercentage = item.gstPercentage !== undefined 
+                              ? item.gstPercentage 
+                              : (item.vendorProduct?.gst || (isEditMode ? (item.vendorProduct?.gst || findVendorProductForItem(item)?.gst || 0) : 0));
+                            const gstAmount = item.gstAmount !== undefined 
+                              ? item.gstAmount 
+                              : (itemTotal * gstPercentage) / 100;
+                            
+                            if (gstPercentage > 0) {
+                              return (
+                                <div className="flex flex-col items-end">
+                                  <span className="font-medium">₹{gstAmount.toFixed(2)}</span>
+                                  <span className="text-xs text-gray-500">({gstPercentage}%)</span>
+                                </div>
+                              );
+                            }
+                            return <span className="text-gray-400">-</span>;
+                          })()}
+                        </td>
                         <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">₹{item.total?.toLocaleString() || 0}</td>
                         {isEditMode && (
                           <td className="px-4 py-3 text-center">
@@ -986,7 +1051,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                     ))}
                     {isEditMode && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-3 bg-gray-50">
+                        <td colSpan={6} className="px-4 py-3 bg-gray-50">
                           <div className="flex items-center space-x-3">
                             <select
                               value={newItemProductId}
@@ -1068,7 +1133,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">GST (18%):</span>
+                <span className="text-gray-600">GST:</span>
                 <span className="font-medium text-gray-900">
                   ₹{(
                     isEditMode 
@@ -1077,6 +1142,30 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   ).toLocaleString()}
                 </span>
               </div>
+              {/* GST Breakdown */}
+              {(() => {
+                const gstBreakdown = isEditMode 
+                  ? calculateBillingDetails().gstBreakdown 
+                  : order.items?.filter(item => item.gstPercentage > 0).map(item => ({
+                      productName: item.productName,
+                      gstPercentage: item.gstPercentage || 0,
+                      gstAmount: item.gstAmount || 0,
+                    }));
+                
+                if (gstBreakdown && gstBreakdown.length > 0) {
+                  return (
+                    <div className="pl-2 border-l-2 border-gray-200 space-y-1 mt-1">
+                      {gstBreakdown.map((item, index) => (
+                        <div key={index} className="flex justify-between text-xs text-gray-600">
+                          <span>{item.productName} ({item.gstPercentage}%):</span>
+                          <span>₹{item.gstAmount?.toFixed(2) || '0.00'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping Charges:</span>
                 <span className="font-medium text-gray-900">Free</span>

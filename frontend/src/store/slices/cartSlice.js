@@ -60,6 +60,7 @@ const cartSlice = createSlice({
           minimumOrderQuantity: vendorProduct.minimumOrderQuantity || 1,
           availableStock: vendorProduct.availableStock || 0,
           unit: vendorProduct.productId?.unit || 'piece',
+          gst: vendorProduct.gst || 0, // Store GST percentage
         };
         state.items.push(newItem);
       }

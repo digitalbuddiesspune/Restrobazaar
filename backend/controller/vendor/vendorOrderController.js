@@ -304,6 +304,53 @@ export const updateVendorOrderStatus = async (req, res) => {
       });
     }
 
+    // Store previous status for stock management
+    const previousStatus = order.orderStatus;
+
+    // Handle stock reduction/restoration based on status change
+    if (orderStatus === 'confirmed' && previousStatus !== 'confirmed') {
+      // Reduce stock when order is confirmed
+      for (const item of order.items) {
+        // Find the vendor product for this item
+        // Match by productId (global Product ID), vendorId, and cityId (from order or vendorServiceCityId)
+        const vendorProduct = await VendorProduct.findOne({
+          productId: item.productId,
+          vendorId: order.vendorId || vendorId,
+          cityId: order.vendorServiceCityId || order.cityId,
+        });
+
+        if (vendorProduct) {
+          // Check if sufficient stock is available
+          if (vendorProduct.availableStock < item.quantity) {
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient stock for ${item.productName}. Available: ${vendorProduct.availableStock}, Required: ${item.quantity}`,
+            });
+          }
+
+          // Reduce stock
+          vendorProduct.availableStock -= item.quantity;
+          await vendorProduct.save();
+        }
+      }
+    } else if (orderStatus === 'cancelled' && previousStatus === 'confirmed') {
+      // Restore stock when order is cancelled (only if it was previously confirmed)
+      for (const item of order.items) {
+        // Find the vendor product for this item
+        const vendorProduct = await VendorProduct.findOne({
+          productId: item.productId,
+          vendorId: order.vendorId || vendorId,
+          cityId: order.vendorServiceCityId || order.cityId,
+        });
+
+        if (vendorProduct) {
+          // Restore stock
+          vendorProduct.availableStock += item.quantity;
+          await vendorProduct.save();
+        }
+      }
+    }
+
     // Update order status
     order.orderStatus = orderStatus;
     await order.save();
@@ -448,42 +495,70 @@ export const updateVendorOrderItems = async (req, res) => {
       }
     }
 
-    // Prepare updated items
+    // Fetch VendorProduct records to get GST percentages
+    const productIds = items.map(item => item.productId?.toString() || item.productId);
+    const vendorProductsForGst = await VendorProduct.find({
+      productId: { $in: productIds },
+      vendorId: vendorId,
+    }).select('productId gst');
+
+    // Create a map of productId to GST percentage
+    const productGstMap = {};
+    vendorProductsForGst.forEach((vp) => {
+      const pid = vp.productId?.toString() || vp.productId.toString();
+      productGstMap[pid] = vp.gst || 0;
+    });
+
+    // Prepare updated items with GST calculation per product
     const updatedItems = items.map((item) => {
       const productId = item.productId?.toString() || item.productId;
       const price = item.price || vendorProductPrices[productId] || 0;
       const quantity = parseInt(item.quantity) || 1;
+      const itemTotal = price * quantity;
+      
+      // Get GST percentage for this product (default to 0 if not found)
+      const gstPercentage = productGstMap[productId] || 0;
+      
+      // Calculate GST amount for this item
+      const gstAmount = (itemTotal * gstPercentage) / 100;
+      
       return {
         productId: item.productId,
         productName: item.productName || 'Product',
         productImage: item.productImage || '',
         quantity: quantity,
         price: price,
-        total: price * quantity,
+        total: itemTotal,
+        gstPercentage: gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
       };
     });
 
     // Update order items
     order.items = updatedItems;
 
+    // Calculate total GST from all items
+    const totalGstAmount = updatedItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+
     // Update billing details if provided, otherwise recalculate
     if (billingDetails) {
+      // Recalculate GST from items even if billingDetails is provided
+      const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
       order.billingDetails = {
-        cartTotal: billingDetails.cartTotal || 0,
-        gstAmount: billingDetails.gstAmount || 0,
-        shippingCharges: 0, // Free shipping
-        totalAmount: billingDetails.totalAmount || 0,
+        cartTotal: cartTotal,
+        gstAmount: totalGstAmount, // Use calculated GST from items
+        shippingCharges: billingDetails.shippingCharges || 0,
+        totalAmount: cartTotal + totalGstAmount + (billingDetails.shippingCharges || 0),
       };
     } else {
       // Recalculate billing details
       const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
-      const gstAmount = cartTotal * 0.18; // 18% GST
       const shippingCharges = 0; // Free shipping
       order.billingDetails = {
         cartTotal: cartTotal,
-        gstAmount: gstAmount,
+        gstAmount: totalGstAmount, // GST calculated per product
         shippingCharges: shippingCharges,
-        totalAmount: cartTotal + gstAmount + shippingCharges,
+        totalAmount: cartTotal + totalGstAmount + shippingCharges,
       };
     }
 
@@ -676,16 +751,46 @@ export const createOrderForUser = async (req, res) => {
       });
     }
 
-    // Prepare order items
+    // Fetch VendorProduct records to get GST percentages
+    const productIds = cartItems.map(item => item.productId);
+    const vendorProductsForGst = await VendorProduct.find({
+      productId: { $in: productIds },
+      vendorId: vendorId,
+    }).select('productId gst');
+
+    // Create a map of productId to GST percentage
+    const productGstMap = {};
+    vendorProductsForGst.forEach((vp) => {
+      const pid = vp.productId?.toString() || vp.productId.toString();
+      productGstMap[pid] = vp.gst || 0;
+    });
+
+    // Prepare order items with GST calculation per product
     // Note: item.productId should be the global Product ID (not VendorProduct ID)
-    const orderItems = cartItems.map((item) => ({
-      productId: item.productId, // Use productId (global Product ID) - required by Order model
-      productName: item.name || item.productName || 'Product',
-      productImage: item.image || item.productImage || '',
-      quantity: item.quantity,
-      price: item.price,
-      total: item.price * item.quantity,
-    }));
+    const orderItems = cartItems.map((item) => {
+      const productId = item.productId;
+      const productIdStr = productId.toString();
+      const quantity = item.quantity;
+      const price = item.price;
+      const itemTotal = price * quantity;
+      
+      // Get GST percentage for this product (default to 0 if not found)
+      const gstPercentage = productGstMap[productIdStr] || 0;
+      
+      // Calculate GST amount for this item
+      const gstAmount = (itemTotal * gstPercentage) / 100;
+      
+      return {
+        productId: productId, // Use productId (global Product ID) - required by Order model
+        productName: item.name || item.productName || 'Product',
+        productImage: item.image || item.productImage || '',
+        quantity: quantity,
+        price: price,
+        total: itemTotal,
+        gstPercentage: gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
+      };
+    });
 
     // Get vendor's service cities
     const vendor = await Vendor.findById(vendorId).populate('serviceCities', 'name displayName');
@@ -759,12 +864,19 @@ export const createOrderForUser = async (req, res) => {
       landmark: address.landmark || '',
     };
 
+    // Calculate total GST from all order items
+    const totalGstAmount = orderItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+    
+    // Recalculate totals based on per-product GST
+    const calculatedCartTotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+    const calculatedTotalAmount = calculatedCartTotal + totalGstAmount + (shippingCharges || 0);
+    
     // Prepare billing details (amounts)
     const billingDetails = {
-      cartTotal: cartTotal || 0,
-      gstAmount: gstAmount || 0,
+      cartTotal: calculatedCartTotal,
+      gstAmount: totalGstAmount, // Use calculated GST from items
       shippingCharges: shippingCharges || 0,
-      totalAmount: totalAmount || 0,
+      totalAmount: calculatedTotalAmount,
     };    // Payment status
     const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'pending';
 

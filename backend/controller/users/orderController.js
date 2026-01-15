@@ -36,19 +36,9 @@ export const createOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Address not found' });
     }
 
-    // Prepare order items
-    const orderItems = cartItems.map((item) => ({
-      productId: item._id || item.productId,
-      productName: item.name || item.productName || 'Product',
-      productImage: item.image || item.productImage || '',
-      quantity: item.quantity,
-      price: item.price,
-      total: item.price * item.quantity,
-    }));
-
-    // Determine vendorId and vendorServiceCityId from cart items
+    // Determine vendorId and vendorServiceCityId from cart items first
     // Get productIds from cart items
-    const productIds = orderItems.map(item => item.productId);
+    const productIds = cartItems.map(item => item._id || item.productId);
     
     // Look up vendor products for these productIds
     // Also check if cart items have vendorProductId or vendorId/cityId
@@ -105,6 +95,45 @@ export const createOrder = async (req, res) => {
       }
     }
 
+    // Fetch VendorProduct records for all items to get GST percentages
+    const vendorProducts = await VendorProduct.find({
+      productId: { $in: productIds },
+      vendorId: vendorId,
+    }).select('productId gst');
+
+    // Create a map of productId to GST percentage
+    const productGstMap = {};
+    vendorProducts.forEach((vp) => {
+      const pid = vp.productId?.toString() || vp.productId.toString();
+      productGstMap[pid] = vp.gst || 0;
+    });
+
+    // Prepare order items with GST calculation per product
+    const orderItems = cartItems.map((item) => {
+      const productId = item._id || item.productId;
+      const productIdStr = productId.toString();
+      const quantity = item.quantity;
+      const price = item.price;
+      const itemTotal = price * quantity;
+      
+      // Get GST percentage for this product (default to 0 if not found)
+      const gstPercentage = productGstMap[productIdStr] || 0;
+      
+      // Calculate GST amount for this item
+      const gstAmount = (itemTotal * gstPercentage) / 100;
+      
+      return {
+        productId: productId,
+        productName: item.name || item.productName || 'Product',
+        productImage: item.image || item.productImage || '',
+        quantity: quantity,
+        price: price,
+        total: itemTotal,
+        gstPercentage: gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
+      };
+    });
+
     // Handle coupon if provided
     let couponAmount = 0;
     let appliedCouponId = null;
@@ -159,9 +188,12 @@ export const createOrder = async (req, res) => {
       }
     }
 
+    // Calculate total GST from all order items
+    const totalGstAmount = orderItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+    
     // Calculate final amounts with coupon discount
-    // GST and shipping calculated on original cart total, then discount applied
-    const finalGstAmount = gstAmount || 0; // GST calculated on cart total (before coupon)
+    // GST calculated per product, shipping calculated on original cart total, then discount applied
+    const finalGstAmount = totalGstAmount; // GST calculated per product (before coupon)
     const finalShippingCharges = shippingCharges || 0;
     const totalBeforeCoupon = (cartTotal || 0) + finalGstAmount + finalShippingCharges;
     const finalTotalAmount = Math.max(0, totalBeforeCoupon - couponAmount);
@@ -333,6 +365,27 @@ export const cancelOrder = async (req, res) => {
         success: false,
         message: `Order cannot be cancelled. Current status: ${order.orderStatus}`,
       });
+    }
+
+    // Store previous status for stock management
+    const previousStatus = order.orderStatus;
+
+    // Restore stock if order was previously confirmed
+    if (previousStatus === 'confirmed') {
+      for (const item of order.items) {
+        // Find the vendor product for this item
+        const vendorProduct = await VendorProduct.findOne({
+          productId: item.productId,
+          vendorId: order.vendorId,
+          cityId: order.vendorServiceCityId,
+        });
+
+        if (vendorProduct) {
+          // Restore stock
+          vendorProduct.availableStock += item.quantity;
+          await vendorProduct.save();
+        }
+      }
     }
 
     order.orderStatus = 'cancelled';

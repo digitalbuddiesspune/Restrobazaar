@@ -520,13 +520,29 @@ const CreateOrder = () => {
 
   const calculateTotals = useMemo(() => {
     const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const gstAmount = cartTotal * 0.18; // 18% GST
+    
+    // Calculate GST per product based on each product's GST percentage
+    const gstBreakdown = cartItems.map(item => {
+      const itemTotal = item.price * item.quantity;
+      // Get GST from vendorProduct if available, otherwise 0
+      const gstPercentage = item.vendorProduct?.gst || 0;
+      const gstAmount = (itemTotal * gstPercentage) / 100;
+      return {
+        itemId: item.vendorProductId || item._id,
+        productName: item.name,
+        gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
+      };
+    });
+    
+    const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
     const shippingCharges = 0; // Free shipping
     const totalAmount = cartTotal + gstAmount + shippingCharges;
     
     return {
       cartTotal: parseFloat(cartTotal.toFixed(2)),
       gstAmount: parseFloat(gstAmount.toFixed(2)),
+      gstBreakdown,
       shippingCharges,
       totalAmount: parseFloat(totalAmount.toFixed(2)),
     };
@@ -1288,9 +1304,22 @@ const CreateOrder = () => {
               <span className="text-gray-900">₹{calculateTotals.cartTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">GST (18%):</span>
+              <span className="text-gray-600">GST:</span>
               <span className="text-gray-900">₹{calculateTotals.gstAmount.toFixed(2)}</span>
             </div>
+            {/* GST Breakdown */}
+            {calculateTotals.gstBreakdown && calculateTotals.gstBreakdown.some(item => item.gstPercentage > 0) && (
+              <div className="pl-2 border-l-2 border-gray-200 space-y-1">
+                {calculateTotals.gstBreakdown
+                  .filter(item => item.gstPercentage > 0)
+                  .map((item, index) => (
+                    <div key={item.itemId || index} className="flex justify-between text-xs text-gray-600">
+                      <span>{item.productName} ({item.gstPercentage}%):</span>
+                      <span>₹{item.gstAmount.toFixed(2)}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Shipping:</span>
               <span className="text-gray-900">₹{calculateTotals.shippingCharges.toFixed(2)}</span>

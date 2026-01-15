@@ -249,9 +249,24 @@ const Orders = () => {
       yPos += 7;
 
       // GST
-      doc.text('GST (18%):', summaryX, yPos);
+      doc.text('GST:', summaryX, yPos);
       doc.text(`Rs. ${billing?.gstAmount?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
       yPos += 7;
+      
+      // GST Breakdown
+      const gstBreakdown = order.items?.filter(item => item.gstPercentage > 0);
+      if (gstBreakdown && gstBreakdown.length > 0) {
+        doc.setFontSize(8);
+        gstBreakdown.forEach(item => {
+          const itemGstAmount = item.gstAmount || ((item.total || 0) * (item.gstPercentage || 0) / 100);
+          const itemName = item.productName?.length > 25 
+            ? item.productName.substring(0, 22) + '...' 
+            : item.productName || 'Product';
+          doc.text(`  ${itemName} (${item.gstPercentage}%): Rs. ${itemGstAmount.toFixed(2)}`, summaryX, yPos);
+          yPos += 5;
+        });
+        doc.setFontSize(10);
+      }
 
       // Shipping Charges
       doc.text('Shipping Charges:', summaryX, yPos);
@@ -626,6 +641,22 @@ const Orders = () => {
                     <span className="text-gray-600">GST:</span>
                     <span className="font-medium">₹{selectedOrder.billingDetails?.gstAmount?.toFixed(2) || '0.00'}</span>
                   </div>
+                  {/* GST Breakdown */}
+                  {selectedOrder.items?.filter(item => item.gstPercentage > 0).length > 0 && (
+                    <div className="pl-2 border-l-2 border-gray-200 space-y-1 mt-1">
+                      {selectedOrder.items
+                        .filter(item => item.gstPercentage > 0)
+                        .map((item, index) => {
+                          const itemGstAmount = item.gstAmount || ((item.total || 0) * (item.gstPercentage || 0) / 100);
+                          return (
+                            <div key={index} className="flex justify-between text-xs text-gray-600">
+                              <span>{item.productName} ({item.gstPercentage}%):</span>
+                              <span>₹{itemGstAmount.toFixed(2)}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping:</span>
                     <span className="font-medium">₹{selectedOrder.billingDetails?.shippingCharges?.toFixed(2) || '0.00'}</span>
