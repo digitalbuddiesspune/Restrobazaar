@@ -145,99 +145,103 @@ const Testimonials = () => {
   const settings = isMobile ? settingsMobile : settingsDesktop;
 
   return (
-  <section className="bg-gray-50 py-12 md:py-16 lg:py-20">
-    <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="text-center mb-10 md:mb-12">
-        <p className="text-sm uppercase tracking-wide text-red-600 font-semibold mb-2">
-          What Our Customers Say
-        </p>
-        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-heading text-gray-900 mb-4">
-          Customer Testimonials
-        </h2>
-        <p className="text-sm sm:text-base md:text-lg font-body text-gray-600 max-w-2xl mx-auto">
-          Hear from restaurant owners and catering professionals who trust
-          RestroBazaar for their supply needs.
-        </p>
-      </div>
+    <section className="bg-gray-50 py-12 md:py-16 lg:py-20">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        {/* Header */}
 
-      {/* Testimonials Carousel */}
-      <div className="relative  md:px-8 ">
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
-            <p className="mt-4 text-gray-600">Loading testimonials...</p>
+        <div className="text-center mb-10 md:mb-12">
+
+          <div className="inline-block mb-2 lg:mb-4 ">
+            <span className="text-xs uppercase tracking-wider font-semibold text-red-600 bg-red-50 px-4 py-2 rounded-full">
+              What Our Customers Say
+            </span>
           </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={fetchTestimonials}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        ) : testimonials.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">No testimonials available at the moment.</p>
-          </div>
-        ) : (
-          <Slider {...settings}>
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="px-3 mb-2">
-                <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 md:p-8 h-full flex flex-col">
-                  {/* Quote Icon */}
-                  <div className="mb-4">
-                    <svg
-                      className="w-10 h-10 text-red-100"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.996 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.984zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-                    </svg>
-                  </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl font-heading font-bold text-gray-900 mb-2 md:mb-4">
+            Customer Testimonials
+          </h2>
+          <p className="text-sm sm:text-lg  font-body font-medium text-gray-600 max-w-2xl mx-auto">
+            Hear from restaurant owners and catering professionals who trust
+            RestroBazaar for their supply needs.
+          </p>
+        </div>
 
-                  {/* Rating */}
-                  <div className="flex items-center mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <StarIcon key={i} filled={i < testimonial.rating} />
-                    ))}
-                  </div>
+        {/* Testimonials Carousel */}
+        <div className="relative  md:px-8 ">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+              <p className="mt-4 text-gray-600">Loading testimonials...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={fetchTestimonials}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          ) : testimonials.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600">No testimonials available at the moment.</p>
+            </div>
+          ) : (
+            <Slider {...settings}>
+              {testimonials.map((testimonial, index) => (
+                <div key={index} className="px-3 mb-2">
+                  <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 md:p-8 h-full flex flex-col">
+                    {/* Quote Icon */}
+                    <div className="mb-4">
+                      <svg
+                        className="w-10 h-10 text-red-100"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.996 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.984zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+                      </svg>
+                    </div>
 
-                  {/* Testimonial Text */}
-                  <p className="text-sm sm:text-base font-body text-gray-700 mb-6 leading-relaxed grow">
-                    "{testimonial.text}"
-                  </p>
+                    {/* Rating */}
+                    <div className="flex items-center mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <StarIcon key={i} filled={i < testimonial.rating} />
+                      ))}
+                    </div>
 
-                  {/* Customer Info */}
-                  <div className="flex items-center pt-4 border-t border-gray-100 mt-auto">
-                    <img
-                      src={testimonial.image}
-                      alt={testimonial.name}
-                      className="w-12 h-12 rounded-full mr-4 object-cover shrink-0"
-                    />
-                    <div>
-                      <h4 className="text-sm font-heading font-semibold text-gray-900">
-                        {testimonial.name}
-                      </h4>
-                      <p className="text-xs font-body text-gray-600">
-                        {testimonial.role}
-                      </p>
-                      <p className="text-xs font-body text-gray-500 mt-1">
-                        {testimonial.location}
-                      </p>
+                    {/* Testimonial Text */}
+                    <p className="text-sm sm:text-base font-body text-gray-700 mb-6 leading-relaxed grow">
+                      "{testimonial.text}"
+                    </p>
+
+                    {/* Customer Info */}
+                    <div className="flex items-center pt-4 border-t border-gray-100 mt-auto">
+                      <img
+                        src={testimonial.image}
+                        alt={testimonial.name}
+                        className="w-12 h-12 rounded-full mr-4 object-cover shrink-0"
+                      />
+                      <div>
+                        <h4 className="text-sm font-heading font-semibold text-gray-900">
+                          {testimonial.name}
+                        </h4>
+                        <p className="text-xs font-body text-gray-600">
+                          {testimonial.role}
+                        </p>
+                        <p className="text-xs font-body text-gray-500 mt-1">
+                          {testimonial.location}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </Slider>
-        )}
-      </div>
+              ))}
+            </Slider>
+          )}
+        </div>
 
-      {/* Custom styles for slick dots */}
-      <style>{`
+        {/* Custom styles for slick dots */}
+        <style>{`
           .slick-dots {
             bottom: -50px;
           }
@@ -266,9 +270,9 @@ const Testimonials = () => {
             display: flex;
           }
         `}</style>
-    </div>
-  </section>
-);
+      </div>
+    </section>
+  );
 };
 
 export default Testimonials;

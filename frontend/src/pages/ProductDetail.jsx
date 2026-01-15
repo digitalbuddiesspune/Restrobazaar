@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vendorProductAPI, categoryAPI } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { isAuthenticated } from '../utils/auth';
-import { useWishlist, useAddToWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
+import { useWishlist, useAddToWishlist, useRemoveFromWishlist, useVendorProducts } from '../hooks/useApiQueries';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
@@ -36,6 +36,80 @@ const ProductDetail = () => {
   const isInWishlist = wishlistData?.success && wishlistData?.data?.products
     ? wishlistData.data.products.some(item => item._id === productId)
     : false;
+
+  // Get category ID from product
+  const categoryId = useMemo(() => {
+    if (!product?.productId?.category) return null;
+    if (typeof product.productId.category === 'object') {
+      return product.productId.category._id || product.productId.category;
+    }
+    return product.productId.category;
+  }, [product]);
+
+  // Fetch suggested products from the same category with caching
+  // Simple approach: fetch all vendor products and filter by category
+  const { 
+    data: suggestedProductsData, 
+    isLoading: suggestedProductsLoading,
+    error: suggestedProductsError
+  } = useVendorProducts(
+    {
+      status: 'true',
+      limit: 100, // Fetch more to ensure we get enough after filtering
+    },
+    {
+      enabled: !!categoryId && !!product, // Only fetch when we have category and product
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+      gcTime: 15 * 60 * 1000, // 15 minutes garbage collection
+    }
+  );
+
+  // Filter products by category and exclude current product
+  const suggestedProducts = useMemo(() => {
+    if (!suggestedProductsData || !categoryId) return [];
+    
+    // Handle different response structures
+    let products = [];
+    if (suggestedProductsData.success && suggestedProductsData.data) {
+      products = Array.isArray(suggestedProductsData.data) 
+        ? suggestedProductsData.data 
+        : (suggestedProductsData.data?.data || []);
+    } else if (Array.isArray(suggestedProductsData)) {
+      products = suggestedProductsData;
+    }
+    
+    if (!Array.isArray(products) || products.length === 0) return [];
+    
+    // Filter by category ID and exclude current product
+    const filtered = products.filter((item) => {
+      // Get category from productId
+      const itemCategoryId = item.productId?.category 
+        ? (typeof item.productId.category === 'object' 
+          ? item.productId.category._id || item.productId.category 
+          : item.productId.category)
+        : null;
+      
+      // Match category and exclude current product
+      return itemCategoryId === categoryId 
+        && item._id !== productId 
+        && (item.availableStock > 0 || item.availableStock === undefined);
+    });
+    
+    return filtered.slice(0, 12); // Show max 12 suggested products
+  }, [suggestedProductsData, categoryId, productId]);
+
+  // Debug logging (remove in production)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Suggested Products Debug:', {
+        categoryId,
+        hasProduct: !!product,
+        suggestedProductsData,
+        suggestedProductsCount: suggestedProducts.length,
+        error: suggestedProductsError
+      });
+    }
+  }, [categoryId, product, suggestedProductsData, suggestedProducts.length, suggestedProductsError]);
 
   useEffect(() => {
     // Get selected city
@@ -348,6 +422,92 @@ const ProductDetail = () => {
       alert('Failed to update wishlist. Please try again.');
     } finally {
       setWishlistLoading(false);
+    }
+  };
+
+  const handleWishlistToggleForSuggested = async (e, suggestedProduct) => {
+    e.stopPropagation();
+    
+    if (!isAuthenticated()) {
+      localStorage.setItem('pendingWishlistProduct', suggestedProduct._id);
+      navigate('/sign-in');
+      return;
+    }
+    
+    if (!suggestedProduct?._id) return;
+    
+    setWishlistLoading(true);
+    try {
+      const isInWishlist = wishlistData?.success && wishlistData?.data?.products
+        ? wishlistData.data.products.some(item => item._id === suggestedProduct._id)
+        : false;
+      
+      if (isInWishlist) {
+        await removeFromWishlistMutation.mutateAsync(suggestedProduct._id);
+      } else {
+        await addToWishlistMutation.mutateAsync(suggestedProduct._id);
+      }
+    } catch (err) {
+      console.error('Error updating wishlist:', err);
+      alert('Failed to update wishlist. Please try again.');
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const handleAddToCartFromSuggested = (e, suggestedProduct) => {
+    e.stopPropagation();
+    
+    if (!suggestedProduct) return;
+    
+    if (suggestedProduct.availableStock === 0 || suggestedProduct.availableStock === undefined) {
+      alert('This product is out of stock');
+      return;
+    }
+    
+    const minQty = suggestedProduct.minimumOrderQuantity || 1;
+    
+    // Get selected price
+    let selectedPrice = null;
+    if (suggestedProduct.priceType === 'single' && suggestedProduct.pricing?.single?.price) {
+      selectedPrice = {
+        type: 'single',
+        price: suggestedProduct.pricing.single.price,
+        display: `₹${suggestedProduct.pricing.single.price} per piece`,
+      };
+    } else if (suggestedProduct.priceType === 'bulk' && suggestedProduct.pricing?.bulk?.length > 0) {
+      const firstSlab = suggestedProduct.pricing.bulk[0];
+      selectedPrice = {
+        type: 'bulk',
+        price: firstSlab.price,
+        display: `₹${firstSlab.price} per piece (${firstSlab.minQty}-${firstSlab.maxQty} pieces)`,
+        slab: firstSlab,
+      };
+    }
+    
+    if (!selectedPrice) {
+      alert('Unable to determine price. Please try again.');
+      return;
+    }
+    
+    // Check if product is already in cart
+    const cartItemId = `${suggestedProduct._id}_${selectedPrice.type}_${selectedPrice.price}`;
+    const existingCartItem = cartItems.find(item => item.id === cartItemId);
+    
+    if (existingCartItem) {
+      dispatch(addToCart({
+        vendorProduct: suggestedProduct,
+        quantity: minQty,
+        selectedPrice: selectedPrice,
+      }));
+      alert(`Added ${minQty} more item(s) to cart!`);
+    } else {
+      dispatch(addToCart({
+        vendorProduct: suggestedProduct,
+        quantity: minQty,
+        selectedPrice: selectedPrice,
+      }));
+      alert(`Added ${minQty} item(s) to cart!`);
     }
   };
 
@@ -739,80 +899,62 @@ const ProductDetail = () => {
             </div>
 
             {/* Vendor Information */}
-            {product.vendorId && (
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Vendor Information</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
-                    <span className="text-sm text-gray-700 font-medium">
-                      {product.vendorId.businessName || 'Vendor'}
-                    </span>
-                  </div>
-                  {product.vendorId.email && (
-                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        />
-                      </svg>
-                      <span>{product.vendorId.email}</span>
-                    </div>
-                  )}
-                  {product.vendorId.phone && (
-                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                      <span>{product.vendorId.phone}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
+          
             {/* Product Details */}
             <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">Product Details</h3>
               <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-xs text-gray-600">Product ID</span>
-                  <span className="font-mono text-xs text-gray-900">{product._id}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-xs text-gray-600">Price Type</span>
-                  <span className="text-xs text-gray-900 capitalize">{product.priceType}</span>
-                </div>
+                {/* Basic Information */}
+                {product.productId?.subCategory && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-xs text-gray-600">Sub Category</span>
+                    <span className="text-xs text-gray-900">{product.productId.subCategory}</span>
+                  </div>
+                )}
+                {product.productId?.otherCategory && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-xs text-gray-600">Other Category</span>
+                    <span className="text-xs text-gray-900">{product.productId.otherCategory}</span>
+                  </div>
+                )}
+
+                {/* Physical Specifications */}
+                {(product.productId?.unit || product.productId?.weight || product.productId?.capacity || product.productId?.size) && (
+                  <>
+                    {product.productId?.unit && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-xs text-gray-600">Unit</span>
+                        <span className="text-xs text-gray-900 capitalize">{product.productId.unit}</span>
+                      </div>
+                    )}
+                    {product.productId?.weight && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-xs text-gray-600">Weight</span>
+                        <span className="text-xs text-gray-900">{product.productId.weight}</span>
+                      </div>
+                    )}
+                    {product.productId?.capacity && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-xs text-gray-600">Capacity</span>
+                        <span className="text-xs text-gray-900">{product.productId.capacity}</span>
+                      </div>
+                    )}
+                    {product.productId?.size && (product.productId.size.height || product.productId.size.width || product.productId.size.base) && (
+                      <div className="flex justify-between py-2 border-b border-gray-100">
+                        <span className="text-xs text-gray-600">Size</span>
+                        <span className="text-xs text-gray-900">
+                          {[
+                            product.productId.size.height && `H: ${product.productId.size.height}`,
+                            product.productId.size.width && `W: ${product.productId.size.width}`,
+                            product.productId.size.base && `B: ${product.productId.size.base}`
+                          ].filter(Boolean).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Pricing & Stock Information */}
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-xs text-gray-600">Minimum Order</span>
                   <span className="text-xs text-gray-900">{minOrderQty} pieces</span>
@@ -821,12 +963,37 @@ const ProductDetail = () => {
                   <span className="text-xs text-gray-600">Available Stock</span>
                   <span className="text-xs text-gray-900">{product.availableStock || 0} pieces</span>
                 </div>
-                {product.cityId && (
+
+                {/* Purchase Information */}
+                {product.purchasedMode && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-xs text-gray-600">Purchase Mode</span>
+                    <span className="text-xs text-gray-900">{product.purchasedMode}</span>
+                  </div>
+                )}
+                {product.purchasedAmount && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-xs text-gray-600">Purchase Amount</span>
+                    <span className="text-xs text-gray-900">₹{product.purchasedAmount}</span>
+                  </div>
+                )}
+
+                {/* Tax Information */}
+                {product.sgst > 0 && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-xs text-gray-600">SGST</span>
+                    <span className="text-xs text-gray-900">{product.sgst}%</span>
+                  </div>
+                )}
+
+                {/* Status Information */}
+                {product.productId?.isReturnable !== undefined && (
                   <div className="flex justify-between py-2">
-                    <span className="text-xs text-gray-600">Location</span>
-                    <span className="text-xs text-gray-900">
-                      {product.cityId.displayName || product.cityId.name}
-                      {product.cityId.state && `, ${product.cityId.state}`}
+                    <span className="text-xs text-gray-600">Returnable</span>
+                    <span className={`text-xs font-semibold ${
+                      product.productId.isReturnable ? 'text-green-600' : 'text-gray-600'
+                    }`}>
+                      {product.productId.isReturnable ? 'Yes' : 'No'}
                     </span>
                   </div>
                 )}
@@ -834,6 +1001,163 @@ const ProductDetail = () => {
             </div>
           </div>
         </div>
+
+        {/* Suggested Products Section */}
+        {(suggestedProducts.length > 0 || suggestedProductsLoading) && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">You may also like</h2>
+            {suggestedProductsLoading && suggestedProducts.length === 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 sm:gap-3">
+                {[...Array(4)].map((_, index) => (
+                  <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+                    <div className="aspect-square bg-gray-200"></div>
+                    <div className="p-4">
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-2/3 mb-3"></div>
+                      <div className="h-8 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : suggestedProducts.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 sm:gap-3">
+                {suggestedProducts.map((suggestedProduct) => {
+                  const suggestedImage = suggestedProduct.productId?.images?.[0]?.url || 
+                    suggestedProduct.productId?.images?.[0] || 
+                    'https://via.placeholder.com/300x300?text=Product';
+                  
+                  const isInWishlistSuggested = wishlistData?.success && wishlistData?.data?.products
+                    ? wishlistData.data.products.some(item => item._id === suggestedProduct._id)
+                    : false;
+
+                  return (
+                    <div
+                      key={suggestedProduct._id}
+                      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer flex flex-col"
+                      onClick={() => {
+                        const slug = categorySlug || category?.slug || category?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'products';
+                        navigate(`/category/${slug}/${suggestedProduct._id}`);
+                      }}
+                    >
+                      {/* Product Image */}
+                      <div className="aspect-square overflow-hidden bg-white relative flex items-center justify-center">
+                        <img
+                          src={suggestedImage}
+                          alt={suggestedProduct.productId?.productName || 'Product'}
+                          className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/300x300?text=Product';
+                          }}
+                        />
+                        {/* Stock Status Badge on Image - Top Left Corner */}
+                        {suggestedProduct.availableStock !== undefined && (
+                          <span className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2 text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-semibold shadow-md ${
+                            suggestedProduct.availableStock > 0
+                              ? 'bg-green-500 text-white'
+                              : 'bg-red-500 text-white'
+                          }`}>
+                            {suggestedProduct.availableStock > 0 ? 'In Stock' : 'Out of Stock'}
+                          </span>
+                        )}
+                        {/* Wishlist Button - Top Right Corner */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWishlistToggleForSuggested(e, suggestedProduct);
+                          }}
+                          disabled={wishlistLoading}
+                          className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1.5 sm:p-2 rounded-full shadow-lg transition-all z-10 ${
+                            isInWishlistSuggested
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-300'
+                          }`}
+                          title={isInWishlistSuggested ? 'Remove from wishlist' : 'Add to wishlist'}
+                        >
+                          <svg
+                            className="w-4 h-4 sm:w-5 sm:h-5"
+                            fill={isInWishlistSuggested ? 'currentColor' : 'none'}
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="p-4 flex flex-col flex-1">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-1 truncate">
+                          {suggestedProduct.productId?.productName || 'Product Name'}
+                        </h3>
+
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-base sm:text-lg font-bold text-red-600 whitespace-nowrap truncate">
+                            {suggestedProduct.priceType === 'single' && suggestedProduct.pricing?.single?.price ? (
+                              `₹${suggestedProduct.pricing.single.price}`
+                            ) : suggestedProduct.priceType === 'bulk' && suggestedProduct.pricing?.bulk?.length > 0 ? (
+                              <>
+                                ₹{suggestedProduct.pricing.bulk[0].price}{' '}
+                                <span className="text-xs sm:text-sm font-normal">
+                                  ({suggestedProduct.pricing.bulk[0].minQty}-{suggestedProduct.pricing.bulk[0].maxQty} pcs)
+                                </span>
+                              </>
+                            ) : (
+                              'Price on request'
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Add to Cart Button */}
+                        <div className="mt-2">
+                          {suggestedProduct.availableStock > 0 ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToCartFromSuggested(e, suggestedProduct);
+                              }}
+                              className="w-full bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
+                              style={{ minHeight: '32px' }}
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                                />
+                              </svg>
+                              <span>Add to Cart</span>
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="w-full bg-gray-400 text-white rounded-lg font-semibold cursor-not-allowed text-xs sm:text-sm"
+                              style={{ minHeight: '32px' }}
+                            >
+                              Out of Stock
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">No similar products found in this category.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
