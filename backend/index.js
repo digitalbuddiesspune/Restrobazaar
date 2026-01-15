@@ -61,8 +61,6 @@ app.use("/api/v1", addressRouter);
 app.use("/api/v1", orderRouter);
 app.use("/api/v1", testimonialRouter);
 
-
-
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
 });

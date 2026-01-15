@@ -108,22 +108,35 @@ export const getTestimonialById = async (req, res) => {
 // @access  Admin
 export const createTestimonial = async (req, res) => {
   try {
-    const { review, name, businessType, location, status } = req.body;
+    // Handle both object and array requests
+    let bodyData = req.body;
+    if (Array.isArray(req.body)) {
+      if (req.body.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Request body cannot be an empty array. Send a JSON object instead.",
+        });
+      }
+      bodyData = req.body[0]; // Use first element if array is sent
+    }
+
+    const { review, name, businessType, location, status } = bodyData;
 
     // Validate required fields
     if (!review || !name || !businessType || !location) {
       return res.status(400).json({
         success: false,
         message: "Review, name, business type, and location are required",
+        hint: "Make sure you're sending a JSON object, not an array. Use { ... } instead of [ { ... } ]",
       });
     }
 
     // Create testimonial
     const testimonial = await Testimonial.create({
-      review: review.trim(),
-      name: name.trim(),
-      businessType: businessType.trim(),
-      location: location.trim(),
+      review: String(review).trim(),
+      name: String(name).trim(),
+      businessType: String(businessType).trim(),
+      location: String(location).trim(),
       status: status !== undefined ? status : true,
     });
 
@@ -243,6 +256,103 @@ export const deleteTestimonial = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error deleting testimonial",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Create multiple testimonials (bulk create)
+// @route   POST /api/testimonials/bulk
+// @access  Admin
+export const createBulkTestimonials = async (req, res) => {
+  try {
+    // Expect an array of testimonials
+    const testimonialsArray = req.body;
+
+    // Validate that request body is an array
+    if (!Array.isArray(testimonialsArray)) {
+      return res.status(400).json({
+        success: false,
+        message: "Request body must be an array of testimonials",
+      });
+    }
+
+    // Validate array is not empty
+    if (testimonialsArray.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Array cannot be empty. Please provide at least one testimonial.",
+      });
+    }
+
+    // Validate each testimonial in the array
+    const validationErrors = [];
+    const validTestimonials = [];
+
+    testimonialsArray.forEach((testimonial, index) => {
+      const { review, name, businessType, location, status } = testimonial;
+
+      // Check required fields
+      if (!review || !name || !businessType || !location) {
+        validationErrors.push({
+          index,
+          error: "Review, name, business type, and location are required",
+        });
+        return;
+      }
+
+      // Prepare valid testimonial data
+      validTestimonials.push({
+        review: String(review).trim(),
+        name: String(name).trim(),
+        businessType: String(businessType).trim(),
+        location: String(location).trim(),
+        status: status !== undefined ? status : true,
+      });
+    });
+
+    // If there are validation errors, return them
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors found in some testimonials",
+        errors: validationErrors,
+        validCount: validTestimonials.length,
+        invalidCount: validationErrors.length,
+      });
+    }
+
+    // Create all testimonials using insertMany for better performance
+    const createdTestimonials = await Testimonial.insertMany(validTestimonials);
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully created ${createdTestimonials.length} testimonial(s)`,
+      data: createdTestimonials,
+      count: createdTestimonials.length,
+    });
+  } catch (error) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        error: Object.values(error.errors).map((e) => e.message),
+      });
+    }
+
+    // Handle bulk write errors
+    if (error.name === "BulkWriteError") {
+      return res.status(400).json({
+        success: false,
+        message: "Error creating some testimonials",
+        error: error.message,
+        insertedCount: error.result?.insertedCount || 0,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Error creating testimonials",
       error: error.message,
     });
   }

@@ -10,6 +10,7 @@ import {
   addressAPI,
   orderAPI,
   userCouponAPI,
+  testimonialAPI,
 } from '../utils/api';
 
 // Query Keys Factory - Centralized query key management
@@ -97,6 +98,14 @@ export const queryKeys = {
   userCoupons: {
     all: ['userCoupons'],
     available: (filters) => [...queryKeys.userCoupons.all, 'available', filters],
+  },
+  
+  // Testimonials
+  testimonials: {
+    all: ['testimonials'],
+    lists: () => [...queryKeys.testimonials.all, 'list'],
+    list: (filters) => [...queryKeys.testimonials.lists(), filters],
+    detail: (id) => [...queryKeys.testimonials.all, id],
   },
 };
 
@@ -575,6 +584,35 @@ export const useAvailableCoupons = (filters = {}, options = {}) => {
     queryFn: () => userCouponAPI.getAvailableCoupons(filters),
     staleTime: 2 * 60 * 1000, // 2 minutes - coupons may change
     gcTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+};
+
+// ==================== TESTIMONIAL QUERIES ====================
+
+/**
+ * Get all testimonials
+ */
+export const useTestimonials = (filters = {}, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.testimonials.list(filters),
+    queryFn: () => testimonialAPI.getAllTestimonials(filters),
+    staleTime: 10 * 60 * 1000, // 10 minutes - testimonials don't change often
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    ...options,
+  });
+};
+
+/**
+ * Get testimonial by ID
+ */
+export const useTestimonial = (id, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.testimonials.detail(id),
+    queryFn: () => testimonialAPI.getTestimonialById(id),
+    enabled: !!id, // Only fetch if ID is provided
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
     ...options,
   });
 };

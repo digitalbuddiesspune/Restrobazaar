@@ -610,6 +610,30 @@ export const userCouponAPI = {
   },
 };
 
+// Testimonial API
+export const testimonialAPI = {
+  getAllTestimonials: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status !== undefined) params.append('status', filters.status);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.page) params.append('page', filters.page);
+    
+    const queryString = params.toString();
+    const endpoint = queryString ? `/testimonials?${queryString}` : '/testimonials';
+    
+    return apiRequest(endpoint, {
+      method: 'GET',
+    });
+  },
+
+  getTestimonialById: async (id) => {
+    return apiRequest(`/testimonials/${id}`, {
+      method: 'GET',
+    });
+  },
+};
+
 export default {
   authAPI,
   userAPI,
@@ -625,6 +649,6 @@ export default {
   orderAPI,
   couponAPI,
   userCouponAPI,
-
+  testimonialAPI,
 };
 
