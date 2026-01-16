@@ -835,16 +835,7 @@ const Category = () => {
                                 e.target.src = 'https://via.placeholder.com/300x300?text=Product';
                               }}
                             />
-                            {/* Stock Status Badge on Image - Top Left Corner */}
-                            {product.availableStock !== undefined && (
-                              <span className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2 text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-semibold shadow-md ${
-                                product.availableStock > 0
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-red-500 text-white'
-                              }`}>
-                                {product.availableStock > 0 ? 'In Stock' : 'Out of Stock'}
-                              </span>
-                            )}
+                           
                             {/* Wishlist Button - Top Right Corner */}
                             <button
                               onClick={(e) => handleWishlistToggle(e, product)}
@@ -874,20 +865,20 @@ const Category = () => {
 
                           {/* Product Info */}
                           <div className="p-4 flex flex-col flex-1">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-1 truncate">
+                            <h3 className="text-xs font-semibold text-gray-900 mb-2 line-clamp-2 lg:h-8">
                               {product.productId?.productName || 'Product Name'}
                             </h3>
 
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-base sm:text-lg font-bold text-red-600 whitespace-nowrap truncate">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm lg:text-base text-gray-900 font-bold  whitespace-nowrap truncate">
                                 {product.priceType === 'single' && product.pricing?.single?.price ? (
                                   `₹${product.pricing.single.price}`
                                 ) : product.priceType === 'bulk' && product.pricing?.bulk?.length > 0 ? (
                                   <>
-                                    ₹{product.pricing.bulk[0].price}{' '}
-                                    <span className="text-xs sm:text-sm font-normal">
-                                      ({product.pricing.bulk[0].minQty}-{product.pricing.bulk[0].maxQty} pcs)
-                                    </span>
+                                    ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}{' '}
+                                    {/* <span className="text-[10px]  font-semibold">
+                                      ({product.pricing.bulk[product.pricing.bulk.length - 1].minQty}-{product.pricing.bulk[product.pricing.bulk.length - 1].maxQty} pcs)
+                                    </span> */}
                                   </>
                                 ) : (
                                   'Price on request'

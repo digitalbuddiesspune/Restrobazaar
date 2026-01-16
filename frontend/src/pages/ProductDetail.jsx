@@ -690,7 +690,7 @@ const ProductDetail = () => {
                 </Link>
               )}
               <h1 className="text-xl font-bold text-gray-900 mb-2">
-                {product.productId?.productName || 'Product Name'}
+                {product.productId?.productName || 'Product Name'} 
               </h1>
               {/* Price Display */}
               {priceInfo?.type === 'single' ? (
@@ -703,10 +703,10 @@ const ProductDetail = () => {
               ) : priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 ? (
                 <div className="mb-2">
                   <span className="text-3xl font-bold text-black">
-                    ₹{priceInfo.slabs[0].price}
+                    ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
                   </span>
                   <span className="text-gray-500 text-sm ml-2">
-                    ({priceInfo.slabs[0].minQty}-{priceInfo.slabs[0].maxQty} pcs)
+                    ({priceInfo.slabs[priceInfo.slabs.length - 1].maxQty} pcs)
                   </span>
                 </div>
               ) : (
@@ -734,7 +734,7 @@ const ProductDetail = () => {
                   </div>
                 ) : priceInfo?.type === 'bulk' ? (
                   <div>
-                    <span className="text-lg font-bold text-red-600">Bulk Pricing</span>
+                    <span className="text-lg font-bold text-red-600">Volume Pricing ⭐</span>
                     <div className="mt-3 space-y-2">
                       {priceInfo.slabs.map((slab, index) => (
                         <div
@@ -742,7 +742,7 @@ const ProductDetail = () => {
                           className="flex justify-between items-center text-xs bg-white p-2 rounded"
                         >
                           <span className="text-gray-700">
-                            {slab.minQty} - {slab.maxQty} pieces
+                          Buy {slab.maxQty} Pieces 
                           </span>
                           <span className="font-semibold text-gray-900">₹{slab.price}/piece</span>
                         </div>
@@ -766,7 +766,7 @@ const ProductDetail = () => {
                     }`}
                   >
                     {product.availableStock > 0
-                      ? `In Stock (${product.availableStock} available)`
+                      ? `In Stock `
                       : 'Out of Stock'}
                   </span>
                 </div>
@@ -944,9 +944,9 @@ const ProductDetail = () => {
                         <span className="text-xs text-gray-600">Size</span>
                         <span className="text-xs text-gray-900">
                           {[
-                            product.productId.size.height && `H: ${product.productId.size.height}`,
-                            product.productId.size.width && `W: ${product.productId.size.width}`,
-                            product.productId.size.base && `B: ${product.productId.size.base}`
+                            product.productId.size.height && `Height: ${product.productId.size.height}`,
+                            product.productId.size.width && `Width: ${product.productId.size.width}`,
+                            product.productId.size.base && `Base: ${product.productId.size.base}`
                           ].filter(Boolean).join(', ')}
                         </span>
                       </div>
@@ -959,10 +959,7 @@ const ProductDetail = () => {
                   <span className="text-xs text-gray-600">Minimum Order</span>
                   <span className="text-xs text-gray-900">{minOrderQty} pieces</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-xs text-gray-600">Available Stock</span>
-                  <span className="text-xs text-gray-900">{product.availableStock || 0} pieces</span>
-                </div>
+               
 
                 {/* Purchase Information */}
                 {product.purchasedMode && (
