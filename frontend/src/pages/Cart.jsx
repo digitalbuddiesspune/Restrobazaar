@@ -157,14 +157,7 @@ const Cart = () => {
                               >
                                 {item.productName}
                               </Link>
-                              <p className="text-sm text-gray-600 mt-0.5">
-                                Vendor: {item.vendorName}
-                              </p>
-                              {item.cityName && (
-                                <p className="text-sm text-gray-500 mt-0.5">
-                                  City: {item.cityName}
-                                </p>
-                              )}
+                             
                             </div>
                             <Button
                               variant="icon"
