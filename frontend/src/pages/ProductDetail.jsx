@@ -910,7 +910,7 @@ const ProductDetail = () => {
                           className="flex justify-between items-center text-xs bg-white p-2 rounded"
                         >
                           <span className="text-gray-700">
-                          Buy {slab.maxQty} Pieces 
+                          Buy {slab.minQty} - {slab.maxQty} Pieces 
                           </span>
                           <span className="font-semibold text-gray-900">₹{slab.price}/piece</span>
                         </div>
@@ -1129,27 +1129,7 @@ const ProductDetail = () => {
                 </div>
                
 
-                {/* Purchase Information */}
-                {product.purchasedMode && (
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-xs text-gray-600">Purchase Mode</span>
-                    <span className="text-xs text-gray-900">{product.purchasedMode}</span>
-                  </div>
-                )}
-                {product.purchasedAmount && (
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-xs text-gray-600">Purchase Amount</span>
-                    <span className="text-xs text-gray-900">₹{product.purchasedAmount}</span>
-                  </div>
-                )}
-
-                {/* Tax Information */}
-                {product.sgst > 0 && (
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-xs text-gray-600">SGST</span>
-                    <span className="text-xs text-gray-900">{product.sgst}%</span>
-                  </div>
-                )}
+              
 
                 {/* Status Information */}
                 {product.productId?.isReturnable !== undefined && (

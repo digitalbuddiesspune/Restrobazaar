@@ -20,6 +20,40 @@ const saveCartToStorage = (cart) => {
   }
 };
 
+// Helper function to calculate selectedPrice based on quantity and pricing data
+const calculateSelectedPrice = (priceType, pricing, quantity) => {
+  if (priceType === 'single' && pricing?.single?.price) {
+    return {
+      type: 'single',
+      price: pricing.single.price,
+      display: `₹${pricing.single.price} per piece`,
+    };
+  } else if (priceType === 'bulk' && pricing?.bulk?.length > 0) {
+    // Find the appropriate price slab for the quantity
+    const slab = pricing.bulk.find(
+      s => quantity >= s.minQty && quantity <= s.maxQty
+    );
+    if (slab) {
+      return {
+        type: 'bulk',
+        price: slab.price,
+        display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
+        slab: slab,
+      };
+    } else {
+      // If quantity exceeds all slabs, use the last (highest) slab
+      const lastSlab = pricing.bulk[pricing.bulk.length - 1];
+      return {
+        type: 'bulk',
+        price: lastSlab.price,
+        display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
+        slab: lastSlab,
+      };
+    }
+  }
+  return null;
+};
+
 const initialState = {
   items: loadCartFromStorage(),
 };
@@ -40,7 +74,21 @@ const cartSlice = createSlice({
       if (existingItem) {
         // Update quantity if item exists - use minimumOrderQuantity instead of passed quantity
         const minQty = existingItem.minimumOrderQuantity || vendorProduct.minimumOrderQuantity || 1;
-        existingItem.quantity += minQty;
+        const newQuantity = existingItem.quantity + minQty;
+        existingItem.quantity = newQuantity;
+        
+        // Recalculate selectedPrice based on new quantity if bulk pricing
+        if (existingItem.priceType === 'bulk' && existingItem.pricing?.bulk) {
+          const recalculatedPrice = calculateSelectedPrice(
+            existingItem.priceType,
+            existingItem.pricing,
+            newQuantity
+          );
+          if (recalculatedPrice) {
+            existingItem.selectedPrice = recalculatedPrice;
+            existingItem.price = recalculatedPrice.price;
+          }
+        }
       } else {
         // Add new item to cart
         const newItem = {
@@ -56,6 +104,7 @@ const cartSlice = createSlice({
           priceType: vendorProduct.priceType || 'single',
           price: selectedPrice?.price || vendorProduct.pricing?.single?.price || 0,
           selectedPrice: selectedPrice, // Store the selected price object for bulk pricing
+          pricing: vendorProduct.pricing, // Store full pricing object to recalculate slabs
           quantity: quantity,
           minimumOrderQuantity: vendorProduct.minimumOrderQuantity || 1,
           availableStock: vendorProduct.availableStock || 0,
@@ -85,6 +134,19 @@ const cartSlice = createSlice({
           state.items = state.items.filter(item => item.id !== itemId);
         } else {
           item.quantity = quantity;
+          
+          // Recalculate selectedPrice based on new quantity if bulk pricing
+          if (item.priceType === 'bulk' && item.pricing?.bulk) {
+            const recalculatedPrice = calculateSelectedPrice(
+              item.priceType,
+              item.pricing,
+              quantity
+            );
+            if (recalculatedPrice) {
+              item.selectedPrice = recalculatedPrice;
+              item.price = recalculatedPrice.price;
+            }
+          }
         }
         saveCartToStorage(state.items);
       }
