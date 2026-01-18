@@ -15,6 +15,7 @@ import userRouter from "./routes/users/userRoute.js";
 import addressRouter from "./routes/users/addressRoute.js";
 import orderRouter from "./routes/users/orderRoute.js";
 import testimonialRouter from "./routes/admin/testimonialRoute.js";
+import uploadRouter from "./routes/admin/uploadRoute.js";
 dotenv.config();
 const app = express();
 
@@ -60,6 +61,7 @@ app.use("/api/v1", userRouter);
 app.use("/api/v1", addressRouter);
 app.use("/api/v1", orderRouter);
 app.use("/api/v1", testimonialRouter);
+app.use("/api/v1", uploadRouter);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);

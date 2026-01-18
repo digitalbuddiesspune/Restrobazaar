@@ -1094,6 +1094,7 @@ const SuperAdminDashboard = () => {
                 addImage={addImage}
                 removeImage={removeImage}
                 updateImage={updateImage}
+                getToken={getToken}
               />
             </div>
           )}
@@ -1688,6 +1689,7 @@ const SuperAdminDashboard = () => {
                 setError={setError}
                 setSuccess={setSuccess}
                 generateSlug={generateSlug}
+                getToken={getToken}
               />
             </div>
           )}

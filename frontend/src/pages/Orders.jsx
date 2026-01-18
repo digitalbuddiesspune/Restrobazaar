@@ -85,259 +85,511 @@ const Orders = () => {
     });
   };
 
+  const formatDateForInvoice = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  // Convert number to words for invoice amount
+  const numberToWords = (num) => {
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 
+      'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    if (num === 0) return 'Zero';
+    
+    const convertHundreds = (n) => {
+      if (n === 0) return '';
+      if (n < 20) return ones[n];
+      if (n < 100) {
+        const ten = Math.floor(n / 10);
+        const one = n % 10;
+        return tens[ten] + (one > 0 ? ' ' + ones[one] : '');
+      }
+      const hundred = Math.floor(n / 100);
+      const remainder = n % 100;
+      return ones[hundred] + ' Hundred' + (remainder > 0 ? ' ' + convertHundreds(remainder) : '');
+    };
+    
+    const convert = (n) => {
+      if (n === 0) return '';
+      
+      if (n < 1000) return convertHundreds(n);
+      if (n < 100000) {
+        const thousand = Math.floor(n / 1000);
+        const remainder = n % 1000;
+        return convertHundreds(thousand) + ' Thousand' + (remainder > 0 ? ' ' + convertHundreds(remainder) : '');
+      }
+      if (n < 10000000) {
+        const lakh = Math.floor(n / 100000);
+        const remainder = n % 100000;
+        return convertHundreds(lakh) + ' Lakh' + (remainder > 0 ? ' ' + convert(remainder) : '');
+      }
+      const crore = Math.floor(n / 10000000);
+      const remainder = n % 10000000;
+      return convertHundreds(crore) + ' Crore' + (remainder > 0 ? ' ' + convert(remainder) : '');
+    };
+    
+    const rupees = Math.floor(num);
+    const paise = Math.round((num - rupees) * 100);
+    
+    let result = convert(rupees) + ' Rupees';
+    if (paise > 0) {
+      result += ' and ' + convertHundreds(paise) + ' Paisa';
+    }
+    return result + ' only';
+  };
+
+  // Get state code from state name
+  const getStateCode = (stateName) => {
+    const stateCodes = {
+      'Maharashtra': '27',
+      'Gujarat': '24',
+      'Karnataka': '29',
+      'Tamil Nadu': '33',
+      'Delhi': '07',
+      'West Bengal': '19',
+      'Rajasthan': '08',
+      'Uttar Pradesh': '09',
+      'Punjab': '03',
+      'Haryana': '06',
+    };
+    return stateCodes[stateName] || '';
+  };
+
   const handleDownloadInvoice = (order) => {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      let yPos = 20;
-      const leftMargin = 20;
-      const rightMargin = pageWidth - 20;
-      const contentWidth = pageWidth - 40;
+      let yPos = 15;
+      const leftMargin = 15;
+      const rightMargin = pageWidth - 15;
+      const contentWidth = pageWidth - 30;
 
-      // Company Header Section
-      doc.setFontSize(24);
-      doc.setTextColor(220, 38, 38); // Red color
+      // Get vendor information - Use provided business details or fallback to order data
+      const vendor = order.vendorId || {};
+      const vendorName = vendor.businessName || vendor.legalName || 'AK ENTERPRISES';
+      const vendorLegalName = vendor.legalName || 'ANUPAMA MANOHAR KADAM';
+      const vendorTradeName = vendor.tradeName || vendor.businessName || 'AK ENTERPRISES';
+      const vendorAddress = vendor.address || {};
+      const vendorBuilding = vendorAddress.line1 || vendorAddress.buildingNo || 'SURVEY NO. 75/1/1';
+      const vendorStreet = vendorAddress.line2 || vendorAddress.road || 'OPPOSITE IIMS COLLEGE';
+      const vendorLandmark = vendorAddress.landmark || 'OPPOSITE IIMS COLLEGE';
+      const vendorCity = vendorAddress.city || 'Nere';
+      const vendorDistrict = vendorAddress.district || 'Pune';
+      const vendorState = vendorAddress.state || 'Maharashtra';
+      const vendorPincode = vendorAddress.pincode || '410506';
+      const vendorPhone = vendor.phone || '9545235223';
+      const vendorEmail = vendor.email || 'ak.enterprises.info1@gmail.com';
+      const vendorGSTIN = vendor.gstNumber || '27DJSPK2679K1ZB';
+      const vendorStateCode = getStateCode(vendorState) || '27';
+
+      // Get customer information
+      const customer = order.customerId || {};
+      const customerName = order.deliveryAddress?.name || customer.name || 'Customer Name';
+      const customerAddress = order.deliveryAddress || {};
+      const customerAddressLine = customerAddress.addressLine1 || '';
+      const customerAddressLine2 = customerAddress.addressLine2 || '';
+      const customerCity = customerAddress.city || '';
+      const customerState = customerAddress.state || '';
+      const customerPincode = customerAddress.pincode || '';
+      const customerPhone = customerAddress.phone || customer.phone || '';
+      const customerGSTIN = order.customerGSTIN || customer.gstNumber || '';
+
+      // Calculate totals
+      const billing = order.billingDetails || {};
+      const cartTotal = billing.cartTotal || 0;
+      const totalGstAmount = billing.gstAmount || 0;
+      const shippingCharges = billing.shippingCharges || 0;
+      const totalAmount = billing.totalAmount || (cartTotal + totalGstAmount + shippingCharges);
+      
+      // Calculate SGST and CGST (assuming 5% GST = 2.5% SGST + 2.5% CGST for intra-state)
+      const sgstRate = 2.5;
+      const cgstRate = 2.5;
+      const sgstAmount = totalGstAmount / 2;
+      const cgstAmount = totalGstAmount / 2;
+
+      // ========== VYAPAR STYLE INVOICE LAYOUT ==========
+      
+      // 1. BOLD BUSINESS HEADER SECTION
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
       doc.setFont(undefined, 'bold');
-      doc.text('RestroBazaar', pageWidth / 2, yPos, { align: 'center' });
+      doc.text(vendorTradeName, leftMargin, yPos);
+      yPos += 6;
+      
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text(vendorBuilding, leftMargin, yPos);
+      yPos += 5;
+      if (vendorStreet) {
+        doc.text(vendorStreet, leftMargin, yPos);
+        yPos += 5;
+      }
+      if (vendorLandmark && vendorLandmark !== vendorStreet) {
+        doc.text(vendorLandmark, leftMargin, yPos);
+        yPos += 5;
+      }
+      doc.text(`${vendorCity}, ${vendorDistrict}, ${vendorState} - ${vendorPincode}`, leftMargin, yPos);
+      yPos += 5;
+      doc.text(`Phone: ${vendorPhone}`, leftMargin, yPos);
+      yPos += 5;
+      doc.text(`Email: ${vendorEmail}`, leftMargin, yPos);
+      yPos += 5;
+      doc.text(`GSTIN: ${vendorGSTIN}`, leftMargin, yPos);
+      yPos += 5;
+      doc.text(`State: ${vendorStateCode}-${vendorState}`, leftMargin, yPos);
       yPos += 8;
 
-      // Company Details
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont(undefined, 'normal');
-      doc.text('Your Trusted Restaurant Supply Partner', pageWidth / 2, yPos, { align: 'center' });
+      // 2. CENTERED TAX INVOICE TITLE WITH DIVIDER
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.line(leftMargin, yPos, rightMargin, yPos);
       yPos += 5;
-      doc.text('Email: support@restrobazaar.com | Phone: +91-XXXXXXXXXX', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 10;
-
-      // Invoice Title
+      
       doc.setFontSize(18);
-      doc.setTextColor(0, 0, 0);
       doc.setFont(undefined, 'bold');
       doc.text('TAX INVOICE', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 12;
-
-      // Two Column Layout: Invoice Details and Delivery Address
-      const col1X = leftMargin;
-      const col2X = pageWidth / 2 + 10;
-
-      // Left Column - Invoice Details
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Invoice Details:', col1X, yPos);
-      yPos += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Invoice Number: ${order.orderNumber}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Invoice Date: ${formatDate(order.createdAt)}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Order Number: ${order.orderNumber}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Order Date: ${formatDate(order.createdAt)}`, col1X, yPos);
-      yPos += 6;
-      doc.setFont(undefined, 'bold');
-      doc.text(`Order Status: ${getStatusText(order.orderStatus)}`, col1X, yPos);
-      yPos += 6;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Payment Status: ${order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Payment Method: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI Online Payment'}`, col1X, yPos);
-
-      // Right Column - Delivery Address
-      let addressY = yPos - 42; // Align with invoice details
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Bill To / Ship To:', col2X, addressY);
-      addressY += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`${order.deliveryAddress.name}`, col2X, addressY);
-      addressY += 6;
-      doc.text(`${order.deliveryAddress.addressLine1}`, col2X, addressY);
-      addressY += 6;
-      if (order.deliveryAddress.addressLine2) {
-        doc.text(`${order.deliveryAddress.addressLine2}`, col2X, addressY);
-        addressY += 6;
-      }
-      doc.text(`${order.deliveryAddress.city}, ${order.deliveryAddress.state}`, col2X, addressY);
-      addressY += 6;
-      doc.text(`Pincode: ${order.deliveryAddress.pincode}`, col2X, addressY);
-      addressY += 6;
-      if (order.deliveryAddress.landmark) {
-        doc.text(`Landmark: ${order.deliveryAddress.landmark}`, col2X, addressY);
-        addressY += 6;
-      }
-      doc.text(`Phone: ${order.deliveryAddress.phone}`, col2X, addressY);
-
-      yPos += 15;
-
-      // Order Items Table
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text('Order Items:', leftMargin, yPos);
-      yPos += 8;
-
-      // Table Header with background
-      doc.setFillColor(240, 240, 240);
-      doc.rect(leftMargin, yPos - 6, contentWidth, 8, 'F');
-      
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('S.No.', leftMargin + 2, yPos);
-      doc.text('Item', leftMargin + 20, yPos);
-      doc.text('Qty', leftMargin + 110, yPos, { align: 'center' });
-      doc.text('Unit Price', leftMargin + 135, yPos, { align: 'right' });
-      doc.text('Total', rightMargin - 2, yPos, { align: 'right' });
-      yPos += 8;
-
-      // Table Rows
-      doc.setFont(undefined, 'normal');
-      doc.setDrawColor(220, 220, 220);
-      let itemSubtotal = 0;
-
-      order.items.forEach((item, index) => {
-        if (yPos > pageHeight - 80) {
-          doc.addPage();
-          yPos = 20;
-          // Redraw table header on new page
-          doc.setFillColor(240, 240, 240);
-          doc.rect(leftMargin, yPos - 6, contentWidth, 8, 'F');
-          doc.setFont(undefined, 'bold');
-          doc.text('S.No.', leftMargin + 2, yPos);
-          doc.text('Item', leftMargin + 20, yPos);
-          doc.text('Qty', leftMargin + 110, yPos, { align: 'center' });
-          doc.text('Unit Price', leftMargin + 135, yPos, { align: 'right' });
-          doc.text('Total', rightMargin - 2, yPos, { align: 'right' });
-          yPos += 8;
-          doc.setFont(undefined, 'normal');
-        }
-
-        // Row content
-        doc.text((index + 1).toString(), leftMargin + 2, yPos);
-        
-        // Handle long product names
-        const productName = item.productName.length > 35 
-          ? item.productName.substring(0, 32) + '...' 
-          : item.productName;
-        doc.text(productName, leftMargin + 20, yPos);
-        
-        doc.text(item.quantity.toString(), leftMargin + 110, yPos, { align: 'center' });
-        doc.text(`Rs. ${item.price.toFixed(2)}`, leftMargin + 135, yPos, { align: 'right' });
-        doc.text(`Rs. ${item.total.toFixed(2)}`, rightMargin - 2, yPos, { align: 'right' });
-        
-        itemSubtotal += item.total;
-        yPos += 7;
-      });
-
       yPos += 5;
-
-      // Billing Summary Section
-      if (yPos > pageHeight - 70) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      const summaryX = leftMargin + 100;
-      const summaryWidth = rightMargin - summaryX;
-
-      // Subtotal
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
-      doc.text('Subtotal (Excl. of all taxes):', summaryX, yPos);
-      const billing = order.billingDetails;
-      doc.text(`Rs. ${billing?.cartTotal?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      yPos += 7;
-
-      // GST
-      doc.text('GST:', summaryX, yPos);
-      doc.text(`Rs. ${billing?.gstAmount?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      yPos += 7;
       
-      // GST Breakdown
-      const gstBreakdown = order.items?.filter(item => item.gstPercentage > 0);
-      if (gstBreakdown && gstBreakdown.length > 0) {
-        doc.setFontSize(8);
-        gstBreakdown.forEach(item => {
-          const itemGstAmount = item.gstAmount || ((item.total || 0) * (item.gstPercentage || 0) / 100);
-          const itemName = item.productName?.length > 25 
-            ? item.productName.substring(0, 22) + '...' 
-            : item.productName || 'Product';
-          doc.text(`  ${itemName} (${item.gstPercentage}%): Rs. ${itemGstAmount.toFixed(2)}`, summaryX, yPos);
-          yPos += 5;
-        });
-        doc.setFontSize(10);
-      }
-
-      // Shipping Charges
-      doc.text('Shipping Charges:', summaryX, yPos);
-      if (billing?.shippingCharges === 0) {
-        doc.setTextColor(0, 128, 0); // Green for free
-        doc.text('Free', rightMargin - 2, yPos, { align: 'right' });
-        doc.setTextColor(0, 0, 0);
-      } else {
-        doc.text(`Rs. ${billing?.shippingCharges?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      }
-      yPos += 10;
-
-      // Total Amount
-      yPos += 5;
-
-      doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
-      doc.text('Total Amount:', summaryX, yPos);
-      doc.setTextColor(220, 38, 38); // Red color
-      doc.text(`Rs. ${billing?.totalAmount?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 15;
-
-      // Payment Information
-      if (yPos > pageHeight - 50) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Payment Information:', leftMargin, yPos);
-      yPos += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Payment Method: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI Online Payment'}`, leftMargin, yPos);
-      yPos += 6;
-      doc.text(`Payment Status: ${order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}`, leftMargin, yPos);
-      if (order.paymentId) {
-        yPos += 6;
-        doc.text(`Payment ID: ${order.paymentId}`, leftMargin, yPos);
-      }
-      if (order.transactionId) {
-        yPos += 6;
-        doc.text(`Transaction ID: ${order.transactionId}`, leftMargin, yPos);
-      }
-      yPos += 10;
-
-      // Footer
-      if (yPos > pageHeight - 40) {
-        doc.addPage();
-        yPos = pageHeight - 30;
-      } else {
-        yPos = pageHeight - 30;
-      }
-
-      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
       doc.line(leftMargin, yPos, rightMargin, yPos);
       yPos += 8;
 
+      // 3. HEADER SECTION - Two Column Layout
+      const headerStartY = yPos;
+      const col1X = leftMargin;
+      const col2X = pageWidth / 2 + 5;
+
+      // Right Column: Invoice Details
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('Invoice No.:', col2X, headerStartY);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${order.orderNumber || order._id}`, rightMargin, headerStartY, { align: 'right' });
+      
+      let invoiceY = headerStartY + 6;
+      doc.setFont(undefined, 'bold');
+      doc.text('Date:', col2X, invoiceY);
+      doc.setFont(undefined, 'normal');
+      doc.text(formatDateForInvoice(order.createdAt), rightMargin, invoiceY, { align: 'right' });
+      
+      invoiceY += 6;
+      doc.setFont(undefined, 'bold');
+      doc.text('Place of Supply:', col2X, invoiceY);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${vendorStateCode}-${vendorState}`, rightMargin, invoiceY, { align: 'right' });
+      
+      yPos = Math.max(headerStartY + 25, invoiceY + 8);
+
+      // 4. BILL TO / SHIP TO SECTION - Two Column Layout
+      const billToStartY = yPos;
+      const billToCol1X = leftMargin;
+      const billToCol2X = pageWidth / 2 + 5;
+
+      // Left Column: Bill To
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'bold');
+      doc.text('Bill To:', billToCol1X, billToStartY);
+      let billToY = billToStartY + 6;
       doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont(undefined, 'italic');
-      doc.text('Thank you for your business!', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
+      doc.setFont(undefined, 'normal');
+      doc.text(customerName, billToCol1X, billToY);
+      billToY += 5;
+      if (customerAddressLine) {
+        doc.text(customerAddressLine, billToCol1X, billToY);
+        billToY += 4;
+      }
+      if (customerAddressLine2) {
+        doc.text(customerAddressLine2, billToCol1X, billToY);
+        billToY += 4;
+      }
+      if (customerCity || customerState || customerPincode) {
+        const cityLine = `${customerCity || ''}${customerCity && customerState ? ', ' : ''}${customerState || ''}${(customerCity || customerState) && customerPincode ? ' - ' : ''}${customerPincode || ''}`;
+        doc.text(cityLine, billToCol1X, billToY);
+        billToY += 4;
+      }
+      if (customerPhone) {
+        doc.text(`Contact No.: ${customerPhone}`, billToCol1X, billToY);
+        billToY += 4;
+      }
+      if (customerGSTIN) {
+        doc.text(`GSTIN: ${customerGSTIN}`, billToCol1X, billToY);
+        billToY += 4;
+      }
+      if (customerState) {
+        const customerStateCode = getStateCode(customerState);
+        if (customerStateCode) {
+          doc.text(`State: ${customerStateCode}-${customerState}`, billToCol1X, billToY);
+          billToY += 4;
+        }
+      }
+
+      // Right Column: Ship To
+      const shipToStartY = billToStartY;
+      let shipToY = shipToStartY + 6;
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'bold');
+      doc.text('Ship To:', billToCol2X, shipToStartY);
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      const shipToAddress = order.deliveryAddress || {};
+      if (shipToAddress.addressLine1) {
+        doc.text(shipToAddress.addressLine1, billToCol2X, shipToY);
+        shipToY += 4;
+      }
+      if (shipToAddress.addressLine2) {
+        doc.text(shipToAddress.addressLine2, billToCol2X, shipToY);
+        shipToY += 4;
+      }
+      if (shipToAddress.landmark) {
+        doc.text(shipToAddress.landmark, billToCol2X, shipToY);
+        shipToY += 4;
+      }
+      if (shipToAddress.city || shipToAddress.state || shipToAddress.pincode) {
+        const shipToLine = `${shipToAddress.city || ''}${shipToAddress.city && shipToAddress.state ? ', ' : ''}${shipToAddress.state || ''}${(shipToAddress.city || shipToAddress.state) && shipToAddress.pincode ? ' - ' : ''}${shipToAddress.pincode || ''}`;
+        doc.text(shipToLine, billToCol2X, shipToY);
+        shipToY += 4;
+      }
+
+      yPos = Math.max(billToY, shipToY) + 8;
+
+      // 5. ITEM TABLE - VYAPAR STYLE
+      // Table Header with light background
+      doc.setFillColor(245, 245, 245);
+      doc.rect(leftMargin, yPos - 4, contentWidth, 8, 'F');
+      
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(0, 0, 0);
+      const tableHeaderY = yPos;
+      doc.text('Sr No', leftMargin + 3, tableHeaderY);
+      doc.text('Item Name', leftMargin + 18, tableHeaderY);
+      doc.text('HSN / SAC', leftMargin + 65, tableHeaderY);
+      doc.text('Quantity', leftMargin + 95, tableHeaderY, { align: 'right' });
+      doc.text('Unit', leftMargin + 115, tableHeaderY);
+      doc.text('Rate', leftMargin + 130, tableHeaderY, { align: 'right' });
+      doc.text('Tax %', leftMargin + 150, tableHeaderY, { align: 'right' });
+      doc.text('Amount', rightMargin - 2, tableHeaderY, { align: 'right' });
+      yPos += 8;
+
+      // Draw border lines
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(leftMargin, yPos - 8, leftMargin, yPos);
+      doc.line(leftMargin + 15, yPos - 8, leftMargin + 15, yPos);
+      doc.line(leftMargin + 62, yPos - 8, leftMargin + 62, yPos);
+      doc.line(leftMargin + 92, yPos - 8, leftMargin + 92, yPos);
+      doc.line(leftMargin + 112, yPos - 8, leftMargin + 112, yPos);
+      doc.line(leftMargin + 127, yPos - 8, leftMargin + 127, yPos);
+      doc.line(leftMargin + 147, yPos - 8, leftMargin + 147, yPos);
+      doc.line(rightMargin, yPos - 8, rightMargin, yPos);
+      doc.line(leftMargin, yPos - 8, rightMargin, yPos - 8);
+      doc.line(leftMargin, yPos, rightMargin, yPos);
+      
+      doc.setFont(undefined, 'normal');
       doc.setFontSize(8);
-      doc.text('This is a computer-generated invoice and does not require a signature.', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 2;
+
+      // Table Rows
+      order.items?.forEach((item, index) => {
+        if (yPos > pageHeight - 120) {
+          doc.addPage();
+          yPos = 20;
+          // Redraw header on new page
+          doc.setFillColor(245, 245, 245);
+          doc.rect(leftMargin, yPos - 4, contentWidth, 8, 'F');
+          doc.setFont(undefined, 'bold');
+          doc.text('Sr No', leftMargin + 3, yPos);
+          doc.text('Item Name', leftMargin + 18, yPos);
+          doc.text('HSN / SAC', leftMargin + 65, yPos);
+          doc.text('Quantity', leftMargin + 95, yPos, { align: 'right' });
+          doc.text('Unit', leftMargin + 115, yPos);
+          doc.text('Rate', leftMargin + 130, yPos, { align: 'right' });
+          doc.text('Tax %', leftMargin + 150, yPos, { align: 'right' });
+          doc.text('Amount', rightMargin - 2, yPos, { align: 'right' });
+          yPos += 8;
+          doc.setDrawColor(200, 200, 200);
+          doc.line(leftMargin, yPos - 8, leftMargin, yPos);
+          doc.line(leftMargin + 15, yPos - 8, leftMargin + 15, yPos);
+          doc.line(leftMargin + 62, yPos - 8, leftMargin + 62, yPos);
+          doc.line(leftMargin + 92, yPos - 8, leftMargin + 92, yPos);
+          doc.line(leftMargin + 112, yPos - 8, leftMargin + 112, yPos);
+          doc.line(leftMargin + 127, yPos - 8, leftMargin + 127, yPos);
+          doc.line(leftMargin + 147, yPos - 8, leftMargin + 147, yPos);
+          doc.line(rightMargin, yPos - 8, rightMargin, yPos);
+          doc.line(leftMargin, yPos - 8, rightMargin, yPos - 8);
+          doc.line(leftMargin, yPos, rightMargin, yPos);
+          doc.setFont(undefined, 'normal');
+          yPos += 2;
+        }
+
+        const productName = item.productName || 'Product';
+        const hsnSac = item.hsnCode || item.sacCode || item.hsnSac || '';
+        const quantity = item.quantity || 0;
+        const unit = item.unit || 'Pcs';
+        const rate = Number(item.price || 0);
+        const gstPercentage = item.gstPercentage || 0;
+        const itemSubtotal = item.total || (rate * quantity);
+        const itemGstAmount = item.gstAmount || (itemSubtotal * gstPercentage / 100);
+        const itemTotal = itemSubtotal + itemGstAmount;
+
+        const rowY = yPos;
+        doc.text((index + 1).toString(), leftMargin + 3, rowY);
+        
+        // Wrap product name if too long
+        const maxNameWidth = 42;
+        const productNameLines = doc.splitTextToSize(productName, maxNameWidth);
+        doc.text(productNameLines[0], leftMargin + 18, rowY);
+        
+        doc.text(hsnSac || '-', leftMargin + 65, rowY);
+        doc.text(quantity.toString(), leftMargin + 95, rowY, { align: 'right' });
+        doc.text(unit, leftMargin + 115, rowY);
+        doc.text(`₹${rate.toFixed(2)}`, leftMargin + 130, rowY, { align: 'right' });
+        doc.text(gstPercentage > 0 ? `${gstPercentage}%` : '-', leftMargin + 150, rowY, { align: 'right' });
+        doc.text(`₹${itemTotal.toFixed(2)}`, rightMargin - 2, rowY, { align: 'right' });
+        
+        // Handle multi-line product names
+        if (productNameLines.length > 1) {
+          yPos += 4;
+          doc.text(productNameLines[1], leftMargin + 18, yPos);
+        }
+        
+        yPos += 6;
+        
+        // Draw row border
+        doc.setDrawColor(220, 220, 220);
+        doc.line(leftMargin, yPos, rightMargin, yPos);
+        yPos += 2;
+      });
+
+      // Draw closing border for table
+      doc.setDrawColor(200, 200, 200);
+      doc.line(leftMargin, yPos - 2, rightMargin, yPos - 2);
       yPos += 5;
-      doc.text('For any queries, please contact us at support@restrobazaar.com', pageWidth / 2, yPos, { align: 'center' });
+
+      // 6. TOTALS SECTION - Right Aligned (Vyapar Style)
+      const totalsStartX = leftMargin + 100;
+      
+      if (yPos > pageHeight - 80) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.text('Subtotal', totalsStartX, yPos);
+      doc.text(`₹${cartTotal.toFixed(2)}`, rightMargin - 2, yPos, { align: 'right' });
+      yPos += 6;
+      
+      if (cgstAmount > 0) {
+        doc.text(`CGST @ ${cgstRate}%`, totalsStartX, yPos);
+        doc.text(`₹${cgstAmount.toFixed(2)}`, rightMargin - 2, yPos, { align: 'right' });
+        yPos += 6;
+      }
+      
+      if (sgstAmount > 0) {
+        doc.text(`SGST @ ${sgstRate}%`, totalsStartX, yPos);
+        doc.text(`₹${sgstAmount.toFixed(2)}`, rightMargin - 2, yPos, { align: 'right' });
+        yPos += 6;
+      }
+      
+      if (shippingCharges > 0) {
+        doc.text('Shipping Charges', totalsStartX, yPos);
+        doc.text(`₹${shippingCharges.toFixed(2)}`, rightMargin - 2, yPos, { align: 'right' });
+        yPos += 6;
+      }
+      
+      // Grand Total - Highlighted
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.line(totalsStartX, yPos - 2, rightMargin, yPos - 2);
+      yPos += 4;
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'bold');
+      doc.text('Grand Total', totalsStartX, yPos);
+      doc.setTextColor(220, 38, 38);
+      doc.text(`₹${totalAmount.toFixed(2)}`, rightMargin - 2, yPos, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      yPos += 8;
+
+      // 7. AMOUNT IN WORDS
+      if (yPos > pageHeight - 40) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text('Amount in Words:', leftMargin, yPos);
+      yPos += 5;
+      doc.setFont(undefined, 'normal');
+      const amountInWords = numberToWords(totalAmount);
+      const wordsLines = doc.splitTextToSize(amountInWords, contentWidth - 20);
+      wordsLines.forEach(line => {
+        doc.text(line, leftMargin + 5, yPos);
+        yPos += 4;
+      });
+      yPos += 8;
+
+      // 8. FOOTER SECTION - Two Column Layout
+      if (yPos > pageHeight - 60) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      const footerStartY = Math.max(yPos, pageHeight - 55);
+      const footerCol1X = leftMargin;
+      const footerCol2X = pageWidth / 2 + 5;
+
+      // Left Column: Bank Details
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text('Payment Information (Pay To):', footerCol1X, footerStartY);
+      let bankY = footerStartY + 5;
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8);
+      
+      // Bank details (these should come from vendor profile)
+      const bankName = vendor.bankName || 'KOTAK MAHINDRA BANK LIMITED, PUNE BANER ROAD BRANCH';
+      const bankAccountNo = vendor.bankAccountNo || vendor.accountNumber || vendorPhone || 'Account Number';
+      const bankIFSC = vendor.bankIFSC || vendor.ifscCode || 'KKBK0001767';
+      const accountHolderName = vendor.accountHolderName || vendorTradeName;
+      
+      doc.text(`Bank Name: ${bankName}`, footerCol1X, bankY);
+      bankY += 4;
+      doc.text(`Bank Account No.: ${bankAccountNo}`, footerCol1X, bankY);
+      bankY += 4;
+      doc.text(`Bank IFSC code: ${bankIFSC}`, footerCol1X, bankY);
+      bankY += 4;
+      doc.text(`Account holder's name: ${accountHolderName}`, footerCol1X, bankY);
+      bankY += 6;
+      
+      // UPI QR Code placeholder
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'bold');
+      doc.text('UPI SCAN TO PAY', footerCol1X, bankY);
+      bankY += 10;
+
+      // Right Column: Authorized Signatory
+      const signY = footerStartY;
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.text(`For : ${vendorTradeName}`, footerCol2X, signY);
+      const signatureY = signY + 20;
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.line(footerCol2X, signatureY, footerCol2X + 50, signatureY);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(9);
+      doc.text('Authorized Signatory', footerCol2X, signatureY + 5);
 
       // Save the PDF
-      doc.save(`Invoice-${order.orderNumber}.pdf`);
+      doc.save(`Invoice-${order.orderNumber || order._id}.pdf`);
     } catch (error) {
       console.error('Error generating invoice:', error);
       alert('Failed to generate invoice. Please try again.');
