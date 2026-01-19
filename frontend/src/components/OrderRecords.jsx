@@ -49,7 +49,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
       if (filters.vendorId) params.append('vendorId', filters.vendorId);
       if (filters.cityId) params.append('cityId', filters.cityId);
 
-      const endpoint = userRole === 'super_admin' 
+      const endpoint = userRole === 'super_admin'
         ? `${baseUrl}/admin/orders`
         : `${baseUrl}/vendor/orders`;
 
@@ -230,10 +230,10 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <div className={`grid grid-cols-1 ${userRole === 'super_admin' ? 'md:grid-cols-6' : 'md:grid-cols-4'} gap-4`}>
+        <div className={`grid grid-cols-1 ${userRole === 'super_admin' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-4`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
+              Order Status
             </label>
             <select
               value={filters.orderStatus}
@@ -289,24 +289,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
           </div>
           {userRole === 'super_admin' && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Filter by Vendor
-                </label>
-                <select
-                  value={filters.vendorId}
-                  onChange={(e) => handleFilterChange('vendorId', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  disabled={loadingFilters}
-                >
-                  <option value="">All Vendors</option>
-                  {vendors.map((vendor) => (
-                    <option key={vendor._id} value={vendor._id}>
-                      {vendor.businessName || vendor.legalName || vendor.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Removed Filter by Vendor */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Filter by Service City
@@ -386,12 +369,8 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Payment Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Delivery Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
+
+
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   City
                 </th>
@@ -400,7 +379,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
             <tbody className="bg-white divide-y divide-gray-200">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan="15" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="13" className="px-4 py-8 text-center text-gray-500">
                     No orders found
                   </td>
                 </tr>
@@ -447,12 +426,8 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
                         {order.Payment_status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {formatDate(order.delivery_date)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {order.Email}
-                    </td>
+
+
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                       {order.City}
                     </td>

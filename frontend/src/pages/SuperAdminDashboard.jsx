@@ -68,7 +68,9 @@ const SuperAdminDashboard = () => {
 
   // Graph state
   const [monthlyOrdersData, setMonthlyOrdersData] = useState([]);
+
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedGraphCity, setSelectedGraphCity] = useState('');
 
   // Form states
   const [productForm, setProductForm] = useState({
@@ -304,22 +306,30 @@ const SuperAdminDashboard = () => {
   };
 
   // Fetch monthly orders
-  const fetchMonthlyOrders = async (year) => {
+  const fetchMonthlyOrders = async (year, cityId) => {
     try {
       const token = getToken();
       if (!token) return;
 
       const targetYear = year || selectedYear;
+      const targetCity = cityId !== undefined ? cityId : selectedGraphCity;
+
       const startOfYear = new Date(targetYear, 0, 1).toISOString();
       const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59, 999).toISOString();
 
+      const params = {
+        startDate: startOfYear,
+        endDate: endOfYear,
+        limit: 20000,
+      };
+
+      if (targetCity) {
+        params.cityId = targetCity;
+      }
+
       const response = await axios.get(`${baseUrl}/admin/orders`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: {
-          startDate: startOfYear,
-          endDate: endOfYear,
-          limit: 20000,
-        },
+        params: params,
       });
 
       if (response.data?.success) {
@@ -330,7 +340,13 @@ const SuperAdminDashboard = () => {
 
         orders.forEach(order => {
           const orderDate = new Date(order.createdAt || order.orderDate);
-          if (!isNaN(orderDate) && orderDate.getFullYear() === targetYear) {
+
+          // Verify year and city (though API should filter city, nice to double check)
+          const isCorrectYear = !isNaN(orderDate) && orderDate.getFullYear() === targetYear;
+          // For city, we assume API filtered it correctly, or we can check if needed. 
+          // The API param 'cityId' filters by order's city.
+
+          if (isCorrectYear) {
             monthlyData[orderDate.getMonth()].orders += 1;
           }
         });
@@ -432,7 +448,7 @@ const SuperAdminDashboard = () => {
       // Fetch today's orders with current filters
       fetchTodayOrdersStats(orderFilters);
       // Fetch monthly orders for graph
-      fetchMonthlyOrders(selectedYear);
+      fetchMonthlyOrders(selectedYear, selectedGraphCity);
     }
     if (activeTab === "products") {
       fetchProducts();
@@ -453,7 +469,7 @@ const SuperAdminDashboard = () => {
     if (activeTab === "testimonials") fetchTestimonials();
     if (activeTab === "add-testimonial") fetchTestimonials(); // Fetch testimonials for reference
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, selectedYear]);
+  }, [activeTab, selectedYear, selectedGraphCity]);
 
   // Image management handlers
   const addImage = () => {
@@ -1121,6 +1137,8 @@ const SuperAdminDashboard = () => {
                 monthlyOrdersData={monthlyOrdersData}
                 selectedYear={selectedYear}
                 onYearChange={setSelectedYear}
+                selectedGraphCity={selectedGraphCity}
+                onGraphCityChange={setSelectedGraphCity}
               />
             </div>
           )}

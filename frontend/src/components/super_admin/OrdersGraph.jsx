@@ -9,19 +9,32 @@ import {
     ResponsiveContainer
 } from 'recharts';
 
-const OrdersGraph = ({ ordersData, selectedYear, onYearChange }) => {
+const OrdersGraph = ({ ordersData, selectedYear, onYearChange, cities = [], selectedCity, onCityChange }) => {
     // Generate last 5 years
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
     return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-lg mt-8">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h2 className="text-lg font-bold text-gray-800">Order Statistics {selectedYear}</h2>
                     <p className="text-sm text-gray-400 mt-1">Monthly order volume overview - {selectedYear}</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* City Filter */}
+                    <select
+                        value={selectedCity}
+                        onChange={(e) => onCityChange(e.target.value)}
+                        className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer min-w-[120px]"
+                    >
+                        <option value="">All Cities</option>
+                        {cities.map(city => (
+                            <option key={city._id} value={city._id}>{city.name}</option>
+                        ))}
+                    </select>
+
+                    {/* Year Filter */}
                     <select
                         value={selectedYear}
                         onChange={(e) => onYearChange(parseInt(e.target.value))}

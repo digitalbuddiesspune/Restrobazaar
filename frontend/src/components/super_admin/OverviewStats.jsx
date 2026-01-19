@@ -10,7 +10,9 @@ const OverviewStats = ({
   vendors = [],
   monthlyOrdersData = [],
   selectedYear = new Date().getFullYear(),
-  onYearChange = () => { }
+  onYearChange = () => { },
+  selectedGraphCity = '',
+  onGraphCityChange = () => { }
 }) => {
   return (
     <div className="space-y-6">
@@ -248,6 +250,9 @@ const OverviewStats = ({
           ordersData={monthlyOrdersData}
           selectedYear={selectedYear}
           onYearChange={onYearChange}
+          cities={cities}
+          selectedCity={selectedGraphCity}
+          onCityChange={onGraphCityChange}
         />
       </div>
     </div>
