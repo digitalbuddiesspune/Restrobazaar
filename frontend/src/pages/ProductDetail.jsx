@@ -23,6 +23,7 @@ const ProductDetail = () => {
   const [quantityError, setQuantityError] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState({});
+  const [mainProductWishlistLoading, setMainProductWishlistLoading] = useState(false);
   const [suggestedQuantities, setSuggestedQuantities] = useState({});
   const [showSuggestedQuantitySelector, setShowSuggestedQuantitySelector] = useState({});
   const [addingToCartSuggested, setAddingToCartSuggested] = useState({});
@@ -36,9 +37,15 @@ const ProductDetail = () => {
   const removeFromWishlistMutation = useRemoveFromWishlist();
 
   // Check if product is in wishlist
-  const isInWishlist = wishlistData?.success && wishlistData?.data?.products
-    ? wishlistData.data.products.some(item => item._id === productId)
-    : false;
+  const isInWishlist = useMemo(() => {
+    if (!wishlistData?.success || !wishlistData?.data?.products || !productId) {
+      return false;
+    }
+    return wishlistData.data.products.some(item => {
+      // Compare both _id and string conversion to handle different formats
+      return item._id === productId || item._id?.toString() === productId?.toString();
+    });
+  }, [wishlistData, productId]);
 
   // Get category ID from product
   const categoryId = useMemo(() => {
@@ -403,28 +410,30 @@ const ProductDetail = () => {
   const handleWishlistToggle = async () => {
     if (!isAuthenticated()) {
       // Store product ID to add to wishlist after login
-      localStorage.setItem('pendingWishlistProduct', product._id);
+      localStorage.setItem('pendingWishlistProduct', product?._id || productId);
       navigate('/sign-in');
       return;
     }
     
-    if (!product?._id) return;
+    const productIdToUse = product?._id || productId;
+    if (!productIdToUse) {
+      console.error('No product ID available');
+      return;
+    }
     
-    setWishlistLoading(true);
+    setMainProductWishlistLoading(true);
     try {
       if (isInWishlist) {
-        await removeFromWishlistMutation.mutateAsync(product._id);
-        alert('Removed from wishlist');
+        await removeFromWishlistMutation.mutateAsync(productIdToUse);
       } else {
-        await addToWishlistMutation.mutateAsync(product._id);
-        alert('Added to wishlist');
+        await addToWishlistMutation.mutateAsync(productIdToUse);
       }
       // React Query will automatically refetch and update isInWishlist via cache invalidation
     } catch (err) {
       console.error('Error updating wishlist:', err);
       alert('Failed to update wishlist. Please try again.');
     } finally {
-      setWishlistLoading(false);
+      setMainProductWishlistLoading(false);
     }
   };
 
@@ -794,12 +803,12 @@ const ProductDetail = () => {
               {/* Wishlist Button - Top Right Corner */}
               <button
                 onClick={handleWishlistToggle}
-                disabled={wishlistLoading}
+                disabled={mainProductWishlistLoading}
                 className={`absolute top-2 right-2 sm:top-2.5 sm:right-2.5 md:top-3 md:right-3 p-1.5 sm:p-2 md:p-2.5 rounded-full shadow-lg transition-all z-10 ${
                   isInWishlist
                     ? 'bg-red-600 text-white hover:bg-red-700'
                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-300'
-                }`}
+                } ${mainProductWishlistLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 title={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
               >
                 <svg

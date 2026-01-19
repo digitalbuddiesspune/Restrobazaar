@@ -22,7 +22,8 @@ const OverviewStats = ({
   setPendingEndDate = () => { },
   pendingCity = '',
   setPendingCity = () => { },
-  onClearPendingFilters = () => { }
+  onClearPendingFilters = () => { },
+  onCardClick = () => { }
 }) => {
   return (
     <div className="space-y-6">
@@ -161,7 +162,10 @@ const OverviewStats = ({
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
           {/* Total Products */}
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1">
+          <div 
+            onClick={() => onCardClick('products')}
+            className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+          >
             <div className="flex flex-row items-center gap-3 sm:gap-4 text-left">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-sm">
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -176,7 +180,10 @@ const OverviewStats = ({
           </div>
 
           {/* Total Cities */}
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1">
+          <div 
+            onClick={() => onCardClick('cities')}
+            className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+          >
             <div className="flex flex-row items-center gap-3 sm:gap-4 text-left">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-sm">
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -191,7 +198,10 @@ const OverviewStats = ({
           </div>
 
           {/* Total Categories */}
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1">
+          <div 
+            onClick={() => onCardClick('categories')}
+            className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+          >
             <div className="flex flex-row items-center gap-3 sm:gap-4 text-left">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-all duration-300 shadow-sm">
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -206,7 +216,10 @@ const OverviewStats = ({
           </div>
 
           {/* Total Vendors */}
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1">
+          <div 
+            onClick={() => onCardClick('vendors')}
+            className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+          >
             <div className="flex flex-row items-center gap-3 sm:gap-4 text-left">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 shadow-sm">
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -221,7 +234,10 @@ const OverviewStats = ({
           </div>
 
           {/* Total Users */}
-          <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1">
+          <div 
+            onClick={() => onCardClick('users')}
+            className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-3 sm:p-5 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+          >
             <div className="flex flex-row items-center gap-3 sm:gap-4 text-left">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center group-hover:bg-pink-600 group-hover:text-white transition-all duration-300 shadow-sm">
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">

@@ -1287,6 +1287,11 @@ const SuperAdminDashboard = () => {
                 pendingCity={pendingCity}
                 setPendingCity={setPendingCity}
                 onClearPendingFilters={handleClearPendingFilters}
+                onCardClick={(tab) => {
+                  setActiveTab(tab);
+                  setError("");
+                  setSuccess("");
+                }}
               />
             </div>
           )}
