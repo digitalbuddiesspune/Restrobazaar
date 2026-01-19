@@ -312,12 +312,14 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
           )}
         </div>
         {(filters.orderStatus || filters.paymentStatus || filters.startDate || filters.endDate || filters.vendorId || filters.cityId) && (
-          <button
-            onClick={clearFilters}
-            className="mt-4 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
-          >
-            Clear Filters
-          </button>
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={clearFilters}
+              className="px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+            >
+              Clear Filters
+            </button>
+          </div>
         )}
       </div>
 

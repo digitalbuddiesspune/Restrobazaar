@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "../components/super_admin/Sidebar";
@@ -28,6 +28,14 @@ const SuperAdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Product filters
+  const [productFilters, setProductFilters] = useState({
+    search: "",
+    category: "",
+    subCategory: "",
+    status: "",
+  });
 
   // Pagination state
   const [productsPage, setProductsPage] = useState(1);
@@ -400,14 +408,32 @@ const SuperAdminDashboard = () => {
   };
 
   // Fetch all data
-  const fetchProducts = async () => {
+  const fetchProducts = async (filters = {}) => {
     try {
       const token = getToken();
+      const params = { limit: 10000000 }; // Fetch all products
+      
+      // Add filter parameters
+      if (filters.search) {
+        params.search = filters.search;
+      }
+      if (filters.category) {
+        params.category = filters.category;
+      }
+      if (filters.subCategory) {
+        params.subCategory = filters.subCategory;
+      }
+      if (filters.status !== "" && filters.status !== undefined) {
+        params.status = filters.status === "active" ? true : filters.status === "inactive" ? false : filters.status;
+      }
+      
       const res = await axios.get(`${baseUrl}/products`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 10000000 }, // Fetch all products
+        params,
       });
       setProducts(res.data?.data || []);
+      // Reset to first page when filters change
+      setProductsPage(1);
     } catch (err) {
       setError("Failed to fetch products");
     }
@@ -493,7 +519,8 @@ const SuperAdminDashboard = () => {
       fetchPendingOrders(pendingCity, pendingStartDate, pendingEndDate);
     }
     if (activeTab === "products") {
-      fetchProducts();
+      fetchProducts(productFilters);
+      fetchCategories(); // Fetch categories for filter dropdown
       setProductsPage(1); // Reset pagination when switching to products tab
     }
     if (activeTab === "product-catalog") {
@@ -512,6 +539,29 @@ const SuperAdminDashboard = () => {
     if (activeTab === "add-testimonial") fetchTestimonials(); // Fetch testimonials for reference
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedYear, selectedGraphCity, pendingCity, pendingStartDate, pendingEndDate]);
+
+  // Refetch products when filters change
+  useEffect(() => {
+    if (activeTab === "products") {
+      fetchProducts(productFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productFilters]);
+
+  // Get unique subcategories based on selected category
+  const availableSubCategories = useMemo(() => {
+    if (!productFilters.category) return [];
+    const categoryProducts = products.filter(p => {
+      const categoryId = p.category?._id || p.category;
+      return categoryId === productFilters.category;
+    });
+    const uniqueSubCategories = [...new Set(
+      categoryProducts
+        .map(p => p.subCategory)
+        .filter(Boolean)
+    )].sort();
+    return uniqueSubCategories;
+  }, [products, productFilters.category]);
 
   // Image management handlers
   const addImage = () => {
@@ -2549,16 +2599,130 @@ const SuperAdminDashboard = () => {
 
           {/* All Products Tab */}
           {activeTab === "products" && (
-            <div className="space-y-4">
-              <ProductsTable
-                products={products}
-                productsPage={productsPage}
-                setProductsPage={setProductsPage}
-                itemsPerPage={itemsPerPage}
-                handleEdit={handleEdit}
-                handleDelete={handleDelete}
-              />
-            </div>
+              <div className="space-y-4">
+                {/* Filters Section */}
+                <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Search Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Search Product
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Search products..."
+                        value={productFilters.search}
+                        onChange={(e) => {
+                          setProductFilters({
+                            ...productFilters,
+                            search: e.target.value,
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    {/* Category Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Category
+                      </label>
+                      <select
+                        value={productFilters.category}
+                        onChange={(e) => {
+                          setProductFilters({
+                            ...productFilters,
+                            category: e.target.value,
+                            subCategory: "", // Reset subcategory when category changes
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">All Categories</option>
+                        {categories.map((category) => (
+                          <option key={category._id} value={category._id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Subcategory Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Subcategory
+                      </label>
+                      <select
+                        value={productFilters.subCategory}
+                        onChange={(e) => {
+                          setProductFilters({
+                            ...productFilters,
+                            subCategory: e.target.value,
+                          });
+                        }}
+                        disabled={!productFilters.category}
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="">All Subcategories</option>
+                        {availableSubCategories.map((subCategory, index) => (
+                          <option key={index} value={subCategory}>
+                            {subCategory}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Status Filter */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Status
+                      </label>
+                      <select
+                        value={productFilters.status}
+                        onChange={(e) => {
+                          setProductFilters({
+                            ...productFilters,
+                            status: e.target.value,
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Clear Filters Button */}
+                  {(productFilters.search || productFilters.category || productFilters.subCategory || productFilters.status) && (
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={() => {
+                          setProductFilters({
+                            search: "",
+                            category: "",
+                            subCategory: "",
+                            status: "",
+                          });
+                        }}
+                        className="px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <ProductsTable
+                  products={products}
+                  productsPage={productsPage}
+                  setProductsPage={setProductsPage}
+                  itemsPerPage={itemsPerPage}
+                  handleEdit={handleEdit}
+                  handleDelete={handleDelete}
+                />
+              </div>
           )}
 
           {/* Product Catalog Tab */}
