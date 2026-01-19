@@ -230,15 +230,15 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <div className={`grid grid-cols-1 ${userRole === 'super_admin' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-4`}>
+        <div className={`grid grid-cols-2 ${userRole === 'super_admin' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-4`}>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               Order Status
             </label>
             <select
               value={filters.orderStatus}
               onChange={(e) => handleFilterChange('orderStatus', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               <option value="">All Status</option>
               <option value="pending">Pending</option>
@@ -250,13 +250,13 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               Payment Status
             </label>
             <select
               value={filters.paymentStatus}
               onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               <option value="">All Payment Status</option>
               <option value="pending">Pending</option>
@@ -266,38 +266,38 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               Start Date
             </label>
             <input
               type="date"
               value={filters.startDate}
               onChange={(e) => handleFilterChange('startDate', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               End Date
             </label>
             <input
               type="date"
               value={filters.endDate}
               onChange={(e) => handleFilterChange('endDate', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
           {userRole === 'super_admin' && (
             <>
               {/* Removed Filter by Vendor */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Filter by Service City
                 </label>
                 <select
                   value={filters.cityId}
                   onChange={(e) => handleFilterChange('cityId', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   disabled={loadingFilters}
                 >
                   <option value="">All Cities</option>

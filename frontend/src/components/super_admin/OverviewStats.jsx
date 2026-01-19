@@ -259,17 +259,14 @@ const OverviewStats = ({
               </svg>
             </div>
             <h2 className="text-lg font-bold text-gray-800">Pending Orders</h2>
-            <span className="ml-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
-              {pendingOrders.length} New
-            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto mt-4 md:mt-0">
             {/* City Filter */}
             <select
               value={pendingCity}
               onChange={(e) => setPendingCity(e.target.value)}
-              className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer min-w-[120px]"
+              className="col-span-2 sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:focus:border-amber-500 transition-all cursor-pointer min-w-[120px]"
             >
               <option value="">All Cities</option>
               {cities.map(city => (
@@ -282,22 +279,22 @@ const OverviewStats = ({
               type="date"
               value={pendingStartDate}
               onChange={(e) => setPendingStartDate(e.target.value)}
-              className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+              className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
               placeholder="Start Date"
             />
-            <span className="text-gray-400">-</span>
+            <span className="hidden sm:inline text-gray-400">-</span>
             <input
               type="date"
               value={pendingEndDate}
               onChange={(e) => setPendingEndDate(e.target.value)}
-              className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+              className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
               placeholder="End Date"
             />
 
             {(pendingCity || pendingStartDate || pendingEndDate) && (
               <button
                 onClick={onClearPendingFilters}
-                className="px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+                className="col-span-2 sm:col-span-1 px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200 w-full sm:w-auto"
               >
                 Clear
               </button>
