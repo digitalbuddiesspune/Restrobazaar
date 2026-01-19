@@ -28,7 +28,7 @@ const SuperAdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Pagination state
   const [productsPage, setProductsPage] = useState(1);
   const itemsPerPage = 10;
@@ -65,6 +65,10 @@ const SuperAdminDashboard = () => {
   const [usersLoading, setUsersLoading] = useState(false);
   const [testimonials, setTestimonials] = useState([]);
   const [editingTestimonialId, setEditingTestimonialId] = useState(null);
+
+  // Graph state
+  const [monthlyOrdersData, setMonthlyOrdersData] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   // Form states
   const [productForm, setProductForm] = useState({
@@ -222,7 +226,7 @@ const SuperAdminDashboard = () => {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
       const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      
+
       // Convert to ISO string for API
       const todayStartISO = todayStart.toISOString();
       const todayEndISO = todayEnd.toISOString();
@@ -250,7 +254,7 @@ const SuperAdminDashboard = () => {
 
       if (response.data?.success) {
         const orders = response.data.data || [];
-        
+
         // Count orders by status - handle both Order_status and orderStatus field names
         const stats = {
           total: orders.length,
@@ -297,6 +301,45 @@ const SuperAdminDashboard = () => {
   const handleResetFilters = () => {
     setOrderFilters({ cityId: '', vendorId: '' });
     fetchTodayOrdersStats({ cityId: '', vendorId: '' });
+  };
+
+  // Fetch monthly orders
+  const fetchMonthlyOrders = async (year) => {
+    try {
+      const token = getToken();
+      if (!token) return;
+
+      const targetYear = year || selectedYear;
+      const startOfYear = new Date(targetYear, 0, 1).toISOString();
+      const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59, 999).toISOString();
+
+      const response = await axios.get(`${baseUrl}/admin/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          startDate: startOfYear,
+          endDate: endOfYear,
+          limit: 20000,
+        },
+      });
+
+      if (response.data?.success) {
+        const orders = response.data.data || [];
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // Initialize with 0
+        const monthlyData = monthNames.map(name => ({ name, orders: 0 }));
+
+        orders.forEach(order => {
+          const orderDate = new Date(order.createdAt || order.orderDate);
+          if (!isNaN(orderDate) && orderDate.getFullYear() === targetYear) {
+            monthlyData[orderDate.getMonth()].orders += 1;
+          }
+        });
+
+        setMonthlyOrdersData(monthlyData);
+      }
+    } catch (err) {
+      console.error("Error fetching monthly orders:", err);
+    }
   };
 
   // Fetch all data
@@ -388,6 +431,8 @@ const SuperAdminDashboard = () => {
       fetchVendors();
       // Fetch today's orders with current filters
       fetchTodayOrdersStats(orderFilters);
+      // Fetch monthly orders for graph
+      fetchMonthlyOrders(selectedYear);
     }
     if (activeTab === "products") {
       fetchProducts();
@@ -408,7 +453,7 @@ const SuperAdminDashboard = () => {
     if (activeTab === "testimonials") fetchTestimonials();
     if (activeTab === "add-testimonial") fetchTestimonials(); // Fetch testimonials for reference
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, selectedYear]);
 
   // Image management handlers
   const addImage = () => {
@@ -492,9 +537,9 @@ const SuperAdminDashboard = () => {
           images:
             product.images && product.images.length > 0
               ? product.images.map((img) => ({
-                  url: img.url || "",
-                  alt: img.alt || "",
-                }))
+                url: img.url || "",
+                alt: img.alt || "",
+              }))
               : [],
         });
         setEditingProductId(productId);
@@ -535,24 +580,24 @@ const SuperAdminDashboard = () => {
         // Convert searchTags string to array
         searchTags: productForm.searchTags
           ? productForm.searchTags
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter((tag) => tag)
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter((tag) => tag)
           : [],
         // Handle size object - only include if at least one field is filled
         size:
           productForm.size.height ||
-          productForm.size.width ||
-          productForm.size.base
+            productForm.size.width ||
+            productForm.size.base
             ? {
-                ...(productForm.size.height && {
-                  height: productForm.size.height,
-                }),
-                ...(productForm.size.width && {
-                  width: productForm.size.width,
-                }),
-                ...(productForm.size.base && { base: productForm.size.base }),
-              }
+              ...(productForm.size.height && {
+                height: productForm.size.height,
+              }),
+              ...(productForm.size.width && {
+                width: productForm.size.width,
+              }),
+              ...(productForm.size.base && { base: productForm.size.base }),
+            }
             : undefined,
         ...(productForm.subCategory && {
           subCategory: productForm.subCategory,
@@ -614,9 +659,9 @@ const SuperAdminDashboard = () => {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          (editingProductId
-            ? "Failed to update product"
-            : "Failed to create product")
+        (editingProductId
+          ? "Failed to update product"
+          : "Failed to create product")
       );
     } finally {
       setLoading(false);
@@ -971,9 +1016,9 @@ const SuperAdminDashboard = () => {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          (editingTestimonialId
-            ? "Failed to update testimonial"
-            : "Failed to create testimonial")
+        (editingTestimonialId
+          ? "Failed to update testimonial"
+          : "Failed to create testimonial")
       );
     } finally {
       setLoading(false);
@@ -1017,8 +1062,8 @@ const SuperAdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 scrollbar-hide">
-      <Sidebar 
-        activeTab={activeTab} 
+      <Sidebar
+        activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
           setError("");
@@ -1066,14 +1111,16 @@ const SuperAdminDashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>
               </div>
-              <OverviewStats 
-                stats={stats} 
+              <OverviewStats
+                stats={stats}
                 todayOrdersStats={todayOrdersStats}
-                filters={orderFilters}
                 onFilterChange={handleFilterChange}
                 onResetFilters={handleResetFilters}
                 cities={cities}
                 vendors={vendors}
+                monthlyOrdersData={monthlyOrdersData}
+                selectedYear={selectedYear}
+                onYearChange={setSelectedYear}
               />
             </div>
           )}
@@ -1099,570 +1146,570 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
-        {/* Add Product Tab - OLD */}
-        {false && activeTab === "add-product-old" && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-6">
-              {editingProductId ? "Edit Product" : "Add New Product"}
-            </h2>
-            <form onSubmit={handleProductSubmit} className="space-y-6">
-              {/* Basic Information */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">
-                  Basic Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Product Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={productForm.productName}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          productName: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter product name"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Search Tags
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.searchTags}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          searchTags: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter tags separated by commas (e.g., tag1, tag2, tag3)"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Separate multiple tags with commas
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Short Description
-                    </label>
-                    <textarea
-                      value={productForm.shortDescription}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          shortDescription: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      rows="3"
-                      placeholder="Enter product description"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Category Information */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">
-                  Category Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Category *
-                    </label>
-                    <select
-                      required
-                      value={productForm.category}
-                      onChange={(e) => {
-                        const selectedCategoryId = e.target.value;
-                        const selectedCategory = categories.find(
-                          (cat) => cat._id === selectedCategoryId
-                        );
-                        setProductForm({
-                          ...productForm,
-                          category: selectedCategoryId,
-                          subCategory: "", // Reset subcategory when category changes
-                        });
-                      }}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="">Select a category</option>
-                      {categories.map((cat) => (
-                        <option key={cat._id} value={cat._id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Sub Category
-                    </label>
-                    {productForm.category ? (
-                      (() => {
-                        const selectedCategory = categories.find(
-                          (cat) => cat._id === productForm.category
-                        );
-                        const subcategories =
-                          selectedCategory?.subcategories || [];
-                        return subcategories.length > 0 ? (
-                          <select
-                            value={productForm.subCategory}
-                            onChange={(e) =>
-                              setProductForm({
-                                ...productForm,
-                                subCategory: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          >
-                            <option value="">Select a subcategory</option>
-                            {subcategories.map((subcat, index) => (
-                              <option key={index} value={subcat}>
-                                {subcat}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            value={productForm.subCategory}
-                            onChange={(e) =>
-                              setProductForm({
-                                ...productForm,
-                                subCategory: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            placeholder="No subcategories available. Enter manually if needed."
-                          />
-                        );
-                      })()
-                    ) : (
+          {/* Add Product Tab - OLD */}
+          {false && activeTab === "add-product-old" && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-6">
+                {editingProductId ? "Edit Product" : "Add New Product"}
+              </h2>
+              <form onSubmit={handleProductSubmit} className="space-y-6">
+                {/* Basic Information */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Product Name *
+                      </label>
                       <input
                         type="text"
-                        value={productForm.subCategory}
+                        required
+                        value={productForm.productName}
                         onChange={(e) =>
                           setProductForm({
                             ...productForm,
-                            subCategory: e.target.value,
+                            productName: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-100"
-                        placeholder="Please select a category first"
-                        disabled
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter product name"
                       />
-                    )}
-                    {productForm.category && (
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Search Tags
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.searchTags}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            searchTags: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter tags separated by commas (e.g., tag1, tag2, tag3)"
+                      />
                       <p className="mt-1 text-xs text-gray-500">
-                        {(() => {
+                        Separate multiple tags with commas
+                      </p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Short Description
+                      </label>
+                      <textarea
+                        value={productForm.shortDescription}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            shortDescription: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        rows="3"
+                        placeholder="Enter product description"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category Information */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Category Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Category *
+                      </label>
+                      <select
+                        required
+                        value={productForm.category}
+                        onChange={(e) => {
+                          const selectedCategoryId = e.target.value;
+                          const selectedCategory = categories.find(
+                            (cat) => cat._id === selectedCategoryId
+                          );
+                          setProductForm({
+                            ...productForm,
+                            category: selectedCategoryId,
+                            subCategory: "", // Reset subcategory when category changes
+                          });
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">Select a category</option>
+                        {categories.map((cat) => (
+                          <option key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Sub Category
+                      </label>
+                      {productForm.category ? (
+                        (() => {
                           const selectedCategory = categories.find(
                             (cat) => cat._id === productForm.category
                           );
                           const subcategories =
                             selectedCategory?.subcategories || [];
-                          return subcategories.length > 0
-                            ? `Select from ${subcategories.length} available subcategories`
-                            : "This category has no subcategories. You can enter one manually.";
-                        })()}
-                      </p>
-                    )}
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Other Category
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.otherCategory}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          otherCategory: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter other category if applicable"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Unit & Weight */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Unit & Weight</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Unit
-                    </label>
-                    <select
-                      value={productForm.unit}
-                      onChange={(e) =>
-                        setProductForm({ ...productForm, unit: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="piece">Piece</option>
-                      <option value="kg">Kg</option>
-                      <option value="grams">Grams</option>
-                      <option value="liter">Liter</option>
-                      <option value="ml">ML</option>
-                      <option value="box">Box</option>
-                      <option value="meter">Meter</option>
-                      <option value="tray">Tray</option>
-                      <option value="bottel">Bottel</option>
-                      <option value="jar">Jar</option>
-                      <option value="pkt">Pkt</option>
-                      <option value="roll">Roll</option>
-                      <option value="sheet">Sheet</option>
-                      <option value="pouch">Pouch</option>
-                      <option value="bowl">Bowl </option>
-                      <option value="cup">Cup</option>
-                      <option value="plate">Plate</option>
-                      <option value="spoon">Spoon</option>
-                      <option value="fork">Fork</option>
-                      <option value="knife">Knife</option>
-                      <option value="chopstick">Chopstick</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Weight
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.weight}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          weight: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter weight"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Capacity
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.capacity}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          capacity: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter capacity"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Size */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Size</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Height
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.size.height}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          size: { ...productForm.size, height: e.target.value },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter height"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Width
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.size.width}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          size: { ...productForm.size, width: e.target.value },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter width"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Base
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.size.base}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          size: { ...productForm.size, base: e.target.value },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter base"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tax Information */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Tax Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      HSN Code
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.hsnCode}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          hsnCode: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="Enter HSN code"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Images */}
-              <div className="border-b pb-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Product Images</h3>
-                  <button
-                    type="button"
-                    onClick={addImage}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    Add Image
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {productForm.images.length === 0 ? (
-                    <p className="text-sm text-gray-500 italic">
-                      No images added. Click "Add Image" to add image URLs.
-                    </p>
-                  ) : (
-                    productForm.images.map((image, index) => (
-                      <div
-                        key={index}
-                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <span className="text-sm font-medium text-gray-700">
-                            Image {index + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Image URL *
-                            </label>
-                            <input
-                              type="url"
-                              required
-                              value={image.url}
+                          return subcategories.length > 0 ? (
+                            <select
+                              value={productForm.subCategory}
                               onChange={(e) =>
-                                updateImage(index, "url", e.target.value)
+                                setProductForm({
+                                  ...productForm,
+                                  subCategory: e.target.value,
+                                })
                               }
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                              placeholder="https://example.com/image.jpg"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Alt Text (Optional)
-                            </label>
+                            >
+                              <option value="">Select a subcategory</option>
+                              {subcategories.map((subcat, index) => (
+                                <option key={index} value={subcat}>
+                                  {subcat}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
                             <input
                               type="text"
-                              value={image.alt}
+                              value={productForm.subCategory}
                               onChange={(e) =>
-                                updateImage(index, "alt", e.target.value)
+                                setProductForm({
+                                  ...productForm,
+                                  subCategory: e.target.value,
+                                })
                               }
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                              placeholder="Image description"
+                              placeholder="No subcategories available. Enter manually if needed."
                             />
+                          );
+                        })()
+                      ) : (
+                        <input
+                          type="text"
+                          value={productForm.subCategory}
+                          onChange={(e) =>
+                            setProductForm({
+                              ...productForm,
+                              subCategory: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-100"
+                          placeholder="Please select a category first"
+                          disabled
+                        />
+                      )}
+                      {productForm.category && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {(() => {
+                            const selectedCategory = categories.find(
+                              (cat) => cat._id === productForm.category
+                            );
+                            const subcategories =
+                              selectedCategory?.subcategories || [];
+                            return subcategories.length > 0
+                              ? `Select from ${subcategories.length} available subcategories`
+                              : "This category has no subcategories. You can enter one manually.";
+                          })()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Other Category
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.otherCategory}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            otherCategory: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter other category if applicable"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Unit & Weight */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Unit & Weight</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Unit
+                      </label>
+                      <select
+                        value={productForm.unit}
+                        onChange={(e) =>
+                          setProductForm({ ...productForm, unit: e.target.value })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="piece">Piece</option>
+                        <option value="kg">Kg</option>
+                        <option value="grams">Grams</option>
+                        <option value="liter">Liter</option>
+                        <option value="ml">ML</option>
+                        <option value="box">Box</option>
+                        <option value="meter">Meter</option>
+                        <option value="tray">Tray</option>
+                        <option value="bottel">Bottel</option>
+                        <option value="jar">Jar</option>
+                        <option value="pkt">Pkt</option>
+                        <option value="roll">Roll</option>
+                        <option value="sheet">Sheet</option>
+                        <option value="pouch">Pouch</option>
+                        <option value="bowl">Bowl </option>
+                        <option value="cup">Cup</option>
+                        <option value="plate">Plate</option>
+                        <option value="spoon">Spoon</option>
+                        <option value="fork">Fork</option>
+                        <option value="knife">Knife</option>
+                        <option value="chopstick">Chopstick</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Weight
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.weight}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            weight: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter weight"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Capacity
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.capacity}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            capacity: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter capacity"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Size */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Size</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Height
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.size.height}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            size: { ...productForm.size, height: e.target.value },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter height"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Width
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.size.width}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            size: { ...productForm.size, width: e.target.value },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter width"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Base
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.size.base}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            size: { ...productForm.size, base: e.target.value },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter base"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tax Information */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Tax Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        HSN Code
+                      </label>
+                      <input
+                        type="text"
+                        value={productForm.hsnCode}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            hsnCode: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter HSN code"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Images */}
+                <div className="border-b pb-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Product Images</h3>
+                    <button
+                      type="button"
+                      onClick={addImage}
+                      className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      Add Image
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {productForm.images.length === 0 ? (
+                      <p className="text-sm text-gray-500 italic">
+                        No images added. Click "Add Image" to add image URLs.
+                      </p>
+                    ) : (
+                      productForm.images.map((image, index) => (
+                        <div
+                          key={index}
+                          className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                        >
+                          <div className="flex justify-between items-start mb-3">
+                            <span className="text-sm font-medium text-gray-700">
+                              Image {index + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            >
+                              Remove
+                            </button>
                           </div>
-                        </div>
-                        {image.url && (
-                          <div className="mt-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Preview
-                            </label>
-                            <div className="border border-gray-200 rounded-lg p-2 bg-white">
-                              <img
-                                src={image.url}
-                                alt={image.alt || "Product image"}
-                                className="max-w-full h-32 object-contain mx-auto"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src =
-                                    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f3f4f6" width="200" height="200"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="14" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EFailed to load%3C/text%3E%3C/svg%3E';
-                                }}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Image URL *
+                              </label>
+                              <input
+                                type="url"
+                                required
+                                value={image.url}
+                                onChange={(e) =>
+                                  updateImage(index, "url", e.target.value)
+                                }
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                placeholder="https://example.com/image.jpg"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Alt Text (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={image.alt}
+                                onChange={(e) =>
+                                  updateImage(index, "alt", e.target.value)
+                                }
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                placeholder="Image description"
                               />
                             </div>
                           </div>
-                        )}
-                      </div>
-                    ))
+                          {image.url && (
+                            <div className="mt-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Preview
+                              </label>
+                              <div className="border border-gray-200 rounded-lg p-2 bg-white">
+                                <img
+                                  src={image.url}
+                                  alt={image.alt || "Product image"}
+                                  className="max-w-full h-32 object-contain mx-auto"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src =
+                                      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f3f4f6" width="200" height="200"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="14" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EFailed to load%3C/text%3E%3C/svg%3E';
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Flags & Status */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Flags & Status</h3>
+                  <div className="flex flex-wrap gap-6">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={productForm.isReturnable}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            isReturnable: e.target.checked,
+                          })
+                        }
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Is Returnable</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={productForm.showOnSpecialPage}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            showOnSpecialPage: e.target.checked,
+                          })
+                        }
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Show on Special Page
+                      </span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={productForm.status}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            status: e.target.checked,
+                          })
+                        }
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Active Status</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
+                  >
+                    {loading
+                      ? editingProductId
+                        ? "Updating..."
+                        : "Creating..."
+                      : editingProductId
+                        ? "Update Product"
+                        : "Create Product"}
+                  </button>
+                  {editingProductId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProductId(null);
+                        setProductForm({
+                          productName: "",
+                          searchTags: "",
+                          shortDescription: "",
+                          category: "",
+                          subCategory: "",
+                          otherCategory: "",
+                          unit: "piece",
+                          weight: "",
+                          capacity: "",
+                          size: {
+                            height: "",
+                            width: "",
+                            base: "",
+                          },
+                          hsnCode: "",
+                          isReturnable: false,
+                          showOnSpecialPage: false,
+                          status: true,
+                          images: [],
+                        });
+                        setError("");
+                        setSuccess("");
+                      }}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                    >
+                      Cancel Edit
+                    </button>
                   )}
                 </div>
-              </div>
-
-              {/* Flags & Status */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Flags & Status</h3>
-                <div className="flex flex-wrap gap-6">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.isReturnable}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          isReturnable: e.target.checked,
-                        })
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Is Returnable</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.showOnSpecialPage}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          showOnSpecialPage: e.target.checked,
-                        })
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Show on Special Page
-                    </span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={productForm.status}
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          status: e.target.checked,
-                        })
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Active Status</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
-                >
-                  {loading
-                    ? editingProductId
-                      ? "Updating..."
-                      : "Creating..."
-                    : editingProductId
-                    ? "Update Product"
-                    : "Create Product"}
-                </button>
-                {editingProductId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingProductId(null);
-                      setProductForm({
-                        productName: "",
-                        searchTags: "",
-                        shortDescription: "",
-                        category: "",
-                        subCategory: "",
-                        otherCategory: "",
-                        unit: "piece",
-                        weight: "",
-                        capacity: "",
-                        size: {
-                          height: "",
-                          width: "",
-                          base: "",
-                        },
-                        hsnCode: "",
-                        isReturnable: false,
-                        showOnSpecialPage: false,
-                        status: true,
-                        images: [],
-                      });
-                      setError("");
-                      setSuccess("");
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-                  >
-                    Cancel Edit
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-        )}
+              </form>
+            </div>
+          )}
 
           {/* Add City Tab */}
           {activeTab === "add-city" && (
@@ -1694,207 +1741,207 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
-        {/* Add Category Tab - OLD */}
-        {false && activeTab === "add-category-old" && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-6">
-              {editingCategoryId ? "Edit Category" : "Add New Category"}
-            </h2>
-            <form onSubmit={handleCategorySubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={categoryForm.name}
-                  onChange={(e) => handleCategoryNameChange(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="e.g., Electronics"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Slug
-                </label>
-                <input
-                  type="text"
-                  value={categoryForm.slug}
-                  onChange={(e) =>
-                    setCategoryForm({ ...categoryForm, slug: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Auto-generated from name (e.g., electronics)"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Slug is auto-generated from name. You can edit it manually if
-                  needed.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Image URL
-                </label>
-                <input
-                  type="url"
-                  value={categoryForm.image}
-                  onChange={(e) =>
-                    setCategoryForm({ ...categoryForm, image: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={categoryForm.description}
-                  onChange={(e) =>
-                    setCategoryForm({
-                      ...categoryForm,
-                      description: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  rows="3"
-                  placeholder="Enter category description..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Subcategories
-                </label>
-                <div className="space-y-2">
-                  {categoryForm.subcategories.map((subcat, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={subcat}
-                        onChange={(e) => {
-                          const newSubcategories = [...categoryForm.subcategories];
-                          newSubcategories[index] = e.target.value;
-                          setCategoryForm({
-                            ...categoryForm,
-                            subcategories: newSubcategories,
-                          });
-                        }}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder="Enter subcategory name"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newSubcategories = categoryForm.subcategories.filter(
-                            (_, i) => i !== index
-                          );
-                          setCategoryForm({
-                            ...categoryForm,
-                            subcategories: newSubcategories,
-                          });
-                        }}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCategoryForm({
-                        ...categoryForm,
-                        subcategories: [...categoryForm.subcategories, ""],
-                      });
-                    }}
-                    className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                  >
-                    + Add Subcategory
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Add subcategories for this category (optional).
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Priority
-                </label>
-                <input
-                  type="number"
-                  value={categoryForm.priority}
-                  onChange={(e) =>
-                    setCategoryForm({
-                      ...categoryForm,
-                      priority: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                  min="0"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Higher numbers appear first. Default is 0.
-                </p>
-              </div>
-              <div className="flex items-center">
-                <label className="flex items-center">
+          {/* Add Category Tab - OLD */}
+          {false && activeTab === "add-category-old" && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-6">
+                {editingCategoryId ? "Edit Category" : "Add New Category"}
+              </h2>
+              <form onSubmit={handleCategorySubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category Name *
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={categoryForm.isActive}
+                    type="text"
+                    required
+                    value={categoryForm.name}
+                    onChange={(e) => handleCategoryNameChange(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="e.g., Electronics"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Slug
+                  </label>
+                  <input
+                    type="text"
+                    value={categoryForm.slug}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, slug: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Auto-generated from name (e.g., electronics)"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Slug is auto-generated from name. You can edit it manually if
+                    needed.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={categoryForm.image}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, image: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={categoryForm.description}
                     onChange={(e) =>
                       setCategoryForm({
                         ...categoryForm,
-                        isActive: e.target.checked,
+                        description: e.target.value,
                       })
                     }
-                    className="mr-2"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    rows="3"
+                    placeholder="Enter category description..."
                   />
-                  <span className="text-sm text-gray-700">Active</span>
-                </label>
-              </div>
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
-                >
-                  {loading
-                    ? editingCategoryId
-                      ? "Updating..."
-                      : "Creating..."
-                    : editingCategoryId
-                    ? "Update Category"
-                    : "Create Category"}
-                </button>
-                {editingCategoryId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingCategoryId(null);
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Subcategories
+                  </label>
+                  <div className="space-y-2">
+                    {categoryForm.subcategories.map((subcat, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={subcat}
+                          onChange={(e) => {
+                            const newSubcategories = [...categoryForm.subcategories];
+                            newSubcategories[index] = e.target.value;
+                            setCategoryForm({
+                              ...categoryForm,
+                              subcategories: newSubcategories,
+                            });
+                          }}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="Enter subcategory name"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSubcategories = categoryForm.subcategories.filter(
+                              (_, i) => i !== index
+                            );
+                            setCategoryForm({
+                              ...categoryForm,
+                              subcategories: newSubcategories,
+                            });
+                          }}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategoryForm({
+                          ...categoryForm,
+                          subcategories: [...categoryForm.subcategories, ""],
+                        });
+                      }}
+                      className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    >
+                      + Add Subcategory
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Add subcategories for this category (optional).
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <input
+                    type="number"
+                    value={categoryForm.priority}
+                    onChange={(e) =>
                       setCategoryForm({
-                        name: "",
-                        slug: "",
-                        image: "",
-                        description: "",
-                        subcategories: [],
-                        isActive: true,
-                        priority: 0,
-                      });
-                      setError("");
-                      setSuccess("");
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                        ...categoryForm,
+                        priority: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="0"
+                    min="0"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Higher numbers appear first. Default is 0.
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={categoryForm.isActive}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          isActive: e.target.checked,
+                        })
+                      }
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Active</span>
+                  </label>
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
                   >
-                    Cancel Edit
+                    {loading
+                      ? editingCategoryId
+                        ? "Updating..."
+                        : "Creating..."
+                      : editingCategoryId
+                        ? "Update Category"
+                        : "Create Category"}
                   </button>
-                )}
-              </div>
-            </form>
-          </div>
-        )}
+                  {editingCategoryId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingCategoryId(null);
+                        setCategoryForm({
+                          name: "",
+                          slug: "",
+                          image: "",
+                          description: "",
+                          subcategories: [],
+                          isActive: true,
+                          priority: 0,
+                        });
+                        setError("");
+                        setSuccess("");
+                      }}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          )}
 
           {/* Add Vendor Tab */}
           {activeTab === "add-vendor" && (
@@ -1909,528 +1956,528 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
-        {/* Add Vendor Tab - OLD */}
-        {false && activeTab === "add-vendor-old" && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-6">Add New Vendor</h2>
-            <form onSubmit={handleVendorSubmit} className="space-y-6">
-              {/* Basic Information */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">
-                  Basic Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Business Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={vendorForm.businessName}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          businessName: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+          {/* Add Vendor Tab - OLD */}
+          {false && activeTab === "add-vendor-old" && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-6">Add New Vendor</h2>
+              <form onSubmit={handleVendorSubmit} className="space-y-6">
+                {/* Basic Information */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Business Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={vendorForm.businessName}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            businessName: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Legal Name
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.legalName}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            legalName: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vendor Type
+                      </label>
+                      <select
+                        value={vendorForm.vendorType}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            vendorType: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="individual">Individual</option>
+                        <option value="shop">Shop</option>
+                        <option value="wholesaler">Wholesaler</option>
+                        <option value="manufacturer">Manufacturer</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Commission Percentage
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={vendorForm.commissionPercentage}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            commissionPercentage: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Legal Name
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.legalName}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          legalName: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                </div>
+
+                {/* Authentication */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Authentication</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={vendorForm.email}
+                        onChange={(e) =>
+                          setVendorForm({ ...vendorForm, email: e.target.value })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={vendorForm.phone}
+                        onChange={(e) =>
+                          setVendorForm({ ...vendorForm, phone: e.target.value })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Password *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={vendorForm.password}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            password: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
+                </div>
+
+                {/* Contact Person */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Contact Person</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.contactPerson.name}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            contactPerson: {
+                              ...vendorForm.contactPerson,
+                              name: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={vendorForm.contactPerson.phone}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            contactPerson: {
+                              ...vendorForm.contactPerson,
+                              phone: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={vendorForm.contactPerson.email}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            contactPerson: {
+                              ...vendorForm.contactPerson,
+                              email: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Address */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Address</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address Line 1
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.address.line1}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            address: {
+                              ...vendorForm.address,
+                              line1: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address Line 2
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.address.line2}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            address: {
+                              ...vendorForm.address,
+                              line2: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.address.city}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            address: {
+                              ...vendorForm.address,
+                              city: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        State
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.address.state}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            address: {
+                              ...vendorForm.address,
+                              state: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Pincode
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.address.pincode}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            address: {
+                              ...vendorForm.address,
+                              pincode: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tax & KYC */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Tax & KYC</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        GST Number
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.gstNumber}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            gstNumber: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        PAN Number
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.panNumber}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            panNumber: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        KYC Status
+                      </label>
+                      <select
+                        value={vendorForm.kycStatus}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            kycStatus: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="verified">Verified</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service Cities */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Service Cities</h3>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Vendor Type
+                      Select Service Cities
                     </label>
                     <select
-                      value={vendorForm.vendorType}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          vendorType: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      multiple
+                      value={vendorForm.serviceCities}
+                      onChange={(e) => {
+                        const selected = Array.from(
+                          e.target.selectedOptions,
+                          (option) => option.value
+                        );
+                        setVendorForm({ ...vendorForm, serviceCities: selected });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[100px]"
+                      size="5"
                     >
-                      <option value="individual">Individual</option>
-                      <option value="shop">Shop</option>
-                      <option value="wholesaler">Wholesaler</option>
-                      <option value="manufacturer">Manufacturer</option>
+                      {cities.map((city) => (
+                        <option key={city._id} value={city._id}>
+                          {city.displayName || city.name}
+                        </option>
+                      ))}
                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Commission Percentage
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={vendorForm.commissionPercentage}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          commissionPercentage: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="0"
-                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Hold Ctrl (Windows) or Cmd (Mac) to select multiple cities
+                    </p>
                   </div>
                 </div>
-              </div>
 
-              {/* Authentication */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Authentication</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={vendorForm.email}
-                      onChange={(e) =>
-                        setVendorForm({ ...vendorForm, email: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={vendorForm.phone}
-                      onChange={(e) =>
-                        setVendorForm({ ...vendorForm, phone: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Password *
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={vendorForm.password}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          password: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                {/* Bank Details */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Bank Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Account Holder Name
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.bankDetails.accountHolderName}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            bankDetails: {
+                              ...vendorForm.bankDetails,
+                              accountHolderName: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.bankDetails.accountNumber}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            bankDetails: {
+                              ...vendorForm.bankDetails,
+                              accountNumber: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        IFSC Code
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.bankDetails.ifsc}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            bankDetails: {
+                              ...vendorForm.bankDetails,
+                              ifsc: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        value={vendorForm.bankDetails.bankName}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            bankDetails: {
+                              ...vendorForm.bankDetails,
+                              bankName: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Contact Person */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Contact Person</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
+                {/* Status Flags */}
+                <div className="border-b pb-4">
+                  <h3 className="text-lg font-semibold mb-4">Status Flags</h3>
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={vendorForm.isActive}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            isActive: e.target.checked,
+                          })
+                        }
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Active</span>
                     </label>
-                    <input
-                      type="text"
-                      value={vendorForm.contactPerson.name}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          contactPerson: {
-                            ...vendorForm.contactPerson,
-                            name: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={vendorForm.isApproved}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            isApproved: e.target.checked,
+                          })
+                        }
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Approved</span>
                     </label>
-                    <input
-                      type="tel"
-                      value={vendorForm.contactPerson.phone}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          contactPerson: {
-                            ...vendorForm.contactPerson,
-                            phone: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={vendorForm.contactPerson.email}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          contactPerson: {
-                            ...vendorForm.contactPerson,
-                            email: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
                   </div>
                 </div>
-              </div>
 
-              {/* Address */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Address</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Address Line 1
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.address.line1}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          address: {
-                            ...vendorForm.address,
-                            line1: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Address Line 2
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.address.line2}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          address: {
-                            ...vendorForm.address,
-                            line2: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.address.city}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          address: {
-                            ...vendorForm.address,
-                            city: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      State
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.address.state}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          address: {
-                            ...vendorForm.address,
-                            state: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pincode
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.address.pincode}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          address: {
-                            ...vendorForm.address,
-                            pincode: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tax & KYC */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Tax & KYC</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      GST Number
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.gstNumber}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          gstNumber: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      PAN Number
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.panNumber}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          panNumber: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      KYC Status
-                    </label>
-                    <select
-                      value={vendorForm.kycStatus}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          kycStatus: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="verified">Verified</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Service Cities */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Service Cities</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Service Cities
-                  </label>
-                  <select
-                    multiple
-                    value={vendorForm.serviceCities}
-                    onChange={(e) => {
-                      const selected = Array.from(
-                        e.target.selectedOptions,
-                        (option) => option.value
-                      );
-                      setVendorForm({ ...vendorForm, serviceCities: selected });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[100px]"
-                    size="5"
-                  >
-                    {cities.map((city) => (
-                      <option key={city._id} value={city._id}>
-                        {city.displayName || city.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Hold Ctrl (Windows) or Cmd (Mac) to select multiple cities
-                  </p>
-                </div>
-              </div>
-
-              {/* Bank Details */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Bank Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Account Holder Name
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.bankDetails.accountHolderName}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          bankDetails: {
-                            ...vendorForm.bankDetails,
-                            accountHolderName: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Account Number
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.bankDetails.accountNumber}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          bankDetails: {
-                            ...vendorForm.bankDetails,
-                            accountNumber: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      IFSC Code
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.bankDetails.ifsc}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          bankDetails: {
-                            ...vendorForm.bankDetails,
-                            ifsc: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Bank Name
-                    </label>
-                    <input
-                      type="text"
-                      value={vendorForm.bankDetails.bankName}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          bankDetails: {
-                            ...vendorForm.bankDetails,
-                            bankName: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Flags */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold mb-4">Status Flags</h3>
-                <div className="flex items-center space-x-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={vendorForm.isActive}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          isActive: e.target.checked,
-                        })
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Active</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={vendorForm.isApproved}
-                      onChange={(e) =>
-                        setVendorForm({
-                          ...vendorForm,
-                          isApproved: e.target.checked,
-                        })
-                      }
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Approved</span>
-                  </label>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                {loading ? "Creating..." : "Create Vendor"}
-              </button>
-            </form>
-          </div>
-        )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {loading ? "Creating..." : "Create Vendor"}
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* All Products Tab */}
           {activeTab === "products" && (
@@ -2487,11 +2534,10 @@ const SuperAdminDashboard = () => {
                             </p>
                           )}
                           <div className="flex items-center justify-between mt-3">
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              product.isActive
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
+                            <span className={`text-xs px-2 py-1 rounded-full ${product.isActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                              }`}>
                               {product.isActive ? 'Active' : 'Inactive'}
                             </span>
                             <button
@@ -2510,171 +2556,169 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
-        {/* All Products Tab - OLD */}
-        {false && activeTab === "products-old" && (() => {
-          const totalPages = getTotalPages(products, itemsPerPage);
-          const paginatedProducts = getPaginatedData(products, productsPage, itemsPerPage);
-          
-          return (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">All Products</h2>
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Image
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedProducts.map((product) => (
-                    <tr key={product._id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {product.img ? (
-                          <img
-                            src={product.img}
-                            alt={product.productName || "Product"}
-                            className="h-12 w-12 object-contain p-1 bg-white rounded"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-gray-400 text-xs">
-                              No Image
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {product.productName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {product.category?.name || product.category || "N/A"}
-                        </div>
-                        {product.subCategory && (
-                          <div className="text-xs text-gray-400">
-                            {product.subCategory}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            product.status
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {product.status ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleEdit(product._id)}
-                            className="text-blue-600 hover:text-blue-900 font-medium"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDelete("products", product._id)
-                            }
-                            className="text-red-600 hover:text-red-900 font-medium"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {paginatedProducts.length === 0 && (
-                <div className="p-6 text-center text-gray-500">
-                  No products found
+          {/* All Products Tab - OLD */}
+          {false && activeTab === "products-old" && (() => {
+            const totalPages = getTotalPages(products, itemsPerPage);
+            const paginatedProducts = getPaginatedData(products, productsPage, itemsPerPage);
+
+            return (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="p-6 border-b">
+                  <h2 className="text-xl font-bold">All Products</h2>
                 </div>
-              )}
-            </div>
-            {/* Pagination Controls */}
-            {products.length > 0 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Showing {(productsPage - 1) * itemsPerPage + 1} to{" "}
-                  {Math.min(productsPage * itemsPerPage, products.length)} of{" "}
-                  {products.length} products
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setProductsPage((prev) => Math.max(1, prev - 1))}
-                    disabled={productsPage === 1}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => {
-                        // Show first page, last page, current page, and pages around current
-                        return (
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= productsPage - 1 && page <= productsPage + 1)
-                        );
-                      })
-                      .map((page, index, array) => {
-                        // Add ellipsis if there's a gap
-                        const showEllipsisBefore = index > 0 && page - array[index - 1] > 1;
-                        return (
-                          <div key={page} className="flex items-center gap-1">
-                            {showEllipsisBefore && (
-                              <span className="px-2 text-gray-500">...</span>
+                <div className="overflow-x-auto scrollbar-hide">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Image
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Category
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedProducts.map((product) => (
+                        <tr key={product._id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {product.img ? (
+                              <img
+                                src={product.img}
+                                alt={product.productName || "Product"}
+                                className="h-12 w-12 object-contain p-1 bg-white rounded"
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
+                                <span className="text-gray-400 text-xs">
+                                  No Image
+                                </span>
+                              </div>
                             )}
-                            <button
-                              onClick={() => setProductsPage(page)}
-                              className={`px-3 py-2 text-sm border rounded-lg ${
-                                productsPage === page
-                                  ? "bg-purple-600 text-white border-purple-600"
-                                  : "border-gray-300 hover:bg-gray-50"
-                              }`}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {product.productName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500">
+                              {product.category?.name || product.category || "N/A"}
+                            </div>
+                            {product.subCategory && (
+                              <div className="text-xs text-gray-400">
+                                {product.subCategory}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${product.status
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                                }`}
                             >
-                              {page}
-                            </button>
-                          </div>
-                        );
-                      })}
-                  </div>
-                  <button
-                    onClick={() => setProductsPage((prev) => Math.min(totalPages, prev + 1))}
-                    disabled={productsPage === totalPages}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
+                              {product.status ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => handleEdit(product._id)}
+                                className="text-blue-600 hover:text-blue-900 font-medium"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDelete("products", product._id)
+                                }
+                                className="text-red-600 hover:text-red-900 font-medium"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {paginatedProducts.length === 0 && (
+                    <div className="p-6 text-center text-gray-500">
+                      No products found
+                    </div>
+                  )}
                 </div>
+                {/* Pagination Controls */}
+                {products.length > 0 && (
+                  <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing {(productsPage - 1) * itemsPerPage + 1} to{" "}
+                      {Math.min(productsPage * itemsPerPage, products.length)} of{" "}
+                      {products.length} products
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setProductsPage((prev) => Math.max(1, prev - 1))}
+                        disabled={productsPage === 1}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter((page) => {
+                            // Show first page, last page, current page, and pages around current
+                            return (
+                              page === 1 ||
+                              page === totalPages ||
+                              (page >= productsPage - 1 && page <= productsPage + 1)
+                            );
+                          })
+                          .map((page, index, array) => {
+                            // Add ellipsis if there's a gap
+                            const showEllipsisBefore = index > 0 && page - array[index - 1] > 1;
+                            return (
+                              <div key={page} className="flex items-center gap-1">
+                                {showEllipsisBefore && (
+                                  <span className="px-2 text-gray-500">...</span>
+                                )}
+                                <button
+                                  onClick={() => setProductsPage(page)}
+                                  className={`px-3 py-2 text-sm border rounded-lg ${productsPage === page
+                                    ? "bg-purple-600 text-white border-purple-600"
+                                    : "border-gray-300 hover:bg-gray-50"
+                                    }`}
+                                >
+                                  {page}
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
+                      <button
+                        onClick={() => setProductsPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={productsPage === totalPages}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          );
-        })()}
+            );
+          })()}
 
           {/* All Cities Tab */}
           {activeTab === "cities" && (
@@ -2683,70 +2727,69 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
-        {/* All Cities Tab - OLD */}
-        {false && activeTab === "cities-old" && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">All Cities</h2>
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      State
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {cities.map((city) => (
-                    <tr key={city._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {city.displayName || city.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {city.state}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            city.isActive
+          {/* All Cities Tab - OLD */}
+          {false && activeTab === "cities-old" && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-6 border-b">
+                <h2 className="text-xl font-bold">All Cities</h2>
+              </div>
+              <div className="overflow-x-auto scrollbar-hide">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        State
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {cities.map((city) => (
+                      <tr key={city._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {city.displayName || city.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {city.state}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full ${city.isActive
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {city.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => handleDelete("cities", city._id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {cities.length === 0 && (
-                <div className="p-6 text-center text-gray-500">
-                  No cities found
-                </div>
-              )}
+                              }`}
+                          >
+                            {city.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleDelete("cities", city._id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {cities.length === 0 && (
+                  <div className="p-6 text-center text-gray-500">
+                    No cities found
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
           {/* All Categories Tab */}
           {activeTab === "categories" && (
@@ -2759,80 +2802,79 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
-        {/* All Categories Tab - OLD */}
-        {false && activeTab === "categories-old" && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">All Categories</h2>
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Slug
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {categories.map((category) => (
-                    <tr key={category._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {category.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {category.slug}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            category.isActive
+          {/* All Categories Tab - OLD */}
+          {false && activeTab === "categories-old" && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-6 border-b">
+                <h2 className="text-xl font-bold">All Categories</h2>
+              </div>
+              <div className="overflow-x-auto scrollbar-hide">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Slug
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {categories.map((category) => (
+                      <tr key={category._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {category.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {category.slug}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full ${category.isActive
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {category.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleEditCategory(category._id)}
-                            className="text-blue-600 hover:text-blue-900 font-medium"
+                              }`}
                           >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDelete("categories", category._id)
-                            }
-                            className="text-red-600 hover:text-red-900 font-medium"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {categories.length === 0 && (
-                <div className="p-6 text-center text-gray-500">
-                  No categories found
-                </div>
-              )}
+                            {category.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => handleEditCategory(category._id)}
+                              className="text-blue-600 hover:text-blue-900 font-medium"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDelete("categories", category._id)
+                              }
+                              className="text-red-600 hover:text-red-900 font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {categories.length === 0 && (
+                  <div className="p-6 text-center text-gray-500">
+                    No categories found
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
           {/* Order Records Tab */}
           {activeTab === "order-records" && (
@@ -2965,8 +3007,8 @@ const SuperAdminDashboard = () => {
                     {loading
                       ? "Saving..."
                       : editingTestimonialId
-                      ? "Update Testimonial"
-                      : "Create Testimonial"}
+                        ? "Update Testimonial"
+                        : "Create Testimonial"}
                   </button>
                   {editingTestimonialId && (
                     <button
@@ -3036,11 +3078,10 @@ const SuperAdminDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              testimonial.status
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${testimonial.status
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                              }`}
                           >
                             {testimonial.status ? "Active" : "Inactive"}
                           </span>
@@ -3057,11 +3098,10 @@ const SuperAdminDashboard = () => {
                               onClick={() =>
                                 handleToggleTestimonialStatus(testimonial._id)
                               }
-                              className={`${
-                                testimonial.status
-                                  ? "text-orange-600 hover:text-orange-900"
-                                  : "text-green-600 hover:text-green-900"
-                              }`}
+                              className={`${testimonial.status
+                                ? "text-orange-600 hover:text-orange-900"
+                                : "text-green-600 hover:text-green-900"
+                                }`}
                             >
                               {testimonial.status ? "Deactivate" : "Activate"}
                             </button>
@@ -3090,73 +3130,72 @@ const SuperAdminDashboard = () => {
 
           {/* All Vendors Tab - OLD */}
           {false && activeTab === "vendors-old" && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">All Vendors</h2>
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Business Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Phone
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {vendors.map((vendor) => (
-                    <tr key={vendor._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {vendor.businessName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {vendor.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {vendor.phone}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            vendor.isActive
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-6 border-b">
+                <h2 className="text-xl font-bold">All Vendors</h2>
+              </div>
+              <div className="overflow-x-auto scrollbar-hide">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Business Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Phone
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {vendors.map((vendor) => (
+                      <tr key={vendor._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {vendor.businessName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {vendor.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {vendor.phone}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full ${vendor.isActive
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {vendor.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => handleDelete("vendors", vendor._id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {vendors.length === 0 && (
-                <div className="p-6 text-center text-gray-500">
-                  No vendors found
-                </div>
-              )}
+                              }`}
+                          >
+                            {vendor.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleDelete("vendors", vendor._id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {vendors.length === 0 && (
+                  <div className="p-6 text-center text-gray-500">
+                    No vendors found
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
           )}
         </main>
       </div>
