@@ -1,62 +1,87 @@
 const Contact = () => {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            Contact Us
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
-            We're here to help! Get in touch with us for any questions, support, or inquiries about RestroBazaar.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-gray-50 w-full overflow-x-hidden">
+      {/* Content Wrapper with Decorative Elements */}
+      <div className="relative w-full min-h-screen">
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 pointer-events-none z-0 w-full h-full">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-red-200 rounded-full opacity-40 blur-3xl"></div>
+          <div className="absolute top-1/2 right-20 w-96 h-96 bg-red-100 rounded-full opacity-50 blur-3xl"></div>
+          <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-red-100 rounded-full opacity-45 blur-3xl"></div>
+          <div className="absolute top-2/3 left-1/2 w-56 h-56 bg-red-100 rounded-full opacity-30 blur-3xl"></div>
+          <div className="absolute bottom-20 left-0 w-80 h-80 bg-red-100 rounded-full opacity-35 blur-3xl"></div>
+          <div className="absolute top-1/4 left-0 w-64 h-64 bg-red-100 rounded-full opacity-30 blur-3xl"></div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Contact Information */}
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">Get in Touch</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Have a question or need assistance? We'd love to hear from you.
+        {/* Hero Section */}
+        <section className="py-12 sm:py-16 lg:py-20 relative z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10 sm:mb-12">
+              <span className="inline-block px-3 py-1 text-xs font-semibold text-red-600 uppercase tracking-wider bg-red-50 rounded-full mb-4 font-heading">
+                Get in Touch
+              </span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-4">
+                Contact <span className="text-red-600">Us</span>
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
+                We're here to help! Get in touch with us for any questions, support, or inquiries about RestroBazaar.
               </p>
             </div>
 
-            {/* Email */}
-            <div className="bg-white rounded-lg shadow-md p-5 border border-gray-200">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="w-6 h-6 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 max-w-6xl mx-auto">
+              {/* Contact Information */}
+              <div className="space-y-6">
+                {/* Email */}
+                <div className="bg-gradient-to-br from-red-50 to-red-100/50 rounded-2xl shadow-lg p-6 sm:p-8 border border-red-100 relative overflow-hidden">
+                  {/* Decorative Background Pattern */}
+                  <div className="absolute inset-0 opacity-5">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-red-600 rounded-full -mr-24 -mt-24"></div>
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-red-600 rounded-full -ml-16 -mb-16"></div>
+                  </div>
+                  <div className="relative z-10">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-xl shadow-lg">
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="text-lg font-heading font-bold text-gray-900 mb-2">Email Us</h3>
+                        <p className="text-sm text-gray-600 mb-3 font-body">Send us an email anytime!</p>
+                        <a
+                          href="mailto:support@restrobazaar.in"
+                          className="text-red-600 hover:text-red-700 font-semibold transition-colors text-base"
+                        >
+                          support@restrobazaar.in
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-base font-semibold text-gray-900 mb-1">Email Us</h3>
-                  <p className="text-sm text-gray-600 mb-2">Send us an email anytime!</p>
-                  <a
-                    href="mailto:support@restrobazaar.in"
-                    className="text-red-600 hover:text-red-700 font-medium transition-colors text-sm"
-                  >
-                    support@restrobazaar.in
-                  </a>
-                </div>
-              </div>
-            </div>
 
-            {/* Social Media */}
-            <div className="bg-white rounded-lg shadow-md p-5 border border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900 mb-3">Follow Us</h3>
-              <p className="text-sm text-gray-600 mb-3">Stay connected with us on social media</p>
+                {/* Social Media */}
+                <div className="bg-gradient-to-br from-red-50 to-red-100/50 rounded-2xl shadow-lg p-6 sm:p-8 border border-red-100 relative overflow-hidden">
+                  {/* Decorative Background Pattern */}
+                  <div className="absolute inset-0 opacity-5">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-red-600 rounded-full -mr-24 -mt-24"></div>
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-red-600 rounded-full -ml-16 -mb-16"></div>
+                  </div>
+                  
+                  <div className="relative z-10">
+                    <h3 className="text-lg font-heading font-bold text-gray-900 mb-2">Follow Us</h3>
+                    <p className="text-sm text-gray-600 mb-4 font-body">Stay connected with us on social media</p>
               <div className="flex flex-wrap gap-4">
                 {/* Facebook */}
                 <a
@@ -122,81 +147,90 @@ const Contact = () => {
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                   </svg>
                 </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Form */}
+              <div className="bg-gradient-to-br from-red-50 to-red-100/50 rounded-2xl shadow-lg p-6 sm:p-8 lg:p-10 border border-red-100 relative overflow-hidden">
+                {/* Decorative Background Pattern */}
+                <div className="absolute inset-0 opacity-5">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full -mr-32 -mt-32"></div>
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-red-600 rounded-full -ml-24 -mb-24"></div>
+                </div>
+                
+                <div className="relative z-10">
+                  <h2 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 mb-6">Send us a Message</h2>
+                  <form className="space-y-5">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2 font-body">
+                        Your Name
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        required
+                        className="w-full px-4 py-3 text-base bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors font-body"
+                        placeholder="Enter your name"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2 font-body">
+                        Your Email
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        className="w-full px-4 py-3 text-base bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors font-body"
+                        placeholder="your.email@example.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="subject" className="block text-sm font-semibold text-gray-700 mb-2 font-body">
+                        Subject
+                      </label>
+                      <input
+                        type="text"
+                        id="subject"
+                        name="subject"
+                        required
+                        className="w-full px-4 py-3 text-base bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors font-body"
+                        placeholder="What is this regarding?"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2 font-body">
+                        Message
+                      </label>
+                      <textarea
+                        id="message"
+                        name="message"
+                        rows={4}
+                        required
+                        className="w-full px-4 py-3 text-base bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors resize-none font-body"
+                        placeholder="Tell us how we can help you..."
+                      ></textarea>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-3.5 px-6 rounded-xl font-heading font-bold hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl text-base"
+                    >
+                      Send Message
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
-
           </div>
-
-          {/* Contact Form */}
-          <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Send us a Message</h2>
-            <form className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-1">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors"
-                  placeholder="Enter your name"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-xs font-medium text-gray-700 mb-1">
-                  Your Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors"
-                  placeholder="your.email@example.com"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="subject" className="block text-xs font-medium text-gray-700 mb-1">
-                  Subject
-                </label>
-                <input
-                  type="text"
-                  id="subject"
-                  name="subject"
-                  required
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors"
-                  placeholder="What is this regarding?"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="message" className="block text-xs font-medium text-gray-700 mb-1">
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows={3}
-                  required
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors resize-none"
-                  placeholder="Tell us how we can help you..."
-                ></textarea>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-red-600 text-white py-2.5 px-6 rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg text-sm"
-              >
-                Send Message
-              </button>
-            </form>
-          </div>
-        </div>
-
+        </section>
       </div>
     </div>
   );
