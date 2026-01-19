@@ -12,7 +12,7 @@ const UsersTable = ({ users, loading }) => {
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b">
+        <div className="p-6 border-b bg-gray-100">
           <h2 className="text-xl font-bold">All Users</h2>
         </div>
         <div className="p-12 text-center">
@@ -25,32 +25,32 @@ const UsersTable = ({ users, loading }) => {
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="p-6 border-b">
+      <div className="p-6 border-b bg-gray-100">
         <h2 className="text-xl font-bold">All Users ({users.length})</h2>
       </div>
       <div className="overflow-x-auto scrollbar-hide">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 User ID
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Phone
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 City
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Address
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Registered Date
               </th>
             </tr>
@@ -64,7 +64,7 @@ const UsersTable = ({ users, loading }) => {
               </tr>
             ) : (
               users.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50">
+                <tr key={user._id} className="hover:bg-gray-50 even:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="text-sm text-gray-900 font-mono">{user._id || 'N/A'}</div>
                   </td>

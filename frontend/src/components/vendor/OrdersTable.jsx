@@ -637,27 +637,27 @@ const OrdersTable = ({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Order #
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Customer
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Items
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Amount
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Order Status
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Payment
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Date
               </th>
             </tr>
@@ -666,7 +666,7 @@ const OrdersTable = ({
             {orders.map((order) => (
               <tr 
                 key={order._id} 
-                className="hover:bg-gray-50 transition cursor-pointer"
+                className="hover:bg-gray-50 transition cursor-pointer even:bg-gray-50"
                 onClick={() => onOrderClick && onOrderClick(order._id)}
               >
                   <td className="px-4 py-3 whitespace-nowrap">

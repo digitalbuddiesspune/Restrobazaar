@@ -607,7 +607,7 @@ const VendorDashboard = () => {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>
               </div>
 
@@ -726,15 +726,15 @@ const VendorDashboard = () => {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50/50">
+                    <thead className="bg-gray-200">
                       <tr>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Order ID</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User ID</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Mobile</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Order ID</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">User ID</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Customer</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Mobile</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -746,7 +746,7 @@ const VendorDashboard = () => {
                         </tr>
                       ) : (
                         pendingOrders.map((order) => (
-                          <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => {
+                          <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors cursor-pointer even:bg-gray-50" onClick={() => {
                             setSelectedOrderId(order._id || order.order_id);
                             setActiveTab('orders');
                           }}>
@@ -796,7 +796,7 @@ const VendorDashboard = () => {
           {/* My Products Tab */}
           {activeTab === 'products' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">My Products</h1>
                 <button
                   onClick={() => {
@@ -999,7 +999,7 @@ const VendorDashboard = () => {
           {/* Product Catalog Tab */}
           {activeTab === 'catalog' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">Product Catalog</h1>
               </div>
 
@@ -1041,7 +1041,7 @@ const VendorDashboard = () => {
           {/* Add/Edit Product Tab */}
           {activeTab === 'add-product' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
                 </h1>
@@ -1071,7 +1071,7 @@ const VendorDashboard = () => {
           {/* Unpaid Customers Tab */}
           {activeTab === 'unpaid-customers' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">Unpaid Customers</h1>
               </div>
               <UnpaidCustomersTable
@@ -1087,7 +1087,7 @@ const VendorDashboard = () => {
 
           {activeTab === 'orders' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">Orders</h1>
                 {orderStats && (
                   <div className="flex items-center space-x-4 text-xs">
@@ -1152,7 +1152,7 @@ const VendorDashboard = () => {
           {/* Coupons Tab */}
           {activeTab === 'coupons' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">Coupons</h1>
                 {!editingCoupon && (
                   <button
@@ -1225,7 +1225,7 @@ const VendorDashboard = () => {
           {/* Add/Edit Coupon Tab */}
           {activeTab === 'add-coupon' && editingCoupon !== null && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-xl font-bold text-gray-900">
                   {editingCoupon._id ? 'Edit Coupon' : 'Create Coupon'}
                 </h1>

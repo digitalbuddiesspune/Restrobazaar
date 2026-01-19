@@ -1181,21 +1181,21 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-200">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">GST</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Item</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Quantity</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Unit Price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">GST</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Total</th>
                       {isEditMode && (
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Actions</th>
                       )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {(isEditMode ? editedItems : order.items || []).map((item, idx) => (
-                      <tr key={idx}>
+                      <tr key={idx} className="even:bg-gray-50">
                         <td className="px-4 py-3">
                           <div className="flex items-center space-x-3">
                             {item.productImage && (

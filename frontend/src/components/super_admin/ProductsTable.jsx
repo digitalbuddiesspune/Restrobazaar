@@ -21,33 +21,33 @@ const ProductsTable = ({
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="p-6 border-b">
+      <div className="p-6 border-b bg-gray-100">
         <h2 className="text-xl font-bold">All Products</h2>
       </div>
       <div className="overflow-x-auto scrollbar-hide">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                 Image
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                 Category
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedProducts.map((product) => (
-              <tr key={product._id}>
+              <tr key={product._id} className="even:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   {product.img ? (
                     <img
