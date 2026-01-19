@@ -1,4 +1,4 @@
-const CitiesTable = ({ cities, handleDelete }) => {
+const CitiesTable = ({ cities, handleDelete, handleToggleStatus }) => {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6 border-b">
@@ -32,23 +32,36 @@ const CitiesTable = ({ cities, handleDelete }) => {
                   {city.state}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
+                  <select
+                    value={city.isActive ? "active" : "inactive"}
+                    onChange={(e) => {
+                      if (handleToggleStatus) {
+                        const newStatus = e.target.value === "active";
+                        // Only toggle if status is actually changing
+                        if (newStatus !== city.isActive) {
+                          handleToggleStatus(city._id);
+                        }
+                      }
+                    }}
+                    className={`px-2 py-1 text-xs rounded border cursor-pointer ${
                       city.isActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
+                        ? "bg-green-100 text-green-800 border-green-300"
+                        : "bg-red-100 text-red-800 border-red-300"
                     }`}
                   >
-                    {city.isActive ? "Active" : "Inactive"}
-                  </span>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => handleDelete("cities", city._id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleDelete("cities", city._id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

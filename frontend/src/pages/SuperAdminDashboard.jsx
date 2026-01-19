@@ -1094,6 +1094,25 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const handleToggleCityStatus = async (cityId) => {
+    try {
+      const token = getToken();
+      const response = await axios.patch(`${baseUrl}/cities/${cityId}/toggle-active`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.success) {
+        setSuccess(response.data.message || "City status updated successfully!");
+        fetchCities();
+        fetchStats();
+      } else {
+        setError(response.data.message || "Failed to update city status");
+      }
+    } catch (err) {
+      console.error("Error toggling city status:", err);
+      setError(err.response?.data?.message || "Failed to update city status");
+    }
+  };
+
   // Testimonial handlers
   const handleTestimonialEdit = (testimonial) => {
     setEditingTestimonialId(testimonial._id);
@@ -2983,7 +3002,7 @@ const SuperAdminDashboard = () => {
           {/* All Cities Tab */}
           {activeTab === "cities" && (
             <div className="space-y-4">
-              <CitiesTable cities={cities} handleDelete={handleDelete} />
+              <CitiesTable cities={cities} handleDelete={handleDelete} handleToggleStatus={handleToggleCityStatus} />
             </div>
           )}
 
