@@ -72,6 +72,11 @@ const SuperAdminDashboard = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedGraphCity, setSelectedGraphCity] = useState('');
 
+  const [pendingOrders, setPendingOrders] = useState([]);
+  const [pendingStartDate, setPendingStartDate] = useState('');
+  const [pendingEndDate, setPendingEndDate] = useState('');
+  const [pendingCity, setPendingCity] = useState('');
+
   // Form states
   const [productForm, setProductForm] = useState({
     productName: "",
@@ -305,6 +310,12 @@ const SuperAdminDashboard = () => {
     fetchTodayOrdersStats({ cityId: '', vendorId: '' });
   };
 
+  const handleClearPendingFilters = () => {
+    setPendingCity('');
+    setPendingStartDate('');
+    setPendingEndDate('');
+  };
+
   // Fetch monthly orders
   const fetchMonthlyOrders = async (year, cityId) => {
     try {
@@ -355,6 +366,36 @@ const SuperAdminDashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching monthly orders:", err);
+    }
+  };
+
+  // Fetch pending orders
+  const fetchPendingOrders = async (cityId, startDate, endDate) => {
+    try {
+      const token = getToken();
+      if (!token) return;
+
+      const params = {
+        orderStatus: 'pending',
+        limit: 100, // Increased limit to see all pending orders
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      };
+
+      if (cityId) params.cityId = cityId;
+      if (startDate) params.startDate = new Date(startDate).toISOString();
+      if (endDate) params.endDate = new Date(new Date(endDate).setHours(23, 59, 59, 999)).toISOString();
+
+      const response = await axios.get(`${baseUrl}/admin/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: params,
+      });
+
+      if (response.data?.success) {
+        setPendingOrders(response.data.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching pending orders:", err);
     }
   };
 
@@ -449,6 +490,7 @@ const SuperAdminDashboard = () => {
       fetchTodayOrdersStats(orderFilters);
       // Fetch monthly orders for graph
       fetchMonthlyOrders(selectedYear, selectedGraphCity);
+      fetchPendingOrders(pendingCity, pendingStartDate, pendingEndDate);
     }
     if (activeTab === "products") {
       fetchProducts();
@@ -469,7 +511,7 @@ const SuperAdminDashboard = () => {
     if (activeTab === "testimonials") fetchTestimonials();
     if (activeTab === "add-testimonial") fetchTestimonials(); // Fetch testimonials for reference
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, selectedYear, selectedGraphCity]);
+  }, [activeTab, selectedYear, selectedGraphCity, pendingCity, pendingStartDate, pendingEndDate]);
 
   // Image management handlers
   const addImage = () => {
@@ -1139,6 +1181,14 @@ const SuperAdminDashboard = () => {
                 onYearChange={setSelectedYear}
                 selectedGraphCity={selectedGraphCity}
                 onGraphCityChange={setSelectedGraphCity}
+                pendingOrders={pendingOrders}
+                pendingStartDate={pendingStartDate}
+                setPendingStartDate={setPendingStartDate}
+                pendingEndDate={pendingEndDate}
+                setPendingEndDate={setPendingEndDate}
+                pendingCity={pendingCity}
+                setPendingCity={setPendingCity}
+                onClearPendingFilters={handleClearPendingFilters}
               />
             </div>
           )}

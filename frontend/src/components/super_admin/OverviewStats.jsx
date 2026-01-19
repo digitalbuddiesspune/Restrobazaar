@@ -11,8 +11,18 @@ const OverviewStats = ({
   monthlyOrdersData = [],
   selectedYear = new Date().getFullYear(),
   onYearChange = () => { },
+
   selectedGraphCity = '',
-  onGraphCityChange = () => { }
+  onGraphCityChange = () => { },
+
+  pendingOrders = [],
+  pendingStartDate = '',
+  setPendingStartDate = () => { },
+  pendingEndDate = '',
+  setPendingEndDate = () => { },
+  pendingCity = '',
+  setPendingCity = () => { },
+  onClearPendingFilters = () => { }
 }) => {
   return (
     <div className="space-y-6">
@@ -40,23 +50,6 @@ const OverviewStats = ({
                 {cities.map((city) => (
                   <option key={city._id} value={city._id}>
                     {city.displayName || city.name}{city.state ? `, ${city.state}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Vendor Filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-700 whitespace-nowrap">Vendor:</label>
-              <select
-                value={filters.vendorId || ''}
-                onChange={(e) => onFilterChange('vendorId', e.target.value)}
-                className="px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white min-w-[140px]"
-              >
-                <option value="">All Vendors</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor._id} value={vendor._id}>
-                    {vendor.businessName || vendor.legalName || vendor.email}
                   </option>
                 ))}
               </select>
@@ -254,6 +247,125 @@ const OverviewStats = ({
           selectedCity={selectedGraphCity}
           onCityChange={onGraphCityChange}
         />
+      </div>
+
+      {/* Pending Orders Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
+        <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-amber-50 rounded-lg">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-gray-800">Pending Orders</h2>
+            <span className="ml-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
+              {pendingOrders.length} New
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* City Filter */}
+            <select
+              value={pendingCity}
+              onChange={(e) => setPendingCity(e.target.value)}
+              className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer min-w-[120px]"
+            >
+              <option value="">All Cities</option>
+              {cities.map(city => (
+                <option key={city._id} value={city._id}>{city.name}</option>
+              ))}
+            </select>
+
+            {/* Date Filters */}
+            <input
+              type="date"
+              value={pendingStartDate}
+              onChange={(e) => setPendingStartDate(e.target.value)}
+              className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+              placeholder="Start Date"
+            />
+            <span className="text-gray-400">-</span>
+            <input
+              type="date"
+              value={pendingEndDate}
+              onChange={(e) => setPendingEndDate(e.target.value)}
+              className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+              placeholder="End Date"
+            />
+
+            {(pendingCity || pendingStartDate || pendingEndDate) && (
+              <button
+                onClick={onClearPendingFilters}
+                className="px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50/50">
+              <tr>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Order ID</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User ID</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Mobile</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {pendingOrders.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                    No pending orders found
+                  </td>
+                </tr>
+              ) : (
+                pendingOrders.map((order) => (
+                  <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">#{order.order_id || order._id?.substring(0, 8)}</span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-500">{order.userId?._id || 'N/A'}</span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs mr-3">
+                          {(order.Customer_Name || order.userId?.name || 'U').charAt(0)}
+                        </div>
+                        <div className="text-sm font-medium text-gray-900">{order.Customer_Name || order.userId?.name || 'Unknown'}</div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {order.Customer_Mobile_No || order.userId?.phone || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">₹{order.Net_total || order.totalAmount || 0}</span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(order.createdAt || order.orderDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        {order.Order_status || 'Pending'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
