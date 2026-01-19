@@ -1269,6 +1269,7 @@ const SuperAdminDashboard = () => {
               <OverviewStats
                 stats={stats}
                 todayOrdersStats={todayOrdersStats}
+                filters={orderFilters}
                 onFilterChange={handleFilterChange}
                 onResetFilters={handleResetFilters}
                 cities={cities}
