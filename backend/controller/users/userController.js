@@ -1,6 +1,7 @@
 import User from "../../models/users/user.js";
 import Cart from "../../models/users/cart.js";
 import Wishlist from "../../models/users/wishlist.js";
+import Address from "../../models/users/address.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendAndSaveOTP, verifyOTPFromDB } from "../../services/otpService.js";
@@ -21,13 +22,26 @@ export const getAllUsers = async (req, res) => {
     // Build query
     const query = {};
 
-    // Search by name, email, or phone
+    // Search by name, email, phone, or city
     if (search) {
+      // First, find addresses matching the city search
+      const matchingAddresses = await Address.find({
+        city: { $regex: search, $options: "i" }
+      }).select('userId');
+      
+      const cityUserIds = matchingAddresses.map(addr => addr.userId);
+      
+      // Build search query: name, email, phone OR city (via userIds from addresses)
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
         { phone: { $regex: search, $options: "i" } },
       ];
+      
+      // If city matches found, add userIds to search
+      if (cityUserIds.length > 0) {
+        query.$or.push({ _id: { $in: cityUserIds } });
+      }
     }
 
     // Pagination
@@ -49,12 +63,54 @@ export const getAllUsers = async (req, res) => {
       .skip(skip)
       .limit(limitNum);
 
+    // Get addresses for all users
+    const userIds = users.map(user => user._id);
+    const addresses = await Address.find({ userId: { $in: userIds } })
+      .sort({ isDefault: -1, createdAt: -1 }); // Default address first, then newest
+    
+    // Debug: Log addresses found
+    console.log(`Found ${addresses.length} addresses for ${userIds.length} users`);
+
+    // Create a map of userId to default address (or first address)
+    const addressMap = {};
+    addresses.forEach(address => {
+      // Handle both ObjectId and string userId - address.userId is ObjectId from schema
+      const userIdStr = address.userId ? address.userId.toString() : null;
+      if (userIdStr) {
+        // Prefer default address, otherwise use first one found
+        if (!addressMap[userIdStr]) {
+          addressMap[userIdStr] = address;
+        } else if (address.isDefault && !addressMap[userIdStr].isDefault) {
+          addressMap[userIdStr] = address;
+        }
+      }
+    });
+
+    // Add address and city to each user
+    const usersWithAddress = users.map(user => {
+      const userObj = user.toObject();
+      const userIdStr = user._id.toString();
+      const userAddress = addressMap[userIdStr];
+      if (userAddress && userAddress.addressLine1) {
+        const addressParts = [userAddress.addressLine1];
+        if (userAddress.addressLine2 && userAddress.addressLine2.trim()) {
+          addressParts.push(userAddress.addressLine2);
+        }
+        userObj.address = addressParts.join(', ');
+        userObj.city = userAddress.city || null;
+      } else {
+        userObj.address = null;
+        userObj.city = null;
+      }
+      return userObj;
+    });
+
     // Get total count
     const total = await User.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      data: users,
+      data: usersWithAddress,
       pagination: {
         page: pageNum,
         limit: limitNum,

@@ -37,6 +37,13 @@ const SuperAdminDashboard = () => {
     status: "",
   });
 
+  // User filters
+  const [userFilters, setUserFilters] = useState({
+    search: "",
+    sortBy: "createdAt",
+    sortOrder: "desc",
+  });
+
   // Pagination state
   const [productsPage, setProductsPage] = useState(1);
   const itemsPerPage = 10;
@@ -488,13 +495,26 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (filters = {}) => {
     try {
       setUsersLoading(true);
       const token = getToken();
+      const params = { limit: 10000 }; // Fetch all users
+      
+      // Add filter parameters
+      if (filters.search) {
+        params.search = filters.search;
+      }
+      if (filters.sortBy) {
+        params.sortBy = filters.sortBy;
+      }
+      if (filters.sortOrder) {
+        params.sortOrder = filters.sortOrder;
+      }
+      
       const res = await axios.get(`${baseUrl}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 10000 }, // Fetch all users
+        params,
       });
       setUsers(res.data?.data || []);
     } catch (err) {
@@ -530,7 +550,7 @@ const SuperAdminDashboard = () => {
     if (activeTab === "cities") fetchCities();
     if (activeTab === "categories") fetchCategories();
     if (activeTab === "vendors") fetchVendors();
-    if (activeTab === "users") fetchUsers();
+    if (activeTab === "users") fetchUsers(userFilters);
     if (activeTab === "add-product") fetchCategories(); // Fetch categories for dropdown
     if (activeTab === "add-city") fetchCities(); // Fetch cities for reference
     if (activeTab === "add-category") fetchCategories(); // Fetch categories for reference
@@ -547,6 +567,14 @@ const SuperAdminDashboard = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productFilters]);
+
+  // Refetch users when filters change
+  useEffect(() => {
+    if (activeTab === "users") {
+      fetchUsers(userFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userFilters]);
 
   // Get unique subcategories based on selected category
   const availableSubCategories = useMemo(() => {
@@ -3125,6 +3153,72 @@ const SuperAdminDashboard = () => {
           {/* All Users Tab */}
           {activeTab === "users" && (
             <div className="space-y-4">
+              {/* Filters Section */}
+              <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Search Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Search by Name, Mobile, or City
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Search by name, mobile number, or city..."
+                      value={userFilters.search}
+                      onChange={(e) => {
+                        setUserFilters({
+                          ...userFilters,
+                          search: e.target.value,
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Sort Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Sort By
+                    </label>
+                    <select
+                      value={`${userFilters.sortBy}-${userFilters.sortOrder}`}
+                      onChange={(e) => {
+                        const [sortBy, sortOrder] = e.target.value.split('-');
+                        setUserFilters({
+                          ...userFilters,
+                          sortBy,
+                          sortOrder,
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="name-asc">Ascending Order by Name</option>
+                      <option value="name-desc">Descending Order by Name</option>
+                      <option value="createdAt-desc">Newly Added</option>
+                      <option value="createdAt-asc">Old Added</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                {(userFilters.search || userFilters.sortBy !== "createdAt" || userFilters.sortOrder !== "desc") && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={() => {
+                        setUserFilters({
+                          search: "",
+                          sortBy: "createdAt",
+                          sortOrder: "desc",
+                        });
+                      }}
+                      className="px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <UsersTable users={users} loading={usersLoading} />
             </div>
           )}

@@ -33,6 +33,9 @@ const UsersTable = ({ users, loading }) => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User ID
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Name
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -42,6 +45,12 @@ const UsersTable = ({ users, loading }) => {
                 Phone
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                City
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Address
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Registered Date
               </th>
             </tr>
@@ -49,7 +58,7 @@ const UsersTable = ({ users, loading }) => {
           <tbody className="bg-white divide-y divide-gray-200">
             {users.length === 0 ? (
               <tr>
-                <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                   No users found
                 </td>
               </tr>
@@ -57,16 +66,27 @@ const UsersTable = ({ users, loading }) => {
               users.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{user.name || 'N/A'}</div>
+                    <div className="text-sm text-gray-900 font-mono">{user._id || 'N/A'}</div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{user.email || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">{user.name || 'N/A'}</div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{user.phone || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">{user.email || 'N/A'}</div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{formatDate(user.createdAt)}</div>
+                    <div className="text-sm text-gray-900">{user.phone || 'N/A'}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{user.city || 'N/A'}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-900 max-w-xs truncate" title={user.address || 'N/A'}>
+                      {user.address || 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{formatDate(user.createdAt)}</div>
                   </td>
                 </tr>
               ))
