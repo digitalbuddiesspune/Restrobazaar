@@ -24,12 +24,17 @@ const OrdersGraph = ({
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-lg mt-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h2 className="text-lg font-bold text-gray-800">Order Statistics {selectedYear}</h2>
-                    <p className="text-sm text-gray-400 mt-1">Monthly order volume overview - {selectedYear}</p>
-                </div>
+        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 p-6 rounded-2xl shadow-lg border border-gray-200/50 backdrop-blur-sm transition-all duration-300 hover:shadow-xl mt-8 relative overflow-hidden">
+            {/* Premium decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/20 to-indigo-100/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-indigo-100/20 to-purple-100/10 rounded-full blur-3xl -ml-24 -mb-24"></div>
+            
+            <div className="relative z-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800">Order Statistics {selectedYear}</h2>
+                        <p className="text-sm text-gray-500 mt-1">Monthly order volume overview - {selectedYear}</p>
+                    </div>
                 <div className="flex flex-wrap items-center gap-3">
                     {/* City Filter - Only show if cities are provided */}
                     {cities && cities.length > 0 && (
@@ -61,7 +66,8 @@ const OrdersGraph = ({
                     </div>
                 </div>
             </div>
-            <div className="h-[350px] w-full">
+            </div>
+            <div className="relative z-10 h-[350px] w-full bg-gradient-to-b from-white/50 via-transparent to-white/30 rounded-xl p-4 backdrop-blur-sm">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                         data={ordersData}
@@ -72,43 +78,54 @@ const OrdersGraph = ({
                             bottom: 0,
                         }}
                     >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <defs>
+                            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
+                                <stop offset="50%" stopColor="#4f46e5" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#4338ca" stopOpacity={1} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid 
+                            strokeDasharray="3 3" 
+                            stroke="#e2e8f0" 
+                            vertical={false}
+                            strokeOpacity={0.6}
+                        />
                         <XAxis
                             dataKey="name"
                             axisLine={false}
                             tickLine={false}
-                            tick={{ fill: '#334155', fontSize: 12, fontWeight: 600 }}
+                            tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }}
                             dy={10}
                         />
                         <YAxis
                             axisLine={false}
                             tickLine={false}
-                            tick={{ fill: '#334155', fontSize: 12, fontWeight: 600 }}
+                            tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }}
                             dx={-10}
                             ticks={yAxisTicks}
                             domain={yAxisDomain}
                         />
                         <Tooltip
-                            cursor={{ fill: '#f8fafc' }}
+                            cursor={{ fill: 'rgba(99, 102, 241, 0.1)', stroke: '#6366f1', strokeWidth: 1 }}
                             contentStyle={{
-                                backgroundColor: '#fff',
-                                border: 'none',
+                                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                                border: '1px solid rgba(99, 102, 241, 0.2)',
                                 borderRadius: '12px',
-                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                padding: '12px 16px'
+                                boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                padding: '12px 16px',
+                                backdropFilter: 'blur(10px)'
                             }}
                             itemStyle={{ color: '#1e293b', fontWeight: 600 }}
-                            labelStyle={{ color: '#64748b', marginBottom: '4px', fontSize: '12px' }}
+                            labelStyle={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: 500 }}
                         />
                         <Bar
                             dataKey="orders"
-                            fill="#3b82f6"
-                            radius={[6, 6, 0, 0]}
-                            barSize={40}
+                            fill="url(#barGradient)"
+                            radius={[8, 8, 0, 0]}
+                            barSize={42}
                             animationDuration={1500}
-                        >
-                            {/* Optional: Add gradient or custom shape if needed, but solid color is clean */}
-                        </Bar>
+                        />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
