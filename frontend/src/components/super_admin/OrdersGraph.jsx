@@ -9,7 +9,16 @@ import {
     ResponsiveContainer
 } from 'recharts';
 
-const OrdersGraph = ({ ordersData, selectedYear, onYearChange, cities = [], selectedCity, onCityChange }) => {
+const OrdersGraph = ({ 
+    ordersData, 
+    selectedYear, 
+    onYearChange, 
+    cities = [], 
+    selectedCity, 
+    onCityChange,
+    yAxisTicks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    yAxisDomain = [0, 100]
+}) => {
     // Generate last 5 years
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -22,17 +31,19 @@ const OrdersGraph = ({ ordersData, selectedYear, onYearChange, cities = [], sele
                     <p className="text-sm text-gray-400 mt-1">Monthly order volume overview - {selectedYear}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* City Filter */}
-                    <select
-                        value={selectedCity}
-                        onChange={(e) => onCityChange(e.target.value)}
-                        className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer min-w-[120px]"
-                    >
-                        <option value="">All Cities</option>
-                        {cities.map(city => (
-                            <option key={city._id} value={city._id}>{city.name}</option>
-                        ))}
-                    </select>
+                    {/* City Filter - Only show if cities are provided */}
+                    {cities && cities.length > 0 && (
+                        <select
+                            value={selectedCity}
+                            onChange={(e) => onCityChange(e.target.value)}
+                            className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer min-w-[120px]"
+                        >
+                            <option value="">All Cities</option>
+                            {cities.map(city => (
+                                <option key={city._id} value={city._id}>{city.name}</option>
+                            ))}
+                        </select>
+                    )}
 
                     {/* Year Filter */}
                     <select
@@ -74,8 +85,8 @@ const OrdersGraph = ({ ordersData, selectedYear, onYearChange, cities = [], sele
                             tickLine={false}
                             tick={{ fill: '#334155', fontSize: 12, fontWeight: 600 }}
                             dx={-10}
-                            ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                            domain={[0, 100]}
+                            ticks={yAxisTicks}
+                            domain={yAxisDomain}
                         />
                         <Tooltip
                             cursor={{ fill: '#f8fafc' }}

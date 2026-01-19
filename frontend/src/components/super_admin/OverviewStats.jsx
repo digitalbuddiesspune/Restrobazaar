@@ -258,7 +258,12 @@ const OverviewStats = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold text-gray-800">Pending Orders</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-800">Pending Orders</h2>
+              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">
+                {pendingOrders.length}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto mt-4 md:mt-0">

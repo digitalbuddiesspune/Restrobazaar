@@ -15,6 +15,7 @@ import CouponsTable from '../components/vendor/CouponsTable';
 import UserForm from '../components/vendor/UserForm';
 import CreateOrder from '../components/vendor/CreateOrder';
 import UnpaidCustomersTable from '../components/vendor/UnpaidCustomersTable';
+import OrdersGraph from '../components/super_admin/OrdersGraph';
 import {
   useMyVendorProducts,
   useGlobalProducts,
@@ -29,6 +30,7 @@ import {
 } from '../hooks/useVendorQueries';
 import { useCategories } from '../hooks/useApiQueries';
 import { couponAPI } from '../utils/api';
+import { orderService } from '../services/vendorService';
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -45,6 +47,15 @@ const VendorDashboard = () => {
   const [coupons, setCoupons] = useState([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
   const itemsPerPage = 10;
+
+  // Graph state for monthly orders
+  const [monthlyOrdersData, setMonthlyOrdersData] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Pending Orders state
+  const [pendingOrders, setPendingOrders] = useState([]);
+  const [pendingStartDate, setPendingStartDate] = useState('');
+  const [pendingEndDate, setPendingEndDate] = useState('');
 
   // Filter and Sort states for My Products
   const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
@@ -485,6 +496,91 @@ const VendorDashboard = () => {
     }
   }, [activeTab]);
 
+  // Fetch monthly orders for graph
+  const fetchMonthlyOrders = async (year) => {
+    try {
+      const targetYear = year || selectedYear;
+      const startOfYear = new Date(targetYear, 0, 1).toISOString();
+      const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59, 999).toISOString();
+
+      const response = await orderService.getVendorOrders({
+        startDate: startOfYear,
+        endDate: endOfYear,
+        limit: 20000,
+      });
+
+      if (response?.success) {
+        const orders = response.data || [];
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // Initialize with 0
+        const monthlyData = monthNames.map(name => ({ name, orders: 0 }));
+
+        orders.forEach(order => {
+          const orderDate = new Date(order.createdAt || order.order_date_and_time);
+
+          // Verify year
+          const isCorrectYear = !isNaN(orderDate) && orderDate.getFullYear() === targetYear;
+
+          if (isCorrectYear) {
+            monthlyData[orderDate.getMonth()].orders += 1;
+          }
+        });
+
+        setMonthlyOrdersData(monthlyData);
+      }
+    } catch (err) {
+      console.error("Error fetching monthly orders:", err);
+      setMonthlyOrdersData([]);
+    }
+  };
+
+  // Fetch monthly orders when year changes or overview tab is active
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      fetchMonthlyOrders(selectedYear);
+    }
+  }, [selectedYear, activeTab]);
+
+  // Fetch pending orders for vendor
+  const fetchPendingOrders = async (startDate, endDate) => {
+    try {
+      const params = {
+        orderStatus: 'pending',
+        limit: 100,
+      };
+
+      if (startDate) params.startDate = new Date(startDate).toISOString();
+      if (endDate) params.endDate = new Date(new Date(endDate).setHours(23, 59, 59, 999)).toISOString();
+
+      const response = await orderService.getVendorOrders(params);
+
+      if (response?.success) {
+        // Sort by createdAt descending (newest first)
+        const sortedOrders = (response.data || []).sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.order_date_and_time || 0);
+          const dateB = new Date(b.createdAt || b.order_date_and_time || 0);
+          return dateB - dateA;
+        });
+        setPendingOrders(sortedOrders);
+      }
+    } catch (err) {
+      console.error("Error fetching pending orders:", err);
+      setPendingOrders([]);
+    }
+  };
+
+  // Fetch pending orders when filters change or overview tab is active
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      fetchPendingOrders(pendingStartDate, pendingEndDate);
+    }
+  }, [pendingStartDate, pendingEndDate, activeTab]);
+
+  const handleClearPendingFilters = () => {
+    setPendingStartDate('');
+    setPendingEndDate('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar 
@@ -571,18 +667,128 @@ const VendorDashboard = () => {
                 />
               </div>
 
-              {/* Recent Products */}
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">
-                  Recent Products
-                </h2>
-                <ProductTable
-                  products={paginatedVendorProducts.slice(0, 5)}
-                  isLoading={vendorProductsLoading}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onToggleStatus={handleToggleStatus}
-                />
+              {/* Monthly Orders Graph */}
+              <OrdersGraph
+                ordersData={monthlyOrdersData}
+                selectedYear={selectedYear}
+                onYearChange={setSelectedYear}
+                cities={[]}
+                selectedCity=""
+                onCityChange={() => {}}
+                yAxisTicks={[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]}
+                yAxisDomain={[0, 50]}
+              />
+
+              {/* Pending Orders Table */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
+                <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-amber-50 rounded-lg">
+                      <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-gray-800">Pending Orders</h2>
+                      <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">
+                        {pendingOrders.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto mt-4 md:mt-0">
+                    {/* Date Filters */}
+                    <input
+                      type="date"
+                      value={pendingStartDate}
+                      onChange={(e) => setPendingStartDate(e.target.value)}
+                      className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                      placeholder="Start Date"
+                    />
+                    <span className="hidden sm:inline text-gray-400">-</span>
+                    <input
+                      type="date"
+                      value={pendingEndDate}
+                      onChange={(e) => setPendingEndDate(e.target.value)}
+                      className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+                      placeholder="End Date"
+                    />
+
+                    {(pendingStartDate || pendingEndDate) && (
+                      <button
+                        onClick={handleClearPendingFilters}
+                        className="col-span-2 sm:col-span-1 px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200 w-full sm:w-auto"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50/50">
+                      <tr>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Order ID</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User ID</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Mobile</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {pendingOrders.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                            No pending orders found
+                          </td>
+                        </tr>
+                      ) : (
+                        pendingOrders.map((order) => (
+                          <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => {
+                            setSelectedOrderId(order._id || order.order_id);
+                            setActiveTab('orders');
+                          }}>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-900">#{order.order_id || order._id?.substring(0, 8)}</span>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-500">{order.user_id || order.userId?._id || order.userId || 'N/A'}</span>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs mr-3">
+                                  {(order.Customer_Name || order.userId?.name || 'U').charAt(0)}
+                                </div>
+                                <div className="text-sm font-medium text-gray-900">{order.Customer_Name || order.userId?.name || 'Unknown'}</div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="flex items-center text-sm text-gray-500">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                {order.Phone || order.Customer_Mobile_No || order.userId?.phone || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-900">₹{order.Net_total || order.totalAmount || order.billingDetails?.totalAmount || 0}</span>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(order.createdAt || order.order_date_and_time || order.orderDate).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                {order.Order_status || order.orderStatus || 'Pending'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
