@@ -873,9 +873,7 @@ const ProductDetail = () => {
                   <span className="text-3xl font-bold text-black">
                     ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
                   </span>
-                  <span className="text-gray-500 text-sm ml-2">
-                    ({priceInfo.slabs[priceInfo.slabs.length - 1].maxQty} pcs)
-                  </span>
+                
                 </div>
               ) : (
                 <div className="mb-2">

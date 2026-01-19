@@ -811,7 +811,7 @@ const Category = () => {
                 ) : (
                   <>
                     {/* Products Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 sm:gap-3 mb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-1.5 sm:gap-3 mb-8">
                       {products.map((product) => (
                         <div
                           key={product._id}
@@ -865,7 +865,7 @@ const Category = () => {
 
                           {/* Product Info */}
                           <div className="p-4 flex flex-col flex-1">
-                            <h3 className="text-xs font-semibold text-gray-900 mb-2 line-clamp-2 lg:h-8">
+                            <h3 className="text-xs font-semibold text-gray-900 mb-2 line-clamp-2 h-8">
                               {product.productId?.productName || 'Product Name'}
                             </h3>
 

@@ -89,8 +89,8 @@ const Account = () => {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">My Account</h1>
-                <p className="text-gray-600 mt-1">Manage your account information and preferences</p>
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">My Account</h1>
+                <p className="text-gray-600 mt-1 text-sm lg:text-base">Manage your account information and preferences</p>
               </div>
               <button
                 onClick={handleLogout}
