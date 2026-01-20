@@ -767,7 +767,7 @@ const ProductDetail = () => {
             <span>Back to Products</span>
           </button>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 xl:gap-3 2xl:gap-4 mb-8">
           {/* Product Images */}
           <div className="space-y-4 lg:sticky lg:top-[104px] self-start z-20">
             {/* Main Image */}
