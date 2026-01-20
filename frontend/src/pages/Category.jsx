@@ -563,8 +563,8 @@ const Category = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 w-full">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
        
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -574,7 +574,7 @@ const Category = () => {
               sidebarOpen ? 'block' : 'hidden'
             } lg:block`}
           >
-            <div className="bg-white rounded-lg shadow-md p-4 sticky top-[88px] sm:top-[96px] md:top-[104px] lg:top-[104px] self-start z-20">
+            <div className="bg-white rounded-lg shadow-md p-4 sticky top-[104px] sm:top-[112px] md:top-[120px] lg:top-[120px] self-start z-20">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <svg
                   className="w-5 h-5 text-red-600"
@@ -626,7 +626,7 @@ const Category = () => {
           </aside>
 
           {/* Main Content - Products */}
-          <main className="flex-1 min-w-0">
+          <main className="flex-1 min-w-0 w-full">
             {!selectedCategory ? (
               <div className="bg-white rounded-lg shadow-md p-12 text-center">
                 <svg
@@ -811,7 +811,7 @@ const Category = () => {
                 ) : (
                   <>
                     {/* Products Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-1.5 sm:gap-3 mb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-1.5 sm:gap-3 mb-8">
                       {products.map((product) => (
                         <div
                           key={product._id}

@@ -13,7 +13,21 @@
     font-family: 'Inter', sans-serif;
   }
   
+  html {
+    width: 100%;
+    max-width: 100%;
+    /* Hide scrollbar */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  html::-webkit-scrollbar {
+    display: none;
+  }
+  
   body {
+    width: 100%;
+    max-width: 100%;
     font-family: 'Inter', sans-serif;
     /* Hide scrollbar */
     -ms-overflow-style: none;
@@ -24,14 +38,9 @@
     display: none;
   }
   
-  html {
-    /* Hide scrollbar */
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  html::-webkit-scrollbar {
-    display: none;
+  #root {
+    width: 100%;
+    max-width: 100%;
   }
   
   h1, h2, h3, h4, h5, h6,
