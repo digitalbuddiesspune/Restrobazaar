@@ -610,7 +610,7 @@ const Category = () => {
                           <img
                             src={category.image}
                             alt={category.name}
-                            className="w-8 h-8 rounded object-cover flex-shrink-0"
+                            className="w-10 h-10 rounded object-cover flex-shrink-0"
                             onError={(e) => {
                               e.target.style.display = 'none';
                             }}
