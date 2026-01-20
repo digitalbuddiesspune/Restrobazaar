@@ -304,6 +304,21 @@ export const updateVendorOrderStatus = async (req, res) => {
       });
     }
 
+    // Prevent status changes if order is already delivered or cancelled
+    if (order.orderStatus === 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot change status of a delivered order',
+      });
+    }
+
+    if (order.orderStatus === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot change status of a cancelled order',
+      });
+    }
+
     // Store previous status for stock management
     const previousStatus = order.orderStatus;
 

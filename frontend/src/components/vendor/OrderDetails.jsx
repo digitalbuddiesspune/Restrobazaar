@@ -91,6 +91,8 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   }, [orderId]);
 
   const isDelivered = order.orderStatus === 'delivered';
+  const isCancelled = order.orderStatus === 'cancelled';
+  const canChangeStatus = !isDelivered && !isCancelled;
 
   const orderStatuses = [
     { value: 'pending', label: 'Pending', colorClass: 'bg-yellow-500' },
@@ -365,6 +367,64 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       cancelled: 'Cancelled',
     };
     return statusMap[status] || status;
+  };
+
+  // Helper function to get order tracking status
+  const getOrderTrackingStatus = () => {
+    const status = order.orderStatus || 'pending';
+    
+    // Determine which steps are completed based on order status
+    const isOrdered = true; // Always true if order exists
+    const isPacked = ['confirmed', 'processing', 'shipped', 'delivered'].includes(status);
+    const isShipped = ['shipped', 'delivered'].includes(status);
+    const isDelivered = status === 'delivered';
+    const isCancelled = status === 'cancelled';
+
+    return [
+      {
+        key: 'ordered',
+        label: 'Ordered',
+        isCompleted: isOrdered,
+        date: order.createdAt,
+      },
+      {
+        key: 'packed',
+        label: 'Packed',
+        isCompleted: isPacked,
+        date: isPacked ? (order.updatedAt || order.createdAt) : null,
+      },
+      {
+        key: 'shipped',
+        label: 'Shipped',
+        isCompleted: isShipped,
+        date: isShipped ? (order.updatedAt || order.createdAt) : null,
+      },
+      {
+        key: 'delivered',
+        label: 'Delivered',
+        isCompleted: isDelivered,
+        date: isDelivered ? (order.updatedAt || order.createdAt) : null,
+      },
+      {
+        key: 'cancelled',
+        label: 'Cancelled',
+        isCompleted: isCancelled,
+        date: isCancelled ? (order.updatedAt || order.createdAt) : null,
+      },
+    ];
+  };
+
+  const formatTrackingDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   // Convert number to words for invoice amount
@@ -924,29 +984,38 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
         {/* Order Details Card */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          {/* Order Header */}
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+          {/* Top Section: Flex with justify-between */}
+          <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+            {/* Left: Order ID */}
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Order Details</h1>
-              <p className="text-sm text-gray-500 mt-1">Order #{order.orderNumber || order._id}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order ID</p>
+              <p className="text-sm font-semibold text-gray-900">#{order.orderNumber || order._id}</p>
             </div>
-            <div className="flex items-center space-x-4">
+
+            {/* Right: Order Status and Payment Status */}
+            <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-xs text-gray-500">Order Status</p>
-                <div className="relative mt-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Order Status</p>
+                <div className="relative">
                   <button
-                    onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                    className={`px-3 py-1.5 inline-flex items-center space-x-2 text-sm font-semibold rounded-full ${getStatusColor(order.orderStatus)}`}
+                    onClick={() => canChangeStatus && setShowStatusDropdown(!showStatusDropdown)}
+                    disabled={!canChangeStatus}
+                    className={`px-2.5 py-1 inline-flex items-center space-x-1.5 text-xs font-medium rounded-md ${getStatusColor(order.orderStatus)} ${
+                      !canChangeStatus ? 'cursor-not-allowed opacity-75' : 'cursor-pointer hover:shadow-sm transition-shadow'
+                    }`}
+                    title={!canChangeStatus ? 'Cannot change status for delivered or cancelled orders' : 'Change order status'}
                   >
-                    <span>{order.orderStatus || 'pending'}</span>
-                    <svg
-                      className={`w-4 h-4 transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <span className="capitalize">{order.orderStatus || 'pending'}</span>
+                    {canChangeStatus && (
+                      <svg
+                        className={`w-3 h-3 transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
                   </button>
                   {showStatusDropdown && (
                     <>
@@ -954,29 +1023,29 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                         className="fixed inset-0 z-10"
                         onClick={() => setShowStatusDropdown(false)}
                       ></div>
-                      <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                      <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
                         <div className="py-1">
                           {orderStatuses.map((status) => (
                             <button
                               key={status.value}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (order.orderStatus !== status.value && onUpdateStatus) {
+                                if (canChangeStatus && order.orderStatus !== status.value && onUpdateStatus) {
                                   onUpdateStatus(orderId, status.value);
                                 }
                                 setShowStatusDropdown(false);
                               }}
-                              disabled={order.orderStatus === status.value}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition flex items-center space-x-2 ${
-                                order.orderStatus === status.value
+                              disabled={!canChangeStatus || order.orderStatus === status.value}
+                              className={`w-full text-left px-3 py-1.5 text-xs transition flex items-center space-x-2 ${
+                                !canChangeStatus || order.orderStatus === status.value
                                   ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                                  : 'text-gray-700'
+                                  : 'text-gray-700 hover:bg-gray-100'
                               }`}
                             >
-                              <span className={`w-2 h-2 rounded-full ${status.colorClass}`}></span>
+                              <span className={`w-1.5 h-1.5 rounded-full ${status.colorClass}`}></span>
                               <span>{status.label}</span>
                               {order.orderStatus === status.value && (
-                                <span className="ml-auto text-xs">(Current)</span>
+                                <span className="ml-auto text-[10px]">(Current)</span>
                               )}
                             </button>
                           ))}
@@ -986,109 +1055,146 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Order Information Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Invoice Details */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Invoice Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Invoice Number:</span>
-                  <span className="font-medium text-gray-900">{order.orderNumber || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Order Date:</span>
-                  <span className="font-medium text-gray-900">{formatDate(order.createdAt)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Payment Method:</span>
-                  <span className="font-medium text-gray-900 capitalize">{order.paymentMethod || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Payment Status:</span>
-                  <select
-                    value={paymentStatusValue}
-                    onChange={(e) => handlePaymentStatusChange(e.target.value)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-0 ${
-                      paymentStatusValue === 'paid' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    } focus:ring-2 focus:ring-blue-500 cursor-pointer`}
-                    disabled={updatePaymentStatusMutation.isPending || isLoading}
-                  >
-                    <option value="unpaid">Unpaid</option>
-                    <option value="paid">Paid</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Delivery Address */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Delivery Address</h3>
-              <div className="text-sm text-gray-700">
-                <p className="font-medium">{order.deliveryAddress?.name || 'N/A'}</p>
-                <p className="mt-1">{order.deliveryAddress?.addressLine1 || ''}</p>
-                {order.deliveryAddress?.addressLine2 && (
-                  <p>{order.deliveryAddress.addressLine2}</p>
-                )}
-                <p>
-                  {order.deliveryAddress?.city || ''}, {order.deliveryAddress?.state || ''} - {order.deliveryAddress?.pincode || ''}
-                </p>
-                {order.deliveryAddress?.landmark && (
-                  <p className="text-gray-600">Landmark: {order.deliveryAddress.landmark}</p>
-                )}
-                <p className="mt-2">Phone: {order.deliveryAddress?.phone || 'N/A'}</p>
+              <div className="text-right">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Payment Status</p>
+                <select
+                  value={paymentStatusValue}
+                  onChange={(e) => handlePaymentStatusChange(e.target.value)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md border-0 ${
+                    paymentStatusValue === 'paid' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  } focus:ring-1 focus:ring-blue-500 cursor-pointer hover:shadow-sm transition-shadow`}
+                  disabled={updatePaymentStatusMutation.isPending || isLoading}
+                >
+                  <option value="unpaid">Unpaid</option>
+                  <option value="paid">Paid</option>
+                </select>
               </div>
             </div>
           </div>
 
-          {/* Order Details Section - Full Width */}
+          {/* Order Details Section */}
           <div className="mb-6">
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg">Order Details</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+            <div className="bg-gray-50 rounded-lg p-3 text-xs">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {/* Row 1: Date | Payment */}
+                <div>
+                  <span className="text-gray-600">Date:</span>
+                  <span className="ml-1 font-medium text-gray-900">{formatDate(order.createdAt)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Payment:</span>
+                  <span className="ml-1 font-medium text-gray-900 capitalize">{order.paymentMethod || 'N/A'}</span>
+                </div>
+                {/* Row 2: Customer | Phone */}
+                <div>
+                  <span className="text-gray-600">Customer:</span>
+                  <span className="ml-1 font-medium text-gray-900">{order.deliveryAddress?.name || order.userId?.name || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Phone:</span>
+                  <span className="ml-1 font-medium text-gray-900">{order.deliveryAddress?.phone || order.userId?.phone || 'N/A'}</span>
+                </div>
+                {/* Row 3: Email | (empty) */}
+                <div>
+                  <span className="text-gray-600">Email:</span>
+                  <span className="ml-1 font-medium text-gray-900">{order.userId?.email || 'N/A'}</span>
+                </div>
+                <div></div>
+                {/* Row 4: Address (full row) */}
+                <div className="col-span-2">
+                  <span className="text-gray-600">Address:</span>
+                  <span className="ml-1 font-medium text-gray-900">
+                    {order.deliveryAddress?.addressLine1 || ''}
+                    {order.deliveryAddress?.addressLine2 ? `, ${order.deliveryAddress.addressLine2}` : ''}
+                    {order.deliveryAddress?.city ? `, ${order.deliveryAddress.city}` : ''}
+                    {order.deliveryAddress?.state ? `, ${order.deliveryAddress.state}` : ''}
+                    {order.deliveryAddress?.pincode ? ` - ${order.deliveryAddress.pincode}` : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Order Tracking Window - Small Fonts */}
+          <div className="mb-6 bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between text-xs">
+              {getOrderTrackingStatus().map((step, index) => (
+                <div key={step.key} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${
+                      step.isCompleted 
+                        ? step.key === 'cancelled' ? 'bg-red-500' : 'bg-green-500'
+                        : 'bg-gray-300'
+                    }`}>
+                      {step.isCompleted ? (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                      )}
+                    </div>
+                    <span className={`text-xs font-medium ${step.isCompleted ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {step.label}
+                    </span>
+                    {step.date && (
+                      <span className="text-xs text-gray-500 mt-0.5 text-center">
+                        {formatTrackingDate(step.date)}
+                      </span>
+                    )}
+                  </div>
+                  {index < getOrderTrackingStatus().length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-2 ${step.isCompleted && getOrderTrackingStatus()[index + 1]?.isCompleted ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Additional Order Details Section - Minimal */}
+          <div className="mb-6">
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div className="grid grid-cols-4 gap-x-4 gap-y-2.5">
                 {/* User ID */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">User ID:</p>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">User ID</p>
+                  <p className="text-xs font-medium text-gray-900">
                     {order.userId?._id ? order.userId._id.toString().slice(-6) : order.userId || 'N/A'}
                   </p>
                 </div>
 
                 {/* Display Order ID */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Display Order ID:</p>
-                  <p className="font-medium text-gray-900">{order.orderNumber || order._id || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Display Order ID</p>
+                  <p className="text-xs font-medium text-gray-900">{order.orderNumber || order._id || 'N/A'}</p>
                 </div>
 
                 {/* Customer Name */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Customer Name:</p>
-                  <p className="font-medium text-purple-600">{order.deliveryAddress?.name || order.userId?.name || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Customer Name</p>
+                  <p className="text-xs font-medium text-purple-600">{order.deliveryAddress?.name || order.userId?.name || 'N/A'}</p>
                 </div>
 
                 {/* Mobile Number */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Mobile Number:</p>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Mobile Number</p>
+                  <p className="text-xs font-medium text-gray-900">
                     {order.deliveryAddress?.phone ? `+91 ${order.deliveryAddress.phone}` : order.userId?.phone || 'N/A'}
                   </p>
                 </div>
 
                 {/* Email */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Email:</p>
-                  <p className="font-medium text-gray-900">{order.userId?.email || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Email</p>
+                  <p className="text-xs font-medium text-gray-900">{order.userId?.email || 'N/A'}</p>
                 </div>
 
                 {/* Payment Status */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Payment Status:</p>
-                  <span className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Payment Status</p>
+                  <span className={`px-1.5 py-0.5 inline-flex text-[10px] font-medium rounded ${
                     paymentStatusValue === 'paid' 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-yellow-100 text-yellow-800'
@@ -1099,57 +1205,57 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
                 {/* Order Status */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Order Status:</p>
-                  <span className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${getStatusColor(order.orderStatus)}`}>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order Status</p>
+                  <span className={`px-1.5 py-0.5 inline-flex text-[10px] font-medium rounded ${getStatusColor(order.orderStatus)}`}>
                     {getStatusText(order.orderStatus)}
                   </span>
                 </div>
 
                 {/* Code Applied */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Code Applied?:</p>
-                  <p className="font-medium text-gray-900">{order.promoCode || order.discountCode ? 'Yes' : 'No'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Code Applied</p>
+                  <p className="text-xs font-medium text-gray-900">{order.promoCode || order.discountCode ? 'Yes' : 'No'}</p>
                 </div>
 
                 {/* Payment Mode */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Payment Mode:</p>
-                  <p className="font-medium text-gray-900 capitalize">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Payment Mode</p>
+                  <p className="text-xs font-medium text-gray-900 capitalize">
                     {order.paymentMethod === 'cod' ? 'Cash' : order.paymentMethod === 'online' ? 'Online' : order.paymentMethod || 'N/A'}
                   </p>
                 </div>
 
                 {/* Delivery Code */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Delivery Code:</p>
-                  <p className="font-medium text-gray-900">{order.deliveryCode || order.trackingCode || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Delivery Code</p>
+                  <p className="text-xs font-medium text-gray-900">{order.deliveryCode || order.trackingCode || 'N/A'}</p>
                 </div>
 
                 {/* GST Number */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">GST Number:</p>
-                  <p className="font-medium text-gray-900">{order.gstNumber || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">GST Number</p>
+                  <p className="text-xs font-medium text-gray-900">{order.gstNumber || 'N/A'}</p>
                 </div>
 
                 {/* Order Date & Time */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Order Date & Time:</p>
-                  <p className="font-medium text-gray-900">{formatDate(order.createdAt)}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order Date & Time</p>
+                  <p className="text-xs font-medium text-gray-900">{formatDate(order.createdAt)}</p>
                 </div>
 
                 {/* Order Cancel Date Time (if cancelled) */}
                 {order.orderStatus === 'cancelled' && order.updatedAt && (
                   <div>
-                    <p className="text-gray-600 text-xs mb-1">Order Cancel Date Time:</p>
-                    <p className="font-medium text-gray-900">{formatDate(order.updatedAt)}</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Cancel Date Time</p>
+                    <p className="text-xs font-medium text-gray-900">{formatDate(order.updatedAt)}</p>
                   </div>
                 )}
 
                 {/* Cancel Reason (if cancelled) */}
                 {order.orderStatus === 'cancelled' && (
-                  <div className="col-span-2 md:col-span-3 lg:col-span-4">
-                    <p className="text-gray-600 text-xs mb-1">Cancel Reason:</p>
-                    <p className="font-medium text-gray-900">{order.cancelReason || order.cancellationReason || 'N/A'}</p>
+                  <div className="col-span-4">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Cancel Reason</p>
+                    <p className="text-xs font-medium text-gray-900">{order.cancelReason || order.cancellationReason || 'N/A'}</p>
                   </div>
                 )}
               </div>
@@ -1380,9 +1486,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           </div>
 
           {/* Billing Summary */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Billing Summary</h3>
-            <div className="space-y-2 text-sm">
+          <div className="bg-gray-50 rounded-lg p-3 mb-6">
+            <h3 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Billing Summary</h3>
+            <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-medium text-gray-900">
@@ -1415,9 +1521,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 
                 if (gstBreakdown && gstBreakdown.length > 0) {
                   return (
-                    <div className="pl-2 border-l-2 border-gray-200 space-y-1 mt-1">
+                    <div className="pl-2 border-l-2 border-gray-200 space-y-0.5 mt-0.5">
                       {gstBreakdown.map((item, index) => (
-                        <div key={index} className="flex justify-between text-xs text-gray-600">
+                        <div key={index} className="flex justify-between text-[10px] text-gray-600">
                           <span>{item.productName} ({item.gstPercentage}%):</span>
                           <span>₹{item.gstAmount?.toFixed(2) || '0.00'}</span>
                         </div>
@@ -1431,9 +1537,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 <span className="text-gray-600">Shipping Charges:</span>
                 <span className="font-medium text-gray-900">Free</span>
               </div>
-              <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between">
-                <span className="text-base font-semibold text-gray-900">Total Amount:</span>
-                <span className="text-base font-bold text-red-600">
+              <div className="border-t border-gray-300 pt-1.5 mt-1.5 flex justify-between">
+                <span className="text-xs font-semibold text-gray-900">Total Amount:</span>
+                <span className="text-xs font-bold text-red-600">
                   ₹{(
                     isEditMode 
                       ? calculateBillingDetails().totalAmount 
@@ -1446,9 +1552,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
           {/* Payment Information */}
           {order.paymentId || order.transactionId ? (
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Payment Information</h3>
-              <div className="space-y-2 text-sm">
+            <div className="bg-gray-50 rounded-lg p-3 mb-6">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Payment Information</h3>
+              <div className="space-y-1.5 text-xs">
                 {order.paymentId && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Payment ID:</span>
@@ -1466,12 +1572,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           ) : null}
 
           {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
             <button
               onClick={() => handleDownloadInvoice(order)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1.5 text-xs"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span>Download Invoice</span>

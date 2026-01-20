@@ -88,9 +88,9 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 text-sm">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Coupon Details</h3>
+        <h3 className="text-base font-semibold mb-4">Coupon Details</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -123,7 +123,7 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Discount Settings</h3>
+        <h3 className="text-base font-semibold mb-4">Discount Settings</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -146,11 +146,8 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
               Discount Value *
             </label>
             <input
-              type="number"
+              type="text"
               required
-              min="0"
-              max={formData.discountType === 'percentage' ? 100 : undefined}
-              step={formData.discountType === 'percentage' ? '0.01' : '1'}
               value={formData.discountValue}
               onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -167,9 +164,7 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
                 Maximum Discount (₹)
               </label>
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
                 value={formData.maxDiscount}
                 onChange={(e) => setFormData({ ...formData, maxDiscount: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -184,10 +179,8 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
               Minimum Order Amount (₹) *
             </label>
             <input
-              type="number"
+              type="text"
               required
-              min="0"
-              step="0.01"
               value={formData.minimumOrderAmount}
               onChange={(e) => setFormData({ ...formData, minimumOrderAmount: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -198,7 +191,7 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Validity Period</h3>
+        <h3 className="text-base font-semibold mb-4">Validity Period</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -231,7 +224,7 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Usage Limits</h3>
+        <h3 className="text-base font-semibold mb-4">Usage Limits</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -239,8 +232,7 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
               Total Usage Limit
             </label>
             <input
-              type="number"
-              min="0"
+              type="text"
               value={formData.usageLimit}
               onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -254,9 +246,8 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
               Per User Limit *
             </label>
             <input
-              type="number"
+              type="text"
               required
-              min="0"
               value={formData.perUserLimit}
               onChange={(e) => setFormData({ ...formData, perUserLimit: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -268,7 +259,7 @@ const CouponForm = ({ coupon, onSubmit, onCancel, isLoading }) => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-4">Customer Assignment</h3>
+        <h3 className="text-base font-semibold mb-4">Customer Assignment</h3>
         
         <div className="space-y-4">
           <div>

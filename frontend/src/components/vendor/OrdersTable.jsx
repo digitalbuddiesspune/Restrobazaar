@@ -694,58 +694,76 @@ const OrdersTable = ({
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="relative">
-                      <button
-                        onClick={() => setShowStatusDropdown(showStatusDropdown === order._id ? null : order._id)}
-                        className={`px-2 py-1 inline-flex items-center space-x-1 text-xs leading-4 font-semibold rounded-full cursor-pointer hover:opacity-80 transition ${getStatusColor(
-                          order.orderStatus
-                        )}`}
-                      >
-                        <span>{order.orderStatus || 'pending'}</span>
-                        <svg
-                          className={`w-3 h-3 transition-transform ${showStatusDropdown === order._id ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      {showStatusDropdown === order._id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setShowStatusDropdown(null)}
-                          ></div>
-                          <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
-                            <div className="py-1">
-                              {orderStatuses.map((status) => (
-                                <button
-                                  key={status.value}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (order.orderStatus !== status.value) {
-                                      onUpdateStatus(order._id, status.value);
-                                    }
-                                    setShowStatusDropdown(null);
-                                  }}
-                                  disabled={order.orderStatus === status.value}
-                                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 transition flex items-center space-x-2 ${
-                                    order.orderStatus === status.value
-                                      ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                                      : 'text-gray-700'
-                                  }`}
+                      {(() => {
+                        const isDelivered = order.orderStatus === 'delivered';
+                        const isCancelled = order.orderStatus === 'cancelled';
+                        const canChangeStatus = !isDelivered && !isCancelled;
+                        
+                        return (
+                          <>
+                            <button
+                              onClick={() => canChangeStatus && setShowStatusDropdown(showStatusDropdown === order._id ? null : order._id)}
+                              disabled={!canChangeStatus}
+                              className={`px-2 py-1 inline-flex items-center space-x-1 text-xs leading-4 font-semibold rounded-full transition ${getStatusColor(
+                                order.orderStatus
+                              )} ${
+                                canChangeStatus 
+                                  ? 'cursor-pointer hover:opacity-80' 
+                                  : 'cursor-not-allowed opacity-75'
+                              }`}
+                              title={!canChangeStatus ? 'Cannot change status for delivered or cancelled orders' : 'Change order status'}
+                            >
+                              <span>{order.orderStatus || 'pending'}</span>
+                              {canChangeStatus && (
+                                <svg
+                                  className={`w-3 h-3 transition-transform ${showStatusDropdown === order._id ? 'rotate-180' : ''}`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
                                 >
-                                  <span className={`w-2 h-2 rounded-full ${status.colorClass}`}></span>
-                                  <span>{status.label}</span>
-                                  {order.orderStatus === status.value && (
-                                    <span className="ml-auto text-xs">(Current)</span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              )}
+                            </button>
+                            {showStatusDropdown === order._id && canChangeStatus && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={() => setShowStatusDropdown(null)}
+                                ></div>
+                                <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                                  <div className="py-1">
+                                    {orderStatuses.map((status) => (
+                                      <button
+                                        key={status.value}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (order.orderStatus !== status.value) {
+                                            onUpdateStatus(order._id, status.value);
+                                          }
+                                          setShowStatusDropdown(null);
+                                        }}
+                                        disabled={order.orderStatus === status.value}
+                                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 transition flex items-center space-x-2 ${
+                                          order.orderStatus === status.value
+                                            ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                                            : 'text-gray-700'
+                                        }`}
+                                      >
+                                        <span className={`w-2 h-2 rounded-full ${status.colorClass}`}></span>
+                                        <span>{status.label}</span>
+                                        {order.orderStatus === status.value && (
+                                          <span className="ml-auto text-xs">(Current)</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">

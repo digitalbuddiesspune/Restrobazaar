@@ -1088,22 +1088,24 @@ const VendorDashboard = () => {
 
           {activeTab === 'orders' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">Orders</h1>
-                {orderStats && (
-                  <div className="flex items-center space-x-4 text-xs">
-                    <div className="text-gray-600">
-                      Total: <span className="font-semibold text-gray-900">{orderStats.totalOrders || 0}</span>
+              {!selectedOrderId && (
+                <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
+                  <h1 className="text-xl font-bold text-gray-900">Orders</h1>
+                  {orderStats && (
+                    <div className="flex items-center space-x-4 text-xs">
+                      <div className="text-gray-600">
+                        Total: <span className="font-semibold text-gray-900">{orderStats.totalOrders || 0}</span>
+                      </div>
+                      <div className="text-gray-600">
+                        Pending: <span className="font-semibold text-yellow-600">{orderStats.pendingOrders || 0}</span>
+                      </div>
+                      <div className="text-gray-600">
+                        Completed: <span className="font-semibold text-green-600">{orderStats.completedOrders || 0}</span>
+                      </div>
                     </div>
-                    <div className="text-gray-600">
-                      Pending: <span className="font-semibold text-yellow-600">{orderStats.pendingOrders || 0}</span>
-                    </div>
-                    <div className="text-gray-600">
-                      Completed: <span className="font-semibold text-green-600">{orderStats.completedOrders || 0}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {selectedOrderId ? (
                 <OrderDetails

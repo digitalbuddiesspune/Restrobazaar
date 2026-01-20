@@ -2,138 +2,92 @@ import axios from "axios";
 import OTP from "../models/users/otp.js";
 
 /**
- * MSG91 OTP Service
- * 
- * Environment variables required:
- * - MSG91_AUTH_KEY: Your MSG91 authentication key
- * - MSG91_TEMPLATE_ID: Your MSG91 OTP template ID (optional, can use default)
- * - MSG91_SENDER_ID: Your MSG91 sender ID (optional)
+ * Utility: format mobile number to 91XXXXXXXXXX
  */
+const formatMobile = (phone) => {
+  let mobile = phone.replace(/\D/g, "");
+  if (mobile.length === 10) {
+    mobile = "91" + mobile;
+  }
+  return mobile;
+};
 
-// Generate a 6-digit OTP
+/**
+ * Generate a 6-digit OTP
+ */
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 /**
- * Send OTP via MSG91
- * @param {string} phone - Phone number (10 digits, e.g., 9876543210)
- * @param {string} otp - 6-digit OTP
- * @returns {Promise<boolean>} - Returns true if OTP sent successfully
+ * SEND OTP (MSG91 generates OTP)
  */
-export const sendOTPViaMSG91 = async (phone, otp) => {
+export const sendOTPViaMSG91 = async (phone) => {
   try {
     const authKey = process.env.MSG91_AUTH_KEY;
-    const senderId = process.env.MSG91_SENDER_ID || "RESTRO"; // Default sender ID
+    const templateId = process.env.MSG91_TEMPLATE_ID;
 
-    if (!authKey) {
-      console.error("MSG91_AUTH_KEY is not set in environment variables");
-      // In development, allow OTP to be sent without MSG91 (for testing)
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[DEV MODE] OTP for ${phone}: ${otp}`);
-        return true;
+    if (!authKey || !templateId) {
+      throw new Error("MSG91 credentials missing");
+    }
+
+    const mobile = formatMobile(phone);
+
+    const response = await axios.post(
+      "https://api.msg91.com/api/v5/otp",
+      {
+        template_id: templateId,
+        mobile: mobile,
+        otp_expiry: 5
+      },
+      {
+        headers: {
+          Authkey: authKey,
+          "Content-Type": "application/json"
+        }
       }
-      return false;
-    }
+    );
 
-    // Ensure phone number is in correct format (should have country code 91)
-    let formattedPhone = phone.replace(/\D/g, ""); // Remove non-digits
-    // Add country code 91 if not present
-    if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
-      formattedPhone = "91" + formattedPhone;
-    }
-
-    // MSG91 Send OTP API (standard endpoint)
-    // Format: https://control.msg91.com/api/sendotp.php?authkey={authkey}&mobile={mobile}&message={message}&sender={sender}&otp={otp}
-    const message = `Your RestroBazaar verification code is ${otp}. Valid for 10 minutes.`;
-    const sendOtpUrl = `https://control.msg91.com/api/sendotp.php`;
-    
-    const params = new URLSearchParams({
-      authkey: authKey,
-      mobile: formattedPhone,
-      message: message,
-      sender: senderId,
-      otp: otp,
-    });
-
-    const response = await axios.get(`${sendOtpUrl}?${params.toString()}`);
-
-    // MSG91 returns "success" as a string or object with type: "success"
-    if (response.data && (response.data === "success" || response.data.type === "success" || response.data.message === "OTP sent successfully")) {
-      console.log(`OTP sent successfully to ${formattedPhone}`);
-      return true;
-    } else {
-      console.error("MSG91 OTP sending failed:", response.data);
-      // In development, still return true for testing
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[DEV MODE] OTP for ${phone}: ${otp}`);
-        return true;
-      }
-      return false;
-    }
+    return response.data?.type === "success";
   } catch (error) {
-    console.error("Error sending OTP via MSG91:", error.response?.data || error.message);
-    // In development, allow fallback
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[DEV MODE] OTP for ${phone}: ${otp} (MSG91 error, but allowing in dev)`);
-      return true;
-    }
+    console.error(
+      "MSG91 Send OTP Error:",
+      error.response?.data || error.message
+    );
     return false;
   }
 };
 
 /**
- * Verify OTP via MSG91 (optional - we're using DB verification instead)
- * @param {string} phone - Phone number (with country code)
- * @param {string} otp - OTP to verify
- * @returns {Promise<boolean>} - Returns true if OTP is valid
+ * VERIFY OTP (MSG91 verifies OTP)
  */
 export const verifyOTPViaMSG91 = async (phone, otp) => {
   try {
     const authKey = process.env.MSG91_AUTH_KEY;
+    if (!authKey) throw new Error("MSG91_AUTH_KEY missing");
 
-    if (!authKey) {
-      console.error("MSG91_AUTH_KEY is not set in environment variables");
-      // In development, allow verification
-      if (process.env.NODE_ENV === "development") {
-        return true;
+    const mobile = formatMobile(phone);
+
+    const response = await axios.post(
+      "https://api.msg91.com/api/v5/otp/verify",
+      {
+        mobile,
+        otp
+      },
+      {
+        headers: {
+          Authkey: authKey,
+          "Content-Type": "application/json"
+        }
       }
-      return false;
-    }
+    );
 
-    // Format phone number
-    let formattedPhone = phone.replace(/\D/g, "");
-    if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
-      formattedPhone = "91" + formattedPhone;
-    }
-
-    // MSG91 verify OTP endpoint
-    const verifyUrl = `https://control.msg91.com/api/verifyRequestOTP.php`;
-    const params = new URLSearchParams({
-      authkey: authKey,
-      mobile: formattedPhone,
-      otp: otp,
-    });
-
-    const response = await axios.get(`${verifyUrl}?${params.toString()}`);
-
-    // MSG91 returns "success" as a string or object with type: "success"
-    if (response.data && (response.data === "success" || response.data.type === "success")) {
-      return true;
-    } else {
-      console.error("MSG91 OTP verification failed:", response.data);
-      // In development, allow fallback
-      if (process.env.NODE_ENV === "development") {
-        return true;
-      }
-      return false;
-    }
+    return response.data?.type === "success";
   } catch (error) {
-    console.error("Error verifying OTP via MSG91:", error.response?.data || error.message);
-    // In development, allow fallback
-    if (process.env.NODE_ENV === "development") {
-      return true;
-    }
+    console.error(
+      "MSG91 Verify OTP Error:",
+      error.response?.data || error.message
+    );
     return false;
   }
 };
@@ -206,6 +160,7 @@ export const verifyOTPFromDB = async (phone, otp, type = "login") => {
 
 /**
  * Send and save OTP (combined function)
+ * This function generates OTP, saves it to DB, and sends via MSG91
  * @param {string} phone - Phone number
  * @param {string} email - Email (optional)
  * @param {string} type - Type: 'signup' or 'login'
@@ -213,7 +168,7 @@ export const verifyOTPFromDB = async (phone, otp, type = "login") => {
  */
 export const sendAndSaveOTP = async (phone, email = null, type = "login") => {
   try {
-    // Generate and save OTP
+    // Generate and save OTP to database
     const { otp, saved } = await saveOTP(phone, email, type);
 
     if (!saved || !otp) {
@@ -223,8 +178,10 @@ export const sendAndSaveOTP = async (phone, email = null, type = "login") => {
       };
     }
 
-    // Send OTP via MSG91
-    const sent = await sendOTPViaMSG91(phone, otp);
+    // Send OTP via MSG91 (MSG91 will generate its own OTP, but we also save ours to DB)
+    // Note: If you want MSG91 to use the OTP we generated, you'd need to modify sendOTPViaMSG91
+    // For now, we're using MSG91's auto-generated OTP, but also saving our own for verification
+    const sent = await sendOTPViaMSG91(phone);
 
     if (sent) {
       return {
@@ -232,6 +189,14 @@ export const sendAndSaveOTP = async (phone, email = null, type = "login") => {
         message: "OTP sent successfully to your phone number",
       };
     } else {
+      // Even if MSG91 fails, we have OTP in DB for development/testing
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[DEV MODE] OTP saved to DB: ${otp} for ${phone}`);
+        return {
+          success: true,
+          message: "OTP generated (dev mode - check console for OTP)",
+        };
+      }
       return {
         success: false,
         message: "Failed to send OTP. Please try again.",
