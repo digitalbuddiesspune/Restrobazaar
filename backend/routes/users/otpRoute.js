@@ -1,5 +1,5 @@
 import express from "express";
-import { sendOTPViaMSG91, verifyOTPViaMSG91 } from "../../services/otpService.js";
+import { sendAndSaveOTP, verifyOTPViaMSG91, verifyOTPFromDB } from "../../services/otpService.js";
 import User from "../../models/users/user.js";
 import jwt from "jsonwebtoken";
 
@@ -41,19 +41,19 @@ otpRouter.post("/otp/send-otp", async (req, res) => {
       });
     }
 
-    // Send OTP via MSG91 (MSG91 generates the OTP)
-    const sent = await sendOTPViaMSG91(validPhone);
+    // Send OTP via MSG91 Flow API (generates, saves to DB, and sends)
+    const result = await sendAndSaveOTP(validPhone, null, "login");
 
-    if (!sent) {
+    if (!result.success) {
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP. Please try again.",
+        message: result.message || "Failed to send OTP. Please try again.",
       });
     }
 
     res.json({
       success: true,
-      message: "OTP sent successfully to your phone number",
+      message: result.message || "OTP sent successfully to your phone number",
     });
   } catch (error) {
     console.error("Error sending OTP:", error);
@@ -101,8 +101,8 @@ otpRouter.post("/otp/verify-otp", async (req, res) => {
       });
     }
 
-    // Verify OTP via MSG91
-    const verified = await verifyOTPViaMSG91(validPhone, otp);
+    // Verify OTP from database (since we're using Flow API with our own OTP)
+    const verified = await verifyOTPFromDB(validPhone, otp, "login");
 
     if (!verified) {
       return res.status(401).json({

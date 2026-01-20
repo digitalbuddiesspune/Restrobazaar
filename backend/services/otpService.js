@@ -20,41 +20,67 @@ const generateOTP = () => {
 };
 
 /**
- * SEND OTP (MSG91 generates OTP)
+ * SEND OTP via MSG91 Flow API
+ * Generates OTP and sends via MSG91 Flow API
  */
-export const sendOTPViaMSG91 = async (phone) => {
+export const sendOTPViaMSG91 = async (phone, customOTP = null) => {
   try {
     const authKey = process.env.MSG91_AUTH_KEY;
-    const templateId = process.env.MSG91_TEMPLATE_ID;
+    const templateId = process.env.MSG91_TEMPLATE_ID || "696f2ce7c7301501947d99a3";
 
-    if (!authKey || !templateId) {
-      throw new Error("MSG91 credentials missing");
+    if (!authKey) {
+      throw new Error("MSG91_AUTH_KEY missing in environment variables");
     }
 
+    if (!templateId) {
+      throw new Error("MSG91_TEMPLATE_ID missing in environment variables");
+    }
+
+    // Format mobile number to 91XXXXXXXXXX
     const mobile = formatMobile(phone);
 
+    // Generate OTP if not provided
+    const otp = customOTP || generateOTP();
+
+    // Prepare request body for Flow API
+    const requestBody = {
+      template_id: templateId,
+      short_url: "0",
+      short_url_expiry: "86400",
+      realTimeResponse: "1",
+      recipients: [
+        {
+          mobiles: mobile,
+          OTP: otp
+        }
+      ]
+    };
+
     const response = await axios.post(
-      "https://api.msg91.com/api/v5/otp",
-      {
-        template_id: templateId,
-        mobile: mobile,
-        otp_expiry: 5
-      },
+      "https://control.msg91.com/api/v5/flow",
+      requestBody,
       {
         headers: {
-          Authkey: authKey,
-          "Content-Type": "application/json"
+          accept: "application/json",
+          authkey: authKey,
+          "content-type": "application/json"
         }
       }
     );
 
-    return response.data?.type === "success";
+    // Check if request was successful
+    // MSG91 Flow API typically returns success in response
+    if (response.status === 200) {
+      return { success: true, otp: otp };
+    }
+
+    return { success: false, otp: null };
   } catch (error) {
     console.error(
       "MSG91 Send OTP Error:",
       error.response?.data || error.message
     );
-    return false;
+    return { success: false, otp: null };
   }
 };
 
@@ -160,7 +186,7 @@ export const verifyOTPFromDB = async (phone, otp, type = "login") => {
 
 /**
  * Send and save OTP (combined function)
- * This function generates OTP, saves it to DB, and sends via MSG91
+ * This function generates OTP, saves it to DB, and sends via MSG91 Flow API
  * @param {string} phone - Phone number
  * @param {string} email - Email (optional)
  * @param {string} type - Type: 'signup' or 'login'
@@ -178,12 +204,10 @@ export const sendAndSaveOTP = async (phone, email = null, type = "login") => {
       };
     }
 
-    // Send OTP via MSG91 (MSG91 will generate its own OTP, but we also save ours to DB)
-    // Note: If you want MSG91 to use the OTP we generated, you'd need to modify sendOTPViaMSG91
-    // For now, we're using MSG91's auto-generated OTP, but also saving our own for verification
-    const sent = await sendOTPViaMSG91(phone);
+    // Send OTP via MSG91 Flow API using the generated OTP
+    const result = await sendOTPViaMSG91(phone, otp);
 
-    if (sent) {
+    if (result.success) {
       return {
         success: true,
         message: "OTP sent successfully to your phone number",
