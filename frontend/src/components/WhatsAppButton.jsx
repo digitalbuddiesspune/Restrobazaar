@@ -15,7 +15,7 @@ const WhatsAppButton = () => {
   useEffect(() => {
     const updatePosition = () => {
       const isMobile = window.innerWidth < 768;
-      const buttonSize = isMobile ? 56 : 64; // Approximate button size
+      const buttonSize = isMobile ? 48 : 56; // Approximate button size
       
       if (isMobile) {
         // Mobile: position above bottom nav (80px from bottom, 16px from right)
@@ -71,8 +71,8 @@ const WhatsAppButton = () => {
     if (moved) setHasMoved(true);
     
     // Constrain to viewport bounds
-    const buttonWidth = buttonRef.current?.offsetWidth || 56;
-    const buttonHeight = buttonRef.current?.offsetHeight || 56;
+    const buttonWidth = buttonRef.current?.offsetWidth || 48;
+    const buttonHeight = buttonRef.current?.offsetHeight || 48;
     const maxX = window.innerWidth - buttonWidth;
     const maxY = window.innerHeight - buttonHeight;
     
@@ -96,8 +96,8 @@ const WhatsAppButton = () => {
     if (moved) setHasMoved(true);
     
     // Constrain to viewport bounds
-    const buttonWidth = buttonRef.current?.offsetWidth || 56;
-    const buttonHeight = buttonRef.current?.offsetHeight || 56;
+    const buttonWidth = buttonRef.current?.offsetWidth || 48;
+    const buttonHeight = buttonRef.current?.offsetHeight || 48;
     const maxX = window.innerWidth - buttonWidth;
     const maxY = window.innerHeight - buttonHeight;
     
@@ -158,9 +158,9 @@ const WhatsAppButton = () => {
       }}
       title="Drag to move or click to contact on WhatsApp"
     >
-      <div className={`bg-green-500 hover:bg-green-600 rounded-full p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center ${isDragging ? 'scale-110' : 'hover:scale-110'}`}>
+      <div className={`bg-green-500 hover:bg-green-600 rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center ${isDragging ? 'scale-110' : 'hover:scale-110'}`}>
         <svg
-          className="w-6 h-6 md:w-8 md:h-8 text-white"
+          className="w-5 h-5 md:w-6 md:h-6 text-white"
           fill="currentColor"
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"

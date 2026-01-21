@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { CITY_STORAGE_KEY, CITY_ID_KEY } from './CitySelectionPopup'
 import { isAuthenticated, logout } from '../utils/auth'
 import { useAppSelector } from '../store/hooks'
@@ -19,6 +19,7 @@ const Header = () => {
   const [showRightArrow, setShowRightArrow] = useState(true)
   const categoriesScrollRef = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
   
   // Get cart items count from Redux
   const cartItemsCount = useAppSelector(selectCartItemsCount)
@@ -261,6 +262,17 @@ const Header = () => {
     }
   }, [categories])
 
+  const handleLogoClick = (e) => {
+    // If already on home page, scroll to top instead of navigating
+    if (location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <>
     <header className="bg-white shadow-md sticky top-0 z-50">
@@ -272,6 +284,7 @@ const Header = () => {
             <NavLink 
               to="/" 
               className="block"
+              onClick={handleLogoClick}
             >
               {/* Hardcoded logo text - commented out */}
               {/* <span className="text-lg md:text-xl font-semibold text-red-600 hover:text-red-700 transition-colors">

@@ -37,6 +37,10 @@ const ProductForm = ({
 
   useEffect(() => {
     if (product) {
+      const gstValue = product.gst || 0;
+      const gstNum = parseFloat(gstValue) || 0;
+      const calculatedCgstSgst = gstNum > 0 ? (gstNum / 2).toFixed(2) : (product.cgst || 0);
+      
       setFormData({
         productId: product.productId?._id || product.productId || '',
         cityId: product.cityId?._id || product.cityId || vendorCityId || '',
@@ -45,9 +49,9 @@ const ProductForm = ({
         productPurchasedFrom: product.productPurchasedFrom || '',
         purchasedMode: product.purchasedMode || '',
         purchasedAmount: product.purchasedAmount || '',
-        gst: product.gst || 0,
-        cgst: product.cgst || 0,
-        sgst: product.sgst || 0,
+        gst: gstValue,
+        cgst: gstNum > 0 ? calculatedCgstSgst : (product.cgst || 0),
+        sgst: gstNum > 0 ? calculatedCgstSgst : (product.sgst || 0),
         igst: product.igst || 0,
         pricing: product.pricing || {
           single: { price: '' },
@@ -61,6 +65,14 @@ const ProductForm = ({
       setBulkSlabs(product.pricing?.bulk || []);
     }
   }, [product, vendorCityId]);
+
+  // Automatically add one slab when bulk pricing is selected
+  useEffect(() => {
+    if (formData.priceType === 'bulk' && bulkSlabs.length === 0) {
+      setBulkSlabs([{ minQty: '', maxQty: '', price: '' }]);
+    }
+  }, [formData.priceType]);
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -128,8 +140,8 @@ const ProductForm = ({
      
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Row 1: Select Product and City */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Row 1: Select Product, City, and Price Type */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Product Selection */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -183,10 +195,7 @@ const ProductForm = ({
               </select>
             )}
           </div>
-        </div>
 
-        {/* Row 2: Price Type and Price */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Price Type */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -204,33 +213,6 @@ const ProductForm = ({
               <option value="bulk">Bulk Pricing</option>
             </select>
           </div>
-
-          {/* Pricing - Single Price */}
-          {formData.priceType === 'single' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Price *
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                step="0.01"
-                value={formData.pricing.single.price}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    pricing: {
-                      ...formData.pricing,
-                      single: { price: e.target.value },
-                    },
-                  })
-                }
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter price"
-              />
-            </div>
-          )}
         </div>
 
         {/* Bulk Pricing Section - Full Width */}
@@ -290,58 +272,132 @@ const ProductForm = ({
           </div>
         )}
 
-        {/* Row 3: Stock Management - Two Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Available Stock
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={formData.availableStock}
-              onChange={(e) =>
-                setFormData({ ...formData, availableStock: e.target.value })
-              }
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
+        {/* Row 2: Price, Available Stock, Min Order Qty, and Low Stock Alert (when single pricing) OR Available Stock, Min Order Qty, Low Stock Alert (when bulk pricing) */}
+        {formData.priceType === 'single' ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Price *
+              </label>
+              <input
+                type="number"
+                required
+                min="0"
+                step="0.01"
+                value={formData.pricing.single.price}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    pricing: {
+                      ...formData.pricing,
+                      single: { price: e.target.value },
+                    },
+                  })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter price"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Available Stock
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.availableStock}
+                onChange={(e) =>
+                  setFormData({ ...formData, availableStock: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Min Order Qty
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={formData.minimumOrderQuantity}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    minimumOrderQuantity: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Low Stock Alert
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.notifyQuantity}
+                onChange={(e) =>
+                  setFormData({ ...formData, notifyQuantity: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="Optional"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Min Order Qty
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={formData.minimumOrderQuantity}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  minimumOrderQuantity: e.target.value,
-                })
-              }
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Available Stock
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.availableStock}
+                onChange={(e) =>
+                  setFormData({ ...formData, availableStock: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Min Order Qty
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={formData.minimumOrderQuantity}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    minimumOrderQuantity: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Low Stock Alert
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.notifyQuantity}
+                onChange={(e) =>
+                  setFormData({ ...formData, notifyQuantity: e.target.value })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="Optional"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Row 4: Low Stock Alert and Status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Low Stock Alert
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={formData.notifyQuantity}
-              onChange={(e) =>
-                setFormData({ ...formData, notifyQuantity: e.target.value })
-              }
-              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="Optional"
-            />
-          </div>
+        {/* Row 4: Status */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Status
@@ -358,15 +414,17 @@ const ProductForm = ({
               <span className="text-xs text-gray-700">Active</span>
             </label>
           </div>
+          <div></div>
+          <div></div>
         </div>
 
         {/* Purchase Information */}
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Purchase Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Default Price
+                MRP (Marked Price)
               </label>
               <input
                 type="number"
@@ -428,7 +486,7 @@ const ProductForm = ({
         {/* Tax Information */}
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Tax Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 GST (%)
@@ -438,9 +496,17 @@ const ProductForm = ({
                 step="0.01"
                 min="0"
                 value={formData.gst}
-                onChange={(e) =>
-                  setFormData({ ...formData, gst: e.target.value })
-                }
+                onChange={(e) => {
+                  const gstValue = e.target.value;
+                  const gstNum = parseFloat(gstValue) || 0;
+                  const cgstSgstValue = gstNum > 0 ? (gstNum / 2).toFixed(2) : '';
+                  setFormData({ 
+                    ...formData, 
+                    gst: gstValue,
+                    cgst: cgstSgstValue,
+                    sgst: cgstSgstValue
+                  });
+                }}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />
