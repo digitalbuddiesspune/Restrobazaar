@@ -28,19 +28,19 @@ const ProductsTable = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Image
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Category
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Actions
               </th>
             </tr>
@@ -60,26 +60,26 @@ const ProductsTable = ({
                     />
                   ) : (
                     <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
-                      <span className="text-gray-400 text-xs">No Image</span>
+                      <span className="text-gray-400 text-[10px]">No Image</span>
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-gray-900">
                   {product.productName}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs text-gray-500">
                     {product.category?.name || product.category || "N/A"}
                   </div>
                   {product.subCategory && (
-                    <div className="text-xs text-gray-400">
+                    <div className="text-[10px] text-gray-400">
                       {product.subCategory}
                     </div>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`px-2 py-1 text-xs rounded-full ${
+                    className={`px-2 py-1 text-[10px] rounded-full ${
                       product.status
                         ? "bg-green-100 text-green-800"
                         : "bg-red-100 text-red-800"
@@ -88,17 +88,17 @@ const ProductsTable = ({
                     {product.status ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <td className="px-6 py-4 whitespace-nowrap text-xs">
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleEdit(product._id)}
-                      className="text-blue-600 hover:text-blue-900 font-medium"
+                      className="text-blue-600 hover:text-blue-900 font-medium text-xs"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete("products", product._id)}
-                      className="text-red-600 hover:text-red-900 font-medium"
+                      className="text-red-600 hover:text-red-900 font-medium text-xs"
                     >
                       Delete
                     </button>
@@ -117,7 +117,7 @@ const ProductsTable = ({
       {/* Pagination Controls */}
       {products.length > 0 && (
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
+          <div className="text-xs text-gray-700">
             Showing {(productsPage - 1) * itemsPerPage + 1} to{" "}
             {Math.min(productsPage * itemsPerPage, products.length)} of{" "}
             {products.length} products
@@ -126,7 +126,7 @@ const ProductsTable = ({
             <button
               onClick={() => setProductsPage((prev) => Math.max(1, prev - 1))}
               disabled={productsPage === 1}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
@@ -149,7 +149,7 @@ const ProductsTable = ({
                       )}
                       <button
                         onClick={() => setProductsPage(page)}
-                        className={`px-3 py-2 text-sm border rounded-lg ${
+                        className={`px-3 py-2 text-xs border rounded-lg ${
                           productsPage === page
                             ? "bg-purple-600 text-white border-purple-600"
                             : "border-gray-300 hover:bg-gray-50"
@@ -166,7 +166,7 @@ const ProductsTable = ({
                 setProductsPage((prev) => Math.min(totalPages, prev + 1))
               }
               disabled={productsPage === totalPages}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>

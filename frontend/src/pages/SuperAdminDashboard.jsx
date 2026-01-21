@@ -46,7 +46,7 @@ const SuperAdminDashboard = () => {
 
   // Pagination state
   const [productsPage, setProductsPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
 
   // Stats
   const [stats, setStats] = useState({
