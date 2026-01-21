@@ -599,7 +599,7 @@ const Category = () => {
                     <button
                       key={category._id}
                       onClick={() => handleCategorySelect(category)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 border ${
+                      className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-200 border ${
                         selectedCategory?._id === category._id
                           ? 'bg-red-600 text-white font-semibold shadow-md border-red-700'
                           : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border-gray-300'
@@ -811,7 +811,7 @@ const Category = () => {
                 ) : (
                   <>
                     {/* Products Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-1.5 sm:gap-2 lg:gap-2 xl:gap-2.5 2xl:gap-3 mb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-1.5 sm:gap-2 lg:gap-2 xl:gap-2.5 2xl:gap-3 mb-8">
                       {products.map((product) => (
                         <div
                           key={product._id}

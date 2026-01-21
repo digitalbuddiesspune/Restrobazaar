@@ -1159,7 +1159,7 @@ const ProductDetail = () => {
           <div className="mt-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">You may also like</h2>
             {suggestedProductsLoading && suggestedProducts.length === 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 sm:gap-3">
                 {[...Array(5)].map((_, index) => (
                   <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
                     <div className="aspect-square bg-gray-200"></div>
@@ -1172,7 +1172,7 @@ const ProductDetail = () => {
                 ))}
               </div>
             ) : suggestedProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 sm:gap-3">
                 {suggestedProducts.map((suggestedProduct) => {
                   const isInWishlistSuggested = wishlistData?.success && wishlistData?.data?.products
                     ? wishlistData.data.products.some(item => item._id === suggestedProduct._id)
