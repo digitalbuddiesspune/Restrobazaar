@@ -10,8 +10,9 @@ const OverviewStats = ({
   vendors = [],
   monthlyOrdersData = [],
   selectedYear = new Date().getFullYear(),
+  selectedMonth = new Date().getMonth(),
   onYearChange = () => { },
-
+  onMonthChange = () => { },
   selectedGraphCity = '',
   onGraphCityChange = () => { },
 
@@ -258,7 +259,9 @@ const OverviewStats = ({
         <OrdersGraph
           ordersData={monthlyOrdersData}
           selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
           onYearChange={onYearChange}
+          onMonthChange={onMonthChange}
           cities={cities}
           selectedCity={selectedGraphCity}
           onCityChange={onGraphCityChange}

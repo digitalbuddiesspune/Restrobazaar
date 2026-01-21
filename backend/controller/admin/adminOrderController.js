@@ -74,12 +74,13 @@ export const getAllOrders = async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    // Find orders with populated user data
+    // Find orders with populated user data and vendor service city
     const orders = await Order.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
-      .populate('userId', 'name email phone city');
+      .populate('userId', 'name email phone city')
+      .populate('vendorServiceCityId', 'name displayName');
 
     // Get total count
     const total = await Order.countDocuments(query);
@@ -105,7 +106,9 @@ export const getAllOrders = async (req, res) => {
         Payment_status: orderObj.paymentStatus || 'pending',
         delivery_date: orderObj.deliveryDate || null,
         Email: orderObj.userId?.email || 'N/A',
-        City: orderObj.deliveryAddress?.city || orderObj.userId?.city || 'N/A',
+        // Use vendor service city instead of user delivery city
+        City: orderObj.vendorServiceCityId?.displayName || orderObj.vendorServiceCityId?.name || orderObj.deliveryAddress?.city || 'N/A',
+        vendorServiceCityId: orderObj.vendorServiceCityId?._id || orderObj.vendorServiceCityId || null,
       };
 
       return orderWithVendors;

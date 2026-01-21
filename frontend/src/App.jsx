@@ -8,6 +8,7 @@ import SignInModal from "./pages/SignInModal";
 import SignUpModal from "./pages/SignUpModal";
 import SuperAdminLoginModal from "./pages/SuperAdminLoginModal";
 import VendorLoginModal from "./pages/VendorLoginModal";
+import WhatsAppButton from "./components/WhatsAppButton";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
@@ -101,6 +102,7 @@ function App() {
         {!isAdminRoute && !isVendorAdminRoute && <Header />}
         <Outlet />
         {!isAdminRoute && !isVendorAdminRoute && <Footer />}
+        {!isAdminRoute && !isVendorAdminRoute && <WhatsAppButton />}
         
         {/* Login Modals */}
         <Modal isOpen={showSignIn} onClose={closeSignIn}>

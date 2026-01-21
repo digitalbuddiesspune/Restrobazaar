@@ -512,8 +512,8 @@ const VendorDashboard = () => {
       if (response?.success) {
         const orders = response.data || [];
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        // Initialize with 0
-        const monthlyData = monthNames.map(name => ({ name, orders: 0 }));
+        // Initialize with 0 for both orders and sales
+        const monthlyData = monthNames.map(name => ({ name, orders: 0, sales: 0 }));
 
         orders.forEach(order => {
           const orderDate = new Date(order.createdAt || order.order_date_and_time);
@@ -522,7 +522,16 @@ const VendorDashboard = () => {
           const isCorrectYear = !isNaN(orderDate) && orderDate.getFullYear() === targetYear;
 
           if (isCorrectYear) {
-            monthlyData[orderDate.getMonth()].orders += 1;
+            const monthIndex = orderDate.getMonth();
+            monthlyData[monthIndex].orders += 1;
+            
+            // Calculate sales (total amount) - check different possible fields
+            const totalAmount = order.Net_total || 
+                               order.billingDetails?.totalAmount || 
+                               order.totalAmount || 
+                               order.amount || 
+                               0;
+            monthlyData[monthIndex].sales += totalAmount || 0;
           }
         });
 

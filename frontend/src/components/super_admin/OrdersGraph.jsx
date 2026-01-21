@@ -12,7 +12,9 @@ import {
 const OrdersGraph = ({ 
     ordersData, 
     selectedYear, 
-    onYearChange, 
+    selectedMonth,
+    onYearChange,
+    onMonthChange,
     cities = [], 
     selectedCity, 
     onCityChange,
@@ -22,6 +24,22 @@ const OrdersGraph = ({
     // Generate last 5 years
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+    
+    // Generate months
+    const monthNames = [
+        { value: 0, label: 'January' },
+        { value: 1, label: 'February' },
+        { value: 2, label: 'March' },
+        { value: 3, label: 'April' },
+        { value: 4, label: 'May' },
+        { value: 5, label: 'June' },
+        { value: 6, label: 'July' },
+        { value: 7, label: 'August' },
+        { value: 8, label: 'September' },
+        { value: 9, label: 'October' },
+        { value: 10, label: 'November' },
+        { value: 11, label: 'December' }
+    ];
 
     return (
         <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 p-6 rounded-2xl shadow-lg border border-gray-200/50 backdrop-blur-sm transition-all duration-300 hover:shadow-xl mt-8 relative overflow-hidden">
@@ -32,37 +50,41 @@ const OrdersGraph = ({
             <div className="relative z-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800">Order Statistics {selectedYear}</h2>
-                        <p className="text-sm text-gray-500 mt-1">Monthly order volume overview - {selectedYear}</p>
+                        <h2 className="text-lg font-bold text-gray-800">City-wise Order Statistics</h2>
+                        <p className="text-sm text-gray-500 mt-1">Orders and Sales by City - {monthNames.find(m => m.value === selectedMonth)?.label || 'Month'} {selectedYear}</p>
                     </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* City Filter - Only show if cities are provided */}
-                    {cities && cities.length > 0 && (
-                        <select
-                            value={selectedCity}
-                            onChange={(e) => onCityChange(e.target.value)}
-                            className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer min-w-[120px]"
-                        >
-                            <option value="">All Cities</option>
-                            {cities.map(city => (
-                                <option key={city._id} value={city._id}>{city.name}</option>
-                            ))}
-                        </select>
-                    )}
-
                     {/* Year Filter */}
                     <select
                         value={selectedYear}
-                        onChange={(e) => onYearChange(parseInt(e.target.value))}
+                        onChange={(e) => onYearChange && onYearChange(parseInt(e.target.value))}
                         className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
                     >
                         {years.map(year => (
                             <option key={year} value={year}>{year}</option>
                         ))}
                     </select>
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        Orders
+                    
+                    {/* Month Filter */}
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => onMonthChange && onMonthChange(parseInt(e.target.value))}
+                        className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                    >
+                        {monthNames.map(month => (
+                            <option key={month.value} value={month.value}>{month.label}</option>
+                        ))}
+                    </select>
+                    
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            Orders
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-full text-xs font-medium">
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            Sales
+                        </div>
                     </div>
                 </div>
             </div>
@@ -73,8 +95,8 @@ const OrdersGraph = ({
                         data={ordersData}
                         margin={{
                             top: 10,
-                            right: 10,
-                            left: -20,
+                            right: 30,
+                            left: 0,
                             bottom: 0,
                         }}
                     >
@@ -83,6 +105,11 @@ const OrdersGraph = ({
                                 <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
                                 <stop offset="50%" stopColor="#4f46e5" stopOpacity={1} />
                                 <stop offset="100%" stopColor="#4338ca" stopOpacity={1} />
+                            </linearGradient>
+                            <linearGradient id="salesBarGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                                <stop offset="50%" stopColor="#dc2626" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#b91c1c" stopOpacity={1} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid 
@@ -95,16 +122,29 @@ const OrdersGraph = ({
                             dataKey="name"
                             axisLine={false}
                             tickLine={false}
-                            tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }}
+                            tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
                             dy={10}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
                         />
                         <YAxis
+                            yAxisId="left"
                             axisLine={false}
                             tickLine={false}
-                            tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }}
+                            tick={{ fill: '#6366f1', fontSize: 12, fontWeight: 600 }}
                             dx={-10}
                             ticks={yAxisTicks}
                             domain={yAxisDomain}
+                            label={{ value: 'Orders', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6366f1' } }}
+                        />
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: '#ef4444', fontSize: 12, fontWeight: 600 }}
+                            dx={10}
                         />
                         <Tooltip
                             cursor={{ fill: 'rgba(99, 102, 241, 0.1)', stroke: '#6366f1', strokeWidth: 1 }}
@@ -120,10 +160,19 @@ const OrdersGraph = ({
                             labelStyle={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: 500 }}
                         />
                         <Bar
+                            yAxisId="left"
                             dataKey="orders"
                             fill="url(#barGradient)"
                             radius={[8, 8, 0, 0]}
-                            barSize={42}
+                            barSize={30}
+                            animationDuration={1500}
+                        />
+                        <Bar
+                            yAxisId="right"
+                            dataKey="sales"
+                            fill="url(#salesBarGradient)"
+                            radius={[8, 8, 0, 0]}
+                            barSize={30}
                             animationDuration={1500}
                         />
                     </BarChart>

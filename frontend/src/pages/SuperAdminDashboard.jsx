@@ -85,7 +85,9 @@ const SuperAdminDashboard = () => {
   const [monthlyOrdersData, setMonthlyOrdersData] = useState([]);
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedGraphCity, setSelectedGraphCity] = useState('');
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
 
   const [pendingOrders, setPendingOrders] = useState([]);
   const [pendingStartDate, setPendingStartDate] = useState('');
@@ -331,27 +333,24 @@ const SuperAdminDashboard = () => {
     setPendingEndDate('');
   };
 
-  // Fetch monthly orders
-  const fetchMonthlyOrders = async (year, cityId) => {
+  // Fetch selected month's city-wise orders
+  const fetchMonthlyOrders = async (year, month) => {
     try {
       const token = getToken();
       if (!token) return;
 
+      // Get selected month's start and end dates
       const targetYear = year || selectedYear;
-      const targetCity = cityId !== undefined ? cityId : selectedGraphCity;
-
-      const startOfYear = new Date(targetYear, 0, 1).toISOString();
-      const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59, 999).toISOString();
+      const targetMonth = month !== undefined ? month : selectedMonth;
+      
+      const startOfMonth = new Date(targetYear, targetMonth, 1).toISOString();
+      const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999).toISOString();
 
       const params = {
-        startDate: startOfYear,
-        endDate: endOfYear,
+        startDate: startOfMonth,
+        endDate: endOfMonth,
         limit: 20000,
       };
-
-      if (targetCity) {
-        params.cityId = targetCity;
-      }
 
       const response = await axios.get(`${baseUrl}/admin/orders`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -360,27 +359,77 @@ const SuperAdminDashboard = () => {
 
       if (response.data?.success) {
         const orders = response.data.data || [];
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        // Initialize with 0
-        const monthlyData = monthNames.map(name => ({ name, orders: 0 }));
+        
+        // Get all cities (active and inactive) for grouping
+        const citiesResponse = await axios.get(`${baseUrl}/cities`, {
+          headers: { Authorization: `Bearer ${token}` },
+          // Don't filter by isActive - get all cities
+        });
+        
+        const allCities = citiesResponse.data?.data || [];
+        
+        // Create a map of all city IDs (active and inactive) to city data for faster lookup
+        const cityMap = {};
+        allCities.forEach(city => {
+          const cityId = city._id?.toString() || city._id;
+          const cityName = city.displayName || city.name || 'Unknown';
+          if (cityId) {
+            cityMap[cityId] = city;
+          }
+        });
+        
+        // Initialize city data with 0 for all cities (active and inactive)
+        const cityDataMap = {};
+        allCities.forEach(city => {
+          const cityName = city.displayName || city.name || 'Unknown';
+          cityDataMap[cityName] = { name: cityName, orders: 0, sales: 0 };
+        });
 
+        // Group orders by vendor service city for selected month
+        // Note: API already filters by date range, so all orders here are in the selected month
         orders.forEach(order => {
-          const orderDate = new Date(order.createdAt || order.orderDate);
-
-          // Verify year and city (though API should filter city, nice to double check)
-          const isCorrectYear = !isNaN(orderDate) && orderDate.getFullYear() === targetYear;
-          // For city, we assume API filtered it correctly, or we can check if needed. 
-          // The API param 'cityId' filters by order's city.
-
-          if (isCorrectYear) {
-            monthlyData[orderDate.getMonth()].orders += 1;
+          // Get vendor service city ID from order
+          const vendorCityId = order.vendorServiceCityId?._id?.toString() || 
+                              order.vendorServiceCityId?.toString() || 
+                              order.vendorServiceCityId;
+          
+          // Skip orders where vendorServiceCityId is null (but allow inactive cities)
+          if (!vendorCityId) {
+            return; // Skip orders without vendor service city
+          }
+          
+          // Check if this city ID exists in our cities (active or inactive)
+          const city = cityMap[vendorCityId];
+          if (!city) {
+            return; // Skip orders where vendor service city doesn't exist in database
+          }
+          
+          // Use the city's name (works for both active and inactive cities)
+          const cityName = city.displayName || city.name || 'Unknown';
+          
+          // Only count if city exists in our map (should always be true, but double-check)
+          if (cityDataMap[cityName] !== undefined) {
+            // Count orders and sales
+            cityDataMap[cityName].orders += 1;
+            
+            // Calculate sales (total amount)
+            const totalAmount = order.Net_total || 
+                               order.billingDetails?.totalAmount || 
+                               order.totalAmount || 
+                               order.amount || 
+                               0;
+            cityDataMap[cityName].sales += totalAmount || 0;
           }
         });
 
-        setMonthlyOrdersData(monthlyData);
+        // Convert to array - show all cities even with 0 orders for comparison
+        const cityData = Object.values(cityDataMap)
+          .sort((a, b) => b.orders - a.orders);
+
+        setMonthlyOrdersData(cityData);
       }
     } catch (err) {
-      console.error("Error fetching monthly orders:", err);
+      console.error("Error fetching current month's orders:", err);
     }
   };
 
@@ -534,8 +583,8 @@ const SuperAdminDashboard = () => {
       fetchVendors();
       // Fetch today's orders with current filters
       fetchTodayOrdersStats(orderFilters);
-      // Fetch monthly orders for graph
-      fetchMonthlyOrders(selectedYear, selectedGraphCity);
+      // Fetch selected month's orders for graph
+      fetchMonthlyOrders(selectedYear, selectedMonth);
       fetchPendingOrders(pendingCity, pendingStartDate, pendingEndDate);
     }
     if (activeTab === "products") {
@@ -558,7 +607,62 @@ const SuperAdminDashboard = () => {
     if (activeTab === "testimonials") fetchTestimonials();
     if (activeTab === "add-testimonial") fetchTestimonials(); // Fetch testimonials for reference
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, selectedYear, selectedGraphCity, pendingCity, pendingStartDate, pendingEndDate]);
+  }, [activeTab, pendingCity, pendingStartDate, pendingEndDate]);
+
+  // Refresh graph when selected month or year changes
+  useEffect(() => {
+    if (activeTab === "overview") {
+      fetchMonthlyOrders(selectedYear, selectedMonth);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear, selectedMonth, activeTab]);
+
+  // Auto-refresh when month changes (for current month tracking)
+  useEffect(() => {
+    const checkMonthChange = () => {
+      const now = new Date();
+      const currentMonthIndex = now.getMonth();
+      if (currentMonthIndex !== currentMonth) {
+        setCurrentMonth(currentMonthIndex);
+        // If viewing current month, refresh automatically
+        if (activeTab === "overview" && selectedMonth === currentMonth) {
+          fetchMonthlyOrders(selectedYear, currentMonthIndex);
+        }
+      }
+    };
+
+    // Check every minute if month has changed
+    const interval = setInterval(checkMonthChange, 60000);
+    
+    // Also check on mount
+    checkMonthChange();
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth, activeTab, selectedMonth, selectedYear]);
+
+  // Refresh graph when month changes
+  useEffect(() => {
+    const checkMonthChange = () => {
+      const now = new Date();
+      const currentMonthIndex = now.getMonth();
+      if (currentMonthIndex !== currentMonth) {
+        setCurrentMonth(currentMonthIndex);
+        if (activeTab === "overview") {
+          fetchMonthlyOrders();
+        }
+      }
+    };
+
+    // Check every minute if month has changed
+    const interval = setInterval(checkMonthChange, 60000);
+    
+    // Also check on mount
+    checkMonthChange();
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth, activeTab]);
 
   // Refetch products when filters change
   useEffect(() => {
@@ -1276,7 +1380,9 @@ const SuperAdminDashboard = () => {
                 vendors={vendors}
                 monthlyOrdersData={monthlyOrdersData}
                 selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
                 onYearChange={setSelectedYear}
+                onMonthChange={setSelectedMonth}
                 selectedGraphCity={selectedGraphCity}
                 onGraphCityChange={setSelectedGraphCity}
                 pendingOrders={pendingOrders}
