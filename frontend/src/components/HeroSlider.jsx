@@ -33,7 +33,7 @@ const HeroSlider = ({ slides = [], mobileSrc }) => {
   return (
     <section className="w-full m-0 p-0">
       {/* Desktop slider */}
-      <div className="hidden md:block relative overflow-hidden container mx-auto">
+      <div className="hidden md:block relative overflow-hidden">
         <div
           className="flex transition-transform duration-500 ease-out items-start"
           style={{ transform: `translateX(-${index * 100}%)` }}
