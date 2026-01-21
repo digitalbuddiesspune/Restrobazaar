@@ -486,7 +486,7 @@ const ProductForm = ({
         {/* Tax Information */}
         <div className="border-t border-gray-200 pt-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Tax Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 GST (%)

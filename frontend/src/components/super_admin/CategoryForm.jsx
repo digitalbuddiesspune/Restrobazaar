@@ -68,53 +68,76 @@ const CategoryForm = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold mb-6">
+    <div className="bg-white rounded-lg shadow p-4">
+      <h2 className="text-lg font-bold mb-4">
         {editingCategoryId ? "Edit Category" : "Add New Category"}
       </h2>
-      <form onSubmit={handleCategorySubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category Name *
-          </label>
-          <input
-            type="text"
-            required
-            value={categoryForm.name}
-            onChange={(e) => handleCategoryNameChange(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="e.g., Electronics"
-          />
+      <form onSubmit={handleCategorySubmit} className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Category Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={categoryForm.name}
+              onChange={(e) => handleCategoryNameChange(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="e.g., Electronics"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Slug
+            </label>
+            <input
+              type="text"
+              value={categoryForm.slug}
+              onChange={(e) =>
+                setCategoryForm({ ...categoryForm, slug: e.target.value })
+              }
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="Auto-generated from name"
+            />
+            <p className="mt-0.5 text-[10px] text-gray-500">
+              Auto-generated from name
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Priority
+            </label>
+            <input
+              type="number"
+              value={categoryForm.priority}
+              onChange={(e) =>
+                setCategoryForm({
+                  ...categoryForm,
+                  priority: parseInt(e.target.value) || 0,
+                })
+              }
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="0"
+              min="0"
+            />
+            <p className="mt-0.5 text-[10px] text-gray-500">
+              Higher numbers appear first
+            </p>
+          </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Slug
-          </label>
-          <input
-            type="text"
-            value={categoryForm.slug}
-            onChange={(e) =>
-              setCategoryForm({ ...categoryForm, slug: e.target.value })
-            }
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="Auto-generated from name (e.g., electronics)"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Slug is auto-generated from name. You can edit it manually if needed.
-          </p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
             Image URL or Upload File
           </label>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <input
               type="url"
               value={categoryForm.image}
               onChange={(e) =>
                 setCategoryForm({ ...categoryForm, image: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="https://example.com/image.jpg or upload file below"
             />
             <div className="relative">
@@ -130,13 +153,13 @@ const CategoryForm = ({
                   e.target.value = '';
                 }}
                 disabled={uploading}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               {uploading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 rounded-lg">
-                  <div className="flex items-center gap-2 text-purple-600">
+                  <div className="flex items-center gap-1.5 text-purple-600">
                     <svg
-                      className="animate-spin h-5 w-5"
+                      className="animate-spin h-4 w-4"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -155,12 +178,12 @@ const CategoryForm = ({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       ></path>
                     </svg>
-                    <span className="text-sm">Uploading...</span>
+                    <span className="text-xs">Uploading...</span>
                   </div>
                 </div>
               )}
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-[10px] text-gray-500">
               Upload an image file or paste an image URL above
             </p>
             {categoryForm.image && (
@@ -168,11 +191,11 @@ const CategoryForm = ({
                 <label className="block text-xs text-gray-500 mb-1">
                   Preview
                 </label>
-                <div className="border border-gray-200 rounded-lg p-2 bg-white">
+                <div className="border border-gray-200 rounded-lg p-1.5 bg-white">
                   <img
                     src={categoryForm.image}
                     alt="Category preview"
-                    className="max-w-full h-32 object-contain mx-auto"
+                    className="max-w-full h-24 object-contain mx-auto"
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src =
@@ -185,7 +208,7 @@ const CategoryForm = ({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
             Description
           </label>
           <textarea
@@ -196,16 +219,16 @@ const CategoryForm = ({
                 description: e.target.value,
               })
             }
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            rows="3"
+            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            rows="2"
             placeholder="Enter category description..."
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
             Subcategories
           </label>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {categoryForm.subcategories.map((subcat, index) => (
               <div key={index} className="flex gap-2">
                 <input
@@ -219,7 +242,7 @@ const CategoryForm = ({
                       subcategories: newSubcategories,
                     });
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-64 max-w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="Enter subcategory name"
                 />
                 <button
@@ -233,7 +256,7 @@ const CategoryForm = ({
                       subcategories: newSubcategories,
                     });
                   }}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                  className="px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
                 >
                   Remove
                 </button>
@@ -247,34 +270,13 @@ const CategoryForm = ({
                   subcategories: [...categoryForm.subcategories, ""],
                 });
               }}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              className="px-2 py-1 text-[10px] bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
             >
               + Add Subcategory
             </button>
           </div>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-0.5 text-[10px] text-gray-500">
             Add subcategories for this category (optional).
-          </p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Priority
-          </label>
-          <input
-            type="number"
-            value={categoryForm.priority}
-            onChange={(e) =>
-              setCategoryForm({
-                ...categoryForm,
-                priority: parseInt(e.target.value) || 0,
-              })
-            }
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="0"
-            min="0"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Higher numbers appear first. Default is 0.
           </p>
         </div>
         <div className="flex items-center">
@@ -288,16 +290,16 @@ const CategoryForm = ({
                   isActive: e.target.checked,
                 })
               }
-              className="mr-2"
+              className="mr-1.5"
             />
-            <span className="text-sm text-gray-700">Active</span>
+            <span className="text-xs text-gray-700">Active</span>
           </label>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
+            className="flex-1 px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
           >
             {loading
               ? editingCategoryId
@@ -311,7 +313,7 @@ const CategoryForm = ({
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+              className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
             >
               Cancel Edit
             </button>

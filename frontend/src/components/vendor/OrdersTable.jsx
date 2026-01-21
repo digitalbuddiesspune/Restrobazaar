@@ -639,25 +639,25 @@ const OrdersTable = ({
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Order #
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Customer
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Items
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Amount
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Order Status
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Payment
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Date
               </th>
             </tr>
@@ -669,62 +669,62 @@ const OrdersTable = ({
                 className="hover:bg-gray-50 transition cursor-pointer even:bg-gray-50"
                 onClick={() => onOrderClick && onOrderClick(order._id)}
               >
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-xs font-medium text-gray-900">
-                      {order.orderNumber || order._id.substring(0, 8)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-xs text-gray-900">
-                      {order.deliveryAddress?.name || 'N/A'}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {order.deliveryAddress?.phone || ''}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-xs text-gray-900 font-medium">
-                      {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-xs font-semibold text-gray-900">
-                      ₹{order.billingDetails?.totalAmount?.toLocaleString() || 0}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="relative">
-                      {(() => {
-                        const isDelivered = order.orderStatus === 'delivered';
-                        const isCancelled = order.orderStatus === 'cancelled';
-                        const canChangeStatus = !isDelivered && !isCancelled;
-                        
-                        return (
-                          <>
-                            <button
-                              onClick={() => canChangeStatus && setShowStatusDropdown(showStatusDropdown === order._id ? null : order._id)}
-                              disabled={!canChangeStatus}
-                              className={`px-2 py-1 inline-flex items-center space-x-1 text-xs leading-4 font-semibold rounded-full transition ${getStatusColor(
-                                order.orderStatus
-                              )} ${
-                                canChangeStatus 
-                                  ? 'cursor-pointer hover:opacity-80' 
-                                  : 'cursor-not-allowed opacity-75'
-                              }`}
-                              title={!canChangeStatus ? 'Cannot change status for delivered or cancelled orders' : 'Change order status'}
-                            >
-                              <span>{order.orderStatus || 'pending'}</span>
-                              {canChangeStatus && (
-                                <svg
-                                  className={`w-3 h-3 transition-transform ${showStatusDropdown === order._id ? 'rotate-180' : ''}`}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              )}
-                            </button>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900 leading-tight">
+                    {order.orderNumber || order._id.substring(0, 8)}
+                  </div>
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 leading-tight">
+                    {order.deliveryAddress?.name || 'N/A'}
+                  </div>
+                  <div className="text-xs text-gray-500 leading-tight">
+                    {order.deliveryAddress?.phone || ''}
+                  </div>
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 font-medium leading-tight">
+                    {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}
+                  </div>
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <div className="text-sm font-semibold text-gray-900 leading-tight">
+                    ₹{order.billingDetails?.totalAmount?.toLocaleString() || 0}
+                  </div>
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <div className="relative">
+                    {(() => {
+                      const isDelivered = order.orderStatus === 'delivered';
+                      const isCancelled = order.orderStatus === 'cancelled';
+                      const canChangeStatus = !isDelivered && !isCancelled;
+                      
+                      return (
+                        <>
+                          <button
+                            onClick={() => canChangeStatus && setShowStatusDropdown(showStatusDropdown === order._id ? null : order._id)}
+                            disabled={!canChangeStatus}
+                            className={`px-2 py-0.5 inline-flex items-center space-x-1 text-[10px] leading-4 font-semibold rounded-full transition ${getStatusColor(
+                              order.orderStatus
+                            )} ${
+                              canChangeStatus 
+                                ? 'cursor-pointer hover:opacity-80' 
+                                : 'cursor-not-allowed opacity-75'
+                            }`}
+                            title={!canChangeStatus ? 'Cannot change status for delivered or cancelled orders' : 'Change order status'}
+                          >
+                            <span>{order.orderStatus || 'pending'}</span>
+                            {canChangeStatus && (
+                              <svg
+                                className={`w-3 h-3 transition-transform ${showStatusDropdown === order._id ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            )}
+                          </button>
                             {showStatusDropdown === order._id && canChangeStatus && (
                               <>
                                 <div
@@ -766,21 +766,21 @@ const OrdersTable = ({
                       })()}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap">
                     <div>
                       <span
-                        className={`px-2 inline-flex text-xs leading-4 font-semibold rounded-full ${getPaymentDisplayColor(
+                        className={`px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${getPaymentDisplayColor(
                           order
                         )}`}
                       >
                         {getPaymentDisplayText(order)}
                       </span>
-                      <div className="text-xs text-gray-500 mt-1 capitalize">
+                      <div className="text-xs text-gray-500 mt-0.5 capitalize leading-tight">
                         {order.paymentMethod || 'N/A'}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 leading-tight">
                     {formatDate(order.createdAt)}
                   </td>
                 </tr>

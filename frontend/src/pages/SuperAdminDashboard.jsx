@@ -2777,7 +2777,7 @@ const SuperAdminDashboard = () => {
                             search: e.target.value,
                           });
                         }}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
 
@@ -2795,7 +2795,7 @@ const SuperAdminDashboard = () => {
                             subCategory: "", // Reset subcategory when category changes
                           });
                         }}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       >
                         <option value="">All Categories</option>
                         {categories.map((category) => (
@@ -2820,7 +2820,7 @@ const SuperAdminDashboard = () => {
                           });
                         }}
                         disabled={!productFilters.category}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                       >
                         <option value="">All Subcategories</option>
                         {availableSubCategories.map((subCategory, index) => (
@@ -2844,7 +2844,7 @@ const SuperAdminDashboard = () => {
                             status: e.target.value,
                           });
                         }}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       >
                         <option value="">All Status</option>
                         <option value="active">Active</option>
@@ -3302,7 +3302,7 @@ const SuperAdminDashboard = () => {
                           search: e.target.value,
                         });
                       }}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                   </div>
 
@@ -3321,7 +3321,7 @@ const SuperAdminDashboard = () => {
                           sortOrder,
                         });
                       }}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
                       <option value="name-asc">Ascending Order by Name</option>
                       <option value="name-desc">Descending Order by Name</option>
@@ -3498,22 +3498,22 @@ const SuperAdminDashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                         Name
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                         Business Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                         Location
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                         Review
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -3521,21 +3521,21 @@ const SuperAdminDashboard = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {testimonials.map((testimonial) => (
                       <tr key={testimonial._id} className="even:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-2 whitespace-nowrap text-xs font-medium text-gray-900 leading-tight">
                           {testimonial.name}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-2 whitespace-nowrap text-xs text-gray-500 leading-tight">
                           {testimonial.businessType}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-2 whitespace-nowrap text-xs text-gray-500 leading-tight">
                           {testimonial.location}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        <td className="px-6 py-2 text-sm text-gray-500 max-w-xs truncate leading-tight">
                           {testimonial.review}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-2 whitespace-nowrap">
                           <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${testimonial.status
+                            className={`px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${testimonial.status
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                               }`}
@@ -3543,11 +3543,11 @@ const SuperAdminDashboard = () => {
                             {testimonial.status ? "Active" : "Inactive"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-2 whitespace-nowrap text-xs font-medium">
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleTestimonialEdit(testimonial)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-blue-600 hover:text-blue-900 text-xs"
                             >
                               Edit
                             </button>
@@ -3555,7 +3555,7 @@ const SuperAdminDashboard = () => {
                               onClick={() =>
                                 handleToggleTestimonialStatus(testimonial._id)
                               }
-                              className={`${testimonial.status
+                              className={`text-xs ${testimonial.status
                                 ? "text-orange-600 hover:text-orange-900"
                                 : "text-green-600 hover:text-green-900"
                                 }`}
@@ -3566,7 +3566,7 @@ const SuperAdminDashboard = () => {
                               onClick={() =>
                                 handleDelete("testimonials", testimonial._id)
                               }
-                              className="text-red-600 hover:text-red-900"
+                              className="text-red-600 hover:text-red-900 text-xs"
                             >
                               Delete
                             </button>

@@ -8,16 +8,16 @@ const CitiesTable = ({ cities, handleDelete, handleToggleStatus }) => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 State
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Actions
               </th>
             </tr>
@@ -25,13 +25,13 @@ const CitiesTable = ({ cities, handleDelete, handleToggleStatus }) => {
           <tbody className="bg-white divide-y divide-gray-200">
             {cities.map((city) => (
               <tr key={city._id} className="even:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900 leading-tight">
                   {city.displayName || city.name}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500 leading-tight">
                   {city.state}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-2 whitespace-nowrap">
                   <select
                     value={city.isActive ? "active" : "inactive"}
                     onChange={(e) => {
@@ -43,7 +43,7 @@ const CitiesTable = ({ cities, handleDelete, handleToggleStatus }) => {
                         }
                       }
                     }}
-                    className={`px-2 py-1 text-xs rounded border cursor-pointer ${
+                    className={`px-2 py-0.5 text-[10px] rounded border cursor-pointer ${
                       city.isActive
                         ? "bg-green-100 text-green-800 border-green-300"
                         : "bg-red-100 text-red-800 border-red-300"
@@ -53,11 +53,11 @@ const CitiesTable = ({ cities, handleDelete, handleToggleStatus }) => {
                     <option value="inactive">Inactive</option>
                   </select>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <td className="px-6 py-2 whitespace-nowrap text-sm">
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleDelete("cities", city._id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 text-xs"
                     >
                       Delete
                     </button>

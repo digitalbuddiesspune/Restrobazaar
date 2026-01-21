@@ -6,15 +6,15 @@ const VendorForm = ({
   loading,
 }) => {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold mb-6">Add New Vendor</h2>
-      <form onSubmit={handleVendorSubmit} className="space-y-6">
+    <div className="bg-white rounded-lg shadow p-4">
+      <h2 className="text-lg font-bold mb-4">Add New Vendor</h2>
+      <form onSubmit={handleVendorSubmit} className="space-y-3">
         {/* Basic Information */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Basic Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Business Name *
               </label>
               <input
@@ -27,11 +27,11 @@ const VendorForm = ({
                     businessName: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Legal Name
               </label>
               <input
@@ -43,11 +43,11 @@ const VendorForm = ({
                     legalName: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Vendor Type
               </label>
               <select
@@ -58,7 +58,7 @@ const VendorForm = ({
                     vendorType: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="individual">Individual</option>
                 <option value="shop">Shop</option>
@@ -67,7 +67,7 @@ const VendorForm = ({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Commission Percentage
               </label>
               <input
@@ -81,7 +81,7 @@ const VendorForm = ({
                     commissionPercentage: parseFloat(e.target.value) || 0,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
             </div>
@@ -89,11 +89,11 @@ const VendorForm = ({
         </div>
 
         {/* Authentication */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Authentication</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Authentication</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Email *
               </label>
               <input
@@ -103,11 +103,11 @@ const VendorForm = ({
                 onChange={(e) =>
                   setVendorForm({ ...vendorForm, email: e.target.value })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Phone *
               </label>
               <input
@@ -117,11 +117,11 @@ const VendorForm = ({
                 onChange={(e) =>
                   setVendorForm({ ...vendorForm, phone: e.target.value })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Password *
               </label>
               <input
@@ -134,18 +134,18 @@ const VendorForm = ({
                     password: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
           </div>
         </div>
 
         {/* Contact Person */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Contact Person</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Contact Person</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Name
               </label>
               <input
@@ -160,11 +160,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Phone
               </label>
               <input
@@ -179,11 +179,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Email
               </label>
               <input
@@ -198,18 +198,18 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
           </div>
         </div>
 
         {/* Address */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Address</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Address</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Address Line 1
               </label>
               <input
@@ -224,11 +224,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Address Line 2
               </label>
               <input
@@ -243,11 +243,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 City
               </label>
               <input
@@ -262,11 +262,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 State
               </label>
               <input
@@ -281,11 +281,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Pincode
               </label>
               <input
@@ -300,18 +300,18 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
           </div>
         </div>
 
         {/* Tax & KYC */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Tax & KYC</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Tax & KYC</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 GST Number
               </label>
               <input
@@ -323,11 +323,11 @@ const VendorForm = ({
                     gstNumber: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 PAN Number
               </label>
               <input
@@ -339,11 +339,11 @@ const VendorForm = ({
                     panNumber: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 KYC Status
               </label>
               <select
@@ -354,7 +354,7 @@ const VendorForm = ({
                     kycStatus: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="pending">Pending</option>
                 <option value="verified">Verified</option>
@@ -365,10 +365,10 @@ const VendorForm = ({
         </div>
 
         {/* Service Cities */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Service Cities</h3>
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Service Cities</h3>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               Select Service Cities
             </label>
             <select
@@ -381,8 +381,8 @@ const VendorForm = ({
                 );
                 setVendorForm({ ...vendorForm, serviceCities: selected });
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[100px]"
-              size="5"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[80px]"
+              size="4"
             >
               {cities.map((city) => (
                 <option key={city._id} value={city._id}>
@@ -390,18 +390,18 @@ const VendorForm = ({
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-0.5 text-[10px] text-gray-500">
               Hold Ctrl (Windows) or Cmd (Mac) to select multiple cities
             </p>
           </div>
         </div>
 
         {/* Bank Details */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Bank Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Bank Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Account Holder Name
               </label>
               <input
@@ -416,11 +416,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Account Number
               </label>
               <input
@@ -435,11 +435,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 IFSC Code
               </label>
               <input
@@ -454,11 +454,11 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Bank Name
               </label>
               <input
@@ -473,16 +473,16 @@ const VendorForm = ({
                     },
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
           </div>
         </div>
 
         {/* Status Flags */}
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold mb-4">Status Flags</h3>
-          <div className="flex items-center space-x-4">
+        <div className="border-b pb-3">
+          <h3 className="text-base font-semibold mb-3">Status Flags</h3>
+          <div className="flex items-center space-x-3">
             <label className="flex items-center">
               <input
                 type="checkbox"
@@ -493,9 +493,9 @@ const VendorForm = ({
                     isActive: e.target.checked,
                   })
                 }
-                className="mr-2"
+                className="mr-1.5"
               />
-              <span className="text-sm text-gray-700">Active</span>
+              <span className="text-xs text-gray-700">Active</span>
             </label>
             <label className="flex items-center">
               <input
@@ -507,9 +507,9 @@ const VendorForm = ({
                     isApproved: e.target.checked,
                   })
                 }
-                className="mr-2"
+                className="mr-1.5"
               />
-              <span className="text-sm text-gray-700">Approved</span>
+              <span className="text-xs text-gray-700">Approved</span>
             </label>
           </div>
         </div>
@@ -517,7 +517,7 @@ const VendorForm = ({
         <button
           type="submit"
           disabled={loading}
-          className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          className="w-full px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
         >
           {loading ? "Creating..." : "Create Vendor"}
         </button>

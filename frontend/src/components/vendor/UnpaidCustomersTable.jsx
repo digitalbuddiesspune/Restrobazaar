@@ -119,25 +119,25 @@ const UnpaidCustomersTable = ({
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Customer Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Phone
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Unpaid Orders
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Total Unpaid Amount
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Latest Order Date
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -150,37 +150,37 @@ const UnpaidCustomersTable = ({
                   className="hover:bg-gray-50 transition cursor-pointer even:bg-gray-50"
                   onClick={() => setExpandedCustomer(expandedCustomer === customer.userId ? null : customer.userId)}
                 >
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 leading-tight">
                       {customer.customerName}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-500 leading-tight">
                       {customer.customerEmail}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-500 leading-tight">
                       {customer.customerPhone}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 font-medium">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 font-medium leading-tight">
                       {customer.orderCount} order{customer.orderCount !== 1 ? 's' : ''}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-red-600">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-red-600 leading-tight">
                       ₹{customer.totalUnpaidAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-xs text-gray-500">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-500 leading-tight">
                       {customer.latestOrderDate ? formatDate(customer.latestOrderDate) : 'N/A'}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => {

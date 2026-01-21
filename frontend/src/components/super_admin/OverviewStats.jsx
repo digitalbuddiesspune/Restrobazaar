@@ -329,55 +329,55 @@ const OverviewStats = ({
           <table className="w-full">
             <thead className="bg-gray-200">
               <tr>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Order ID</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">User ID</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Customer</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Mobile</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Order ID</th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">User ID</th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Customer</th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Mobile</th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                <th className="px-4 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {pendingOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-8 text-center text-xs text-gray-500">
                     No pending orders found
                   </td>
                 </tr>
               ) : (
                 pendingOrders.map((order) => (
                   <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors even:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900">#{order.order_id || order._id?.substring(0, 8)}</span>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900 leading-tight">#{order.order_id || order._id?.substring(0, 8)}</span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-500">{order.userId?._id || 'N/A'}</span>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className="text-sm text-gray-500 leading-tight">{order.userId?._id || 'N/A'}</span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs mr-3">
                           {(order.Customer_Name || order.userId?.name || 'U').charAt(0)}
                         </div>
-                        <div className="text-sm font-medium text-gray-900">{order.Customer_Name || order.userId?.name || 'Unknown'}</div>
+                        <div className="text-sm font-medium text-gray-900 leading-tight">{order.Customer_Name || order.userId?.name || 'Unknown'}</div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-500">
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-gray-500 leading-tight">
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
                         {order.Customer_Mobile_No || order.userId?.phone || 'N/A'}
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900">₹{order.Net_total || order.totalAmount || 0}</span>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900 leading-tight">₹{order.Net_total || order.totalAmount || 0}</span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 leading-tight">
                       {new Date(order.createdAt || order.orderDate).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800">
                         {order.Order_status || 'Pending'}
                       </span>
                     </td>

@@ -341,45 +341,45 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-200">
               <tr>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Order ID
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   User ID
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Customer Name
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Phone
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Order Date & Time
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Sub Total
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Tax
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Net Total
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Coupon
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Order Status
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Payment Mode
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   Payment Status
                 </th>
 
 
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} text-left ${userRole === 'super_admin' ? 'text-[10px]' : 'text-xs'} font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
                   City
                 </th>
               </tr>
@@ -387,56 +387,56 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
             <tbody className="bg-white divide-y divide-gray-200">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan="13" className={`px-4 py-8 text-center ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-500`}>
+                  <td colSpan="13" className={`px-4 py-8 text-center text-xs text-gray-500`}>
                     No orders found
                   </td>
                 </tr>
               ) : (
                 orders.map((order, index) => (
                   <tr key={index} className="hover:bg-gray-50 even:bg-gray-50">
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-900`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 leading-tight`}>
                       {getLast6Digits(order.order_id)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-600`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
                       {getLast6Digits(order.user_id)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-900`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 leading-tight`}>
                       {order.Customer_Name}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-600`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
                       {order.Phone}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-600`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
                       {formatDate(order.order_date_and_time)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-900 font-medium`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 font-medium leading-tight`}>
                       {formatCurrency(order.sub_total)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-900`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 leading-tight`}>
                       {formatCurrency(order.Total_Tax)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-900 font-semibold`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 font-semibold leading-tight`}>
                       {formatCurrency(order.Net_total)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-600`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
                       {formatCurrency(order.Coupon_amount)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap`}>
-                      <span className={`${userRole === 'super_admin' ? 'px-1.5 py-0.5' : 'px-2 py-1'} ${userRole === 'super_admin' ? 'text-[9px]' : 'text-xs'} font-medium rounded-full ${getStatusColor(order.Order_status)}`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap`}>
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${getStatusColor(order.Order_status)}`}>
                         {order.Order_status}
                       </span>
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-600`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
                       {order.Payment_mode === 'cod' ? 'COD' : order.Payment_mode === 'online' ? 'Online' : order.Payment_mode}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap`}>
-                      <span className={`${userRole === 'super_admin' ? 'px-1.5 py-0.5' : 'px-2 py-1'} ${userRole === 'super_admin' ? 'text-[9px]' : 'text-xs'} font-medium rounded-full ${getPaymentStatusColor(order.Payment_status)}`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap`}>
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${getPaymentStatusColor(order.Payment_status)}`}>
                         {order.Payment_status}
                       </span>
                     </td>
 
 
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-1.5' : 'px-4 py-3'} whitespace-nowrap ${userRole === 'super_admin' ? 'text-[10px]' : 'text-sm'} text-gray-600`}>
+                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
                       {order.City}
                     </td>
                   </tr>

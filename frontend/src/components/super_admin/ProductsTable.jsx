@@ -28,19 +28,19 @@ const ProductsTable = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Image
               </th>
-              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Category
               </th>
-              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-[10px] font-medium text-gray-700 uppercase">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase">
                 Actions
               </th>
             </tr>
@@ -48,38 +48,38 @@ const ProductsTable = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedProducts.map((product) => (
               <tr key={product._id} className="even:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-2 whitespace-nowrap">
                   {product.img ? (
                     <img
                       src={product.img}
                       alt={product.productName || "Product"}
-                      className="h-12 w-12 object-contain p-1 bg-white rounded"
+                      className="h-10 w-10 object-contain p-1 bg-white rounded"
                       onError={(e) => {
                         e.target.style.display = "none";
                       }}
                     />
                   ) : (
-                    <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
+                    <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
                       <span className="text-gray-400 text-[10px]">No Image</span>
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-gray-900">
+                <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900 leading-tight">
                   {product.productName}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-xs text-gray-500">
+                <td className="px-6 py-2 whitespace-nowrap leading-tight">
+                  <div className="text-sm text-gray-500">
                     {product.category?.name || product.category || "N/A"}
                   </div>
                   {product.subCategory && (
-                    <div className="text-[10px] text-gray-400">
+                    <div className="text-xs text-gray-400">
                       {product.subCategory}
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-2 whitespace-nowrap">
                   <span
-                    className={`px-2 py-1 text-[10px] rounded-full ${
+                    className={`px-2 py-0.5 text-[10px] rounded-full ${
                       product.status
                         ? "bg-green-100 text-green-800"
                         : "bg-red-100 text-red-800"
@@ -88,7 +88,7 @@ const ProductsTable = ({
                     {product.status ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-xs">
+                <td className="px-6 py-2 whitespace-nowrap text-sm">
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleEdit(product._id)}

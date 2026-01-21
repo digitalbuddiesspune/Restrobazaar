@@ -54,25 +54,25 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Code
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Discount
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Min. Order
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Validity
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Usage
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -80,18 +80,18 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
           <tbody className="bg-white divide-y divide-gray-200">
             {coupons.map((coupon) => (
               <tr key={coupon._id} className="hover:bg-gray-50 even:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-2 whitespace-nowrap">
                   <div className="flex items-center">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{coupon.code}</div>
+                      <div className="text-sm font-medium text-gray-900 leading-tight">{coupon.code}</div>
                       {coupon.description && (
-                        <div className="text-xs text-gray-500">{coupon.description}</div>
+                        <div className="text-xs text-gray-500 leading-tight">{coupon.description}</div>
                       )}
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
+                <td className="px-6 py-2 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 leading-tight">
                     {coupon.discountType === 'percentage' ? (
                       <>
                         {coupon.discountValue}% OFF
@@ -104,28 +104,28 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500 leading-tight">
                   ₹{coupon.minimumOrderAmount}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
+                <td className="px-6 py-2 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 leading-tight">
                     {formatDate(coupon.startDate)} - {formatDate(coupon.endDate)}
                   </div>
                   {isExpired(coupon.endDate) && (
                     <div className="text-xs text-red-600 font-medium">Expired</div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
+                <td className="px-6 py-2 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 leading-tight">
                     {coupon.usageCount} / {coupon.usageLimit === 0 ? '∞' : coupon.usageLimit}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 leading-tight">
                     {coupon.perUserLimit === 0 ? 'Unlimited' : `${coupon.perUserLimit} per user`}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-2 whitespace-nowrap">
                   <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    className={`px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${
                       isActive(coupon)
                         ? 'bg-green-100 text-green-800'
                         : !coupon.isActive
@@ -144,7 +144,7 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
                       : 'Not Started'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="px-6 py-2 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => {
@@ -157,7 +157,7 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
                       className="text-blue-600 hover:text-blue-900"
                       title="View Details"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -171,7 +171,7 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
                       className="text-indigo-600 hover:text-indigo-900"
                       title="Edit"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -189,7 +189,7 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
                       }`}
                       title={coupon.isActive ? 'Deactivate' : 'Activate'}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -207,7 +207,7 @@ const CouponsTable = ({ coupons, isLoading, onEdit, onDelete, onToggleStatus }) 
                       className="text-red-600 hover:text-red-900"
                       title="Delete"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"

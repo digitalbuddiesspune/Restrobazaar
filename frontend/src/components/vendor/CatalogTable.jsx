@@ -18,6 +18,8 @@ const CatalogTable = ({
   onSubCategoryFilterChange,
   sortBy = 'newest',
   onSortByChange,
+  catalogStatusFilter = 'all',
+  onCatalogStatusFilterChange,
 }) => {
   if (isLoading) {
     return (
@@ -101,14 +103,31 @@ const CatalogTable = ({
             </select>
           </div>
 
+          {/* Catalog Status Filter */}
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Catalog Status
+            </label>
+            <select
+              value={catalogStatusFilter}
+              onChange={(e) => onCatalogStatusFilterChange(e.target.value)}
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Products</option>
+              <option value="added">Already Added</option>
+              <option value="notAdded">Not Added</option>
+            </select>
+          </div>
+
           {/* Clear Filters Button */}
-          {(categoryFilter !== 'all' || subCategoryFilter !== 'all' || sortBy !== 'newest') && (
+          {(categoryFilter !== 'all' || subCategoryFilter !== 'all' || sortBy !== 'newest' || catalogStatusFilter !== 'all') && (
             <div>
               <button
                 onClick={() => {
                   onCategoryFilterChange('all');
                   onSubCategoryFilterChange('all');
                   onSortByChange('newest');
+                  onCatalogStatusFilterChange('all');
                 }}
                 className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors whitespace-nowrap"
               >
@@ -124,22 +143,22 @@ const CatalogTable = ({
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Image
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Product Name
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Category
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Unit
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -148,7 +167,7 @@ const CatalogTable = ({
             {products && products.length > 0 ? (
               products.map((product) => (
                 <tr key={product._id} className="hover:bg-gray-50 transition even:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap">
                     {product.img || (product.images && product.images[0]?.url) ? (
                       <img
                         src={product.img || product.images[0].url}
@@ -157,31 +176,31 @@ const CatalogTable = ({
                       />
                     ) : (
                       <div className="h-8 w-8 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <span className="text-gray-400 text-xs">📦</span>
+                        <span className="text-gray-400 text-[10px]">📦</span>
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-xs font-medium text-gray-900">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 leading-tight">
                       {product.productName || 'N/A'}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-xs text-gray-500">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-500 leading-tight">
                       {product.category?.name || 'N/A'}
                     </div>
                     {product.subCategory && (
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-400 leading-tight">
                         {product.subCategory}
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 leading-tight">
                     {product.unit || 'piece'}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap">
                     <span
-                      className={`px-2 inline-flex text-xs leading-4 font-semibold rounded-full ${
+                      className={`px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${
                         product.status
                           ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
@@ -190,15 +209,15 @@ const CatalogTable = ({
                       {product.status ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-xs font-medium">
+                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">
                     {isProductInCatalog(product._id) ? (
-                      <span className="text-gray-400 font-medium cursor-not-allowed">
+                      <span className="text-gray-400 font-medium cursor-not-allowed text-xs">
                         Already Added
                       </span>
                     ) : (
                       <button
                         onClick={() => onAddToCatalog(product)}
-                        className="text-blue-600 hover:text-blue-900 font-medium"
+                        className="text-blue-600 hover:text-blue-900 font-medium text-xs"
                       >
                         Add to Catalog
                       </button>

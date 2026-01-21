@@ -32,25 +32,25 @@ const UsersTable = ({ users, loading }) => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 User ID
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Phone
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 City
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Address
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
                 Registered Date
               </th>
             </tr>
@@ -58,35 +58,35 @@ const UsersTable = ({ users, loading }) => {
           <tbody className="bg-white divide-y divide-gray-200">
             {users.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                <td colSpan="7" className="px-6 py-8 text-center text-xs text-gray-500">
                   No users found
                 </td>
               </tr>
             ) : (
               users.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50 even:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 font-mono">{user._id || 'N/A'}</div>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 font-mono leading-tight">{user._id || 'N/A'}</div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.name || 'N/A'}</div>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 leading-tight">{user.name || 'N/A'}</div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.email || 'N/A'}</div>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 leading-tight">{user.email || 'N/A'}</div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.phone || 'N/A'}</div>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 leading-tight">{user.phone || 'N/A'}</div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.city || 'N/A'}</div>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 leading-tight">{user.city || 'N/A'}</div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900 max-w-xs truncate" title={user.address || 'N/A'}>
+                  <td className="px-4 py-2">
+                    <div className="text-sm text-gray-900 max-w-xs truncate leading-tight" title={user.address || 'N/A'}>
                       {user.address || 'N/A'}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{formatDate(user.createdAt)}</div>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 leading-tight">{formatDate(user.createdAt)}</div>
                   </td>
                 </tr>
               ))
