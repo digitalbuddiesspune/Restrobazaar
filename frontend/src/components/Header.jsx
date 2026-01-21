@@ -265,7 +265,7 @@ const Header = () => {
     <>
     <header className="bg-white shadow-md sticky top-0 z-50">
       {/* Main Header Navigation */}
-      <div className="w-full px-1 sm:px-2 md:px-3">
+      <div className="container mx-auto px-1 sm:px-2 md:px-3">
         <div className="flex items-center justify-between h-14 sm:h-14 md:h-16 gap-1.5 sm:gap-2 md:gap-3">
           {/* Logo - Left Side */}
           <div className="shrink-0">
@@ -798,7 +798,7 @@ const Header = () => {
     {/* Categories Strip - Horizontal (All screen sizes) - Separate sticky element */}
     {!isMenuOpen && !categoriesLoading && categories.length > 0 && (
       <div className="border-t border-gray-200 bg-gray-50 sticky top-[56px] sm:top-[56px] md:top-[64px] z-40 shadow-sm">
-        <div className="w-full px-1 sm:px-2 md:px-3">
+        <div className="container mx-auto px-1 sm:px-2 md:px-3">
           <div className="relative flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2">
             {/* Left Scroll Button - Desktop Only */}
             {showLeftArrow && (

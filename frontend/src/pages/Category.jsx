@@ -564,7 +564,7 @@ const Category = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 w-full">
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-6 xl:px-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
        
 
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 xl:gap-6">
