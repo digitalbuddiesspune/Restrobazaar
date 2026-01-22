@@ -777,10 +777,20 @@ const VendorDashboard = () => {
                             setActiveTab('orders');
                           }}>
                             <td className="px-4 py-2 whitespace-nowrap">
-                              <span className="text-sm font-medium text-gray-900 leading-tight">#{order.order_id || order._id?.substring(0, 8)}</span>
+                              <span className="text-sm font-medium text-gray-900 leading-tight">#{(() => {
+                                const orderId = order.order_id || order._id || 'N/A';
+                                if (!orderId || orderId === 'N/A') return 'N/A';
+                                const idString = String(orderId);
+                                return idString.length > 6 ? idString.slice(-6) : idString;
+                              })()}</span>
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap">
-                              <span className="text-sm text-gray-500 leading-tight">{order.user_id || order.userId?._id || order.userId || 'N/A'}</span>
+                              <span className="text-sm text-gray-500 leading-tight">{(() => {
+                                const userId = order.user_id || order.userId?._id || order.userId || 'N/A';
+                                if (!userId || userId === 'N/A') return 'N/A';
+                                const idString = String(userId);
+                                return idString.length > 6 ? idString.slice(-6) : idString;
+                              })()}</span>
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap">
                               <div className="flex items-center">

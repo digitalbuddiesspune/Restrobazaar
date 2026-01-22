@@ -66,7 +66,12 @@ const UsersTable = ({ users, loading }) => {
               users.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50 even:bg-gray-50">
                   <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 font-mono leading-tight">{user._id || 'N/A'}</div>
+                    <div className="text-sm text-gray-900 font-mono leading-tight">{(() => {
+                      const userId = user._id || 'N/A';
+                      if (!userId || userId === 'N/A') return 'N/A';
+                      const idString = String(userId);
+                      return idString.length > 6 ? idString.slice(-6) : idString;
+                    })()}</div>
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     <div className="text-sm text-gray-900 leading-tight">{user.name || 'N/A'}</div>

@@ -214,7 +214,12 @@ const UnpaidCustomersTable = ({
                                 <div className="flex-1">
                                   <div className="flex items-center space-x-3">
                                     <span className="text-xs font-medium text-gray-900">
-                                      Order #{order.orderNumber || orderId?.substring(0, 8) || `Order ${index + 1}`}
+                                      Order #{(() => {
+                                        const id = order.orderNumber || orderId || `Order ${index + 1}`;
+                                        if (!id || id.startsWith('Order ')) return id;
+                                        const idString = String(id);
+                                        return idString.length > 6 ? idString.slice(-6) : idString;
+                                      })()}
                                     </span>
                                     <span className="text-xs text-gray-500">
                                       {formatDate(order.createdAt || order.order_date_and_time)}

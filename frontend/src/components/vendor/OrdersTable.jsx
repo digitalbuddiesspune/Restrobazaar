@@ -671,7 +671,12 @@ const OrdersTable = ({
               >
                 <td className="px-4 py-2 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900 leading-tight">
-                    {order.orderNumber || order._id.substring(0, 8)}
+                    {(() => {
+                      const orderId = order._id || order.orderNumber || 'N/A';
+                      if (!orderId || orderId === 'N/A') return 'N/A';
+                      const idString = String(orderId);
+                      return idString.length > 6 ? idString.slice(-6) : idString;
+                    })()}
                   </div>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap">

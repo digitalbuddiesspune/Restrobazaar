@@ -989,7 +989,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
             {/* Left: Order ID */}
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order ID</p>
-              <p className="text-sm font-semibold text-gray-900">#{order.orderNumber || order._id}</p>
+              <p className="text-sm font-semibold text-gray-900">#{(() => {
+                const orderId = order.orderNumber || order._id || 'N/A';
+                if (!orderId || orderId === 'N/A') return 'N/A';
+                const idString = String(orderId);
+                return idString.length > 6 ? idString.slice(-6) : idString;
+              })()}</p>
             </div>
 
             {/* Right: Order Status and Payment Status */}
