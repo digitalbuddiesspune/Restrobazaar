@@ -108,6 +108,66 @@ const ProductDetail = () => {
     return filtered.slice(0, 12); // Show max 12 suggested products
   }, [suggestedProductsData, categoryId, productId]);
 
+  // Check if product is already in cart based on current quantity and price
+  const cartItemInfo = useMemo(() => {
+    if (!product) return null;
+    
+    // Get the selected price based on current quantity
+    let selectedPrice = null;
+    
+    if (product.priceType === 'single' && product.pricing?.single?.price) {
+      selectedPrice = {
+        type: 'single',
+        price: product.pricing.single.price,
+      };
+    } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
+      // Find the appropriate price slab for the quantity
+      const slab = product.pricing.bulk.find(
+        s => quantity >= s.minQty && quantity <= s.maxQty
+      );
+      if (slab) {
+        selectedPrice = {
+          type: 'bulk',
+          price: slab.price,
+        };
+      } else {
+        // If quantity exceeds all slabs, use the last (highest) slab
+        const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+        selectedPrice = {
+          type: 'bulk',
+          price: lastSlab.price,
+        };
+      }
+    }
+    
+    if (!selectedPrice) return null;
+    
+    // Check if product is already in cart with this price
+    const cartItemId = `${product._id}_${selectedPrice.type}_${selectedPrice.price}`;
+    const existingCartItem = cartItems.find(item => item.id === cartItemId);
+    
+    if (existingCartItem) {
+      return {
+        isInCart: true,
+        quantity: existingCartItem.quantity,
+        cartItem: existingCartItem,
+      };
+    }
+    
+    // Also check if product is in cart with any price (by vendorProductId)
+    const cartItemByProduct = cartItems.find(item => item.vendorProductId === product._id);
+    if (cartItemByProduct) {
+      return {
+        isInCart: true,
+        quantity: cartItemByProduct.quantity,
+        cartItem: cartItemByProduct,
+        differentPrice: true, // Product is in cart but with different price
+      };
+    }
+    
+    return null;
+  }, [product, quantity, cartItems]);
+
   // Debug logging (remove in production)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -1052,6 +1112,36 @@ const ProductDetail = () => {
                     </div>
                   )}
 
+                  {/* Already in Cart Indicator */}
+                  {cartItemInfo?.isInCart && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                      <svg
+                        className="w-5 h-5 text-green-600 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-green-800">
+                          Already in Cart
+                        </p>
+                        <p className="text-xs text-green-700">
+                          {cartItemInfo.differentPrice 
+                            ? `This product is already in your cart with ${cartItemInfo.quantity} item(s) at a different price.`
+                            : `This product is already in your cart with ${cartItemInfo.quantity} item(s).`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     onClick={handleAddToCart}
                     disabled={addingToCart || quantityError !== ''}
@@ -1066,7 +1156,7 @@ const ProductDetail = () => {
                         Adding...
                       </>
                     ) : (
-                      'Add to Cart'
+                      cartItemInfo?.isInCart ? 'Add More to Cart' : 'Add to Cart'
                     )}
                   </button>
                 </div>

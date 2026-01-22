@@ -23,6 +23,7 @@ const Category = () => {
   const [showQuantitySelector, setShowQuantitySelector] = useState({});
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const [flyingItems, setFlyingItems] = useState([]);
   const subcategoryScrollRef = useRef(null);
   const dispatch = useAppDispatch();
   const cartItems = useAppSelector(selectCartItems);
@@ -279,11 +280,17 @@ const Category = () => {
     
     if (!product?._id) return;
     
+    const isInWishlist = wishlistItems.has(product._id);
+    
+    // Only trigger animation when adding to wishlist (not removing)
+    if (!isInWishlist) {
+      const productImage = getProductImage(product);
+      triggerFlyingAnimationForWishlist(e.currentTarget, productImage);
+    }
+    
     setWishlistLoading(prev => ({ ...prev, [product._id]: true }));
     
     try {
-      const isInWishlist = wishlistItems.has(product._id);
-      
       if (isInWishlist) {
         await removeFromWishlistMutation.mutateAsync(product._id);
         // React Query will automatically refetch and update wishlistItems via cache invalidation
@@ -388,6 +395,170 @@ const Category = () => {
     return null;
   };
 
+  // Function to trigger flying animation for wishlist
+  const triggerFlyingAnimationForWishlist = (buttonElement, productImage) => {
+    if (!buttonElement) return;
+
+    // Get button position
+    const buttonRect = buttonElement.getBoundingClientRect();
+    const startX = buttonRect.left + buttonRect.width / 2;
+    const startY = buttonRect.top + buttonRect.height / 2;
+
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+      // Check if we're on mobile (window width < 1024px) or desktop
+      const isMobile = window.innerWidth < 1024;
+      
+      let wishlistContainer = null;
+      
+      if (isMobile) {
+        // Mobile: Find wishlist icon in footer bottom navigation
+        wishlistContainer = document.querySelector('.fixed.bottom-0 a[href="/wishlist"]');
+      } else {
+        // Desktop: Find wishlist icon in header navigation
+        const selectors = [
+          'header nav a[href="/wishlist"]',
+          'header a[href="/wishlist"]',
+          'header .relative a[href="/wishlist"]',
+          'a[href="/wishlist"]:not(.fixed.bottom-0 a)',
+        ];
+        
+        for (const selector of selectors) {
+          wishlistContainer = document.querySelector(selector);
+          if (wishlistContainer) break;
+        }
+        
+        // If still not found, try finding by traversing all wishlist links
+        if (!wishlistContainer) {
+          const allWishlistLinks = document.querySelectorAll('a[href="/wishlist"]');
+          for (const link of allWishlistLinks) {
+            const header = link.closest('header');
+            if (header) {
+              wishlistContainer = link;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Fallback: try any wishlist link if still not found
+      if (!wishlistContainer) {
+        wishlistContainer = document.querySelector('a[href="/wishlist"]');
+      }
+      
+      if (!wishlistContainer) {
+        console.warn('Wishlist icon not found for animation');
+        return;
+      }
+
+      // Get wishlist container position
+      const wishlistRect = wishlistContainer.getBoundingClientRect();
+      const endX = wishlistRect.left + wishlistRect.width / 2;
+      const endY = wishlistRect.top + wishlistRect.height / 2;
+
+      // Create unique ID for this animation
+      const animationId = Date.now() + Math.random();
+
+      // Add flying item
+      setFlyingItems(prev => [...prev, {
+        id: animationId,
+        startX,
+        startY,
+        endX,
+        endY,
+        image: productImage,
+      }]);
+
+      // Remove after animation completes
+      setTimeout(() => {
+        setFlyingItems(prev => prev.filter(item => item.id !== animationId));
+      }, 1000);
+    }, 10);
+  };
+
+  // Function to trigger flying animation
+  const triggerFlyingAnimation = (buttonElement, productImage) => {
+    if (!buttonElement) return;
+
+    // Get button position
+    const buttonRect = buttonElement.getBoundingClientRect();
+    const startX = buttonRect.left + buttonRect.width / 2;
+    const startY = buttonRect.top + buttonRect.height / 2;
+
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+      // Check if we're on mobile (window width < 1024px) or desktop
+      const isMobile = window.innerWidth < 1024;
+      
+      let cartContainer = null;
+      
+      if (isMobile) {
+        // Mobile: Find cart icon in footer bottom navigation
+        cartContainer = document.querySelector('.fixed.bottom-0 a[href="/cart"]');
+      } else {
+        // Desktop: Find cart icon in header navigation
+        // Try multiple selectors to find the cart link
+        const selectors = [
+          'header nav a[href="/cart"]',
+          'header a[href="/cart"]',
+          'header .relative a[href="/cart"]',
+          'a[href="/cart"]:not(.fixed.bottom-0 a)',
+        ];
+        
+        for (const selector of selectors) {
+          cartContainer = document.querySelector(selector);
+          if (cartContainer) break;
+        }
+        
+        // If still not found, try finding by the cart SVG and traverse up
+        if (!cartContainer) {
+          const allCartLinks = document.querySelectorAll('a[href="/cart"]');
+          for (const link of allCartLinks) {
+            // Check if this link is in the header (not in footer)
+            const header = link.closest('header');
+            if (header) {
+              cartContainer = link;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Fallback: try any cart link if still not found
+      if (!cartContainer) {
+        cartContainer = document.querySelector('a[href="/cart"]');
+      }
+      
+      if (!cartContainer) {
+        console.warn('Cart icon not found for animation');
+        return;
+      }
+
+      // Get cart container position (more accurate than just the SVG)
+      const cartRect = cartContainer.getBoundingClientRect();
+      const endX = cartRect.left + cartRect.width / 2;
+      const endY = cartRect.top + cartRect.height / 2;
+
+      // Create unique ID for this animation
+      const animationId = Date.now() + Math.random();
+
+      // Add flying item
+      setFlyingItems(prev => [...prev, {
+        id: animationId,
+        startX,
+        startY,
+        endX,
+        endY,
+        image: productImage,
+      }]);
+
+      // Remove after animation completes
+      setTimeout(() => {
+        setFlyingItems(prev => prev.filter(item => item.id !== animationId));
+      }, 1000);
+    }, 10); // Small delay to ensure DOM is ready
+  };
+
   const handleAddToCartClick = async (e, product) => {
     e.stopPropagation(); // Prevent card click navigation
     
@@ -401,6 +572,12 @@ const Category = () => {
     
     const productId = product._id;
     const minQty = product.minimumOrderQuantity || 1;
+    
+    // Get product image for animation
+    const productImage = getProductImage(product);
+    
+    // Trigger flying animation
+    triggerFlyingAnimation(e.currentTarget, productImage);
     
     // Check if product is already in cart
     const cartItem = cartItems.find(item => item.vendorProductId === productId);
@@ -452,6 +629,12 @@ const Category = () => {
     
     const quantity = getProductQuantity(product);
     setAddingToCart(prev => ({ ...prev, [product._id]: true }));
+    
+    // Get product image for animation
+    const productImage = getProductImage(product);
+    
+    // Trigger flying animation
+    triggerFlyingAnimation(e.currentTarget, productImage);
     
     try {
       // Get the selected price based on quantity
@@ -563,7 +746,38 @@ const Category = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 w-full">
+    <div className="min-h-screen bg-gray-50 py-8 w-full relative">
+      {/* Flying Animation Items */}
+      {flyingItems.map((item) => {
+        const deltaX = item.endX - item.startX;
+        const deltaY = item.endY - item.startY;
+        return (
+          <div
+            key={item.id}
+            className="flying-item"
+            style={{
+              position: 'fixed',
+              left: `${item.startX}px`,
+              top: `${item.startY}px`,
+              width: '50px',
+              height: '50px',
+              zIndex: 9999,
+              pointerEvents: 'none',
+              transform: 'translate(-50%, -50%)',
+              animation: `flyToCart 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+              '--delta-x': `${deltaX}px`,
+              '--delta-y': `${deltaY}px`,
+            }}
+          >
+            <img
+              src={item.image}
+              alt="Flying product"
+              className="w-full h-full object-contain rounded-lg shadow-lg border-2 border-red-500 bg-white"
+            />
+          </div>
+        );
+      })}
+      
       <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl lg:max-w-[1600px]">
        
 
@@ -1045,6 +1259,20 @@ const Category = () => {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+        @keyframes flyToCart {
+          0% {
+            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            opacity: 1;
+          }
+          50% {
+            transform: translate(calc(-50% + var(--delta-x) * 0.5), calc(-50% + var(--delta-y) * 0.5)) scale(0.8) rotate(180deg);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translate(calc(-50% + var(--delta-x)), calc(-50% + var(--delta-y))) scale(0.3) rotate(360deg);
+            opacity: 0;
+          }
         }
       `}</style>
     </div>
