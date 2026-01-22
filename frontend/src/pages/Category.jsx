@@ -564,7 +564,7 @@ const Category = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 w-full">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl lg:max-w-[1600px]">
        
 
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 xl:gap-6">
@@ -811,7 +811,7 @@ const Category = () => {
                 ) : (
                   <>
                     {/* Products Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-1.5 sm:gap-2 lg:gap-2 xl:gap-2.5 2xl:gap-3 mb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-1.5 sm:gap-2 lg:gap-2 xl:gap-2.5 2xl:gap-3 mb-8">
                       {products.map((product) => (
                         <div
                           key={product._id}
