@@ -37,6 +37,7 @@ const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
+  const [orderStatusFilter, setOrderStatusFilter] = useState(null);
   const [catalogPage, setCatalogPage] = useState(1);
   const [myProductsPage, setMyProductsPage] = useState(1);
   const [ordersPage, setOrdersPage] = useState(1);
@@ -599,6 +600,10 @@ const VendorDashboard = () => {
     if (activeTab === 'overview') {
       fetchPendingOrders(pendingStartDate, pendingEndDate);
     }
+    // Clear order status filter when navigating away from orders tab
+    if (activeTab !== 'orders') {
+      setOrderStatusFilter(null);
+    }
   }, [pendingStartDate, pendingEndDate, activeTab]);
 
   const handleClearPendingFilters = () => {
@@ -629,6 +634,51 @@ const VendorDashboard = () => {
         />
 
         <main className="p-4">
+          {/* Back Button - Show on all pages except dashboard, order details, and add-product page */}
+          {activeTab !== 'overview' && !selectedOrderId && activeTab !== 'add-product' && (
+            <div className="mb-4">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+
+          {/* Back to My Products and Product Catalog Buttons - Show only on Edit Product page */}
+          {activeTab === 'add-product' && editingProduct && (
+            <div className="mb-4 flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setActiveTab('products');
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to My Products
+              </button>
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setActiveTab('catalog');
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Product Catalog
+              </button>
+            </div>
+          )}
+
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
@@ -650,6 +700,10 @@ const VendorDashboard = () => {
                   trendValue="5%"
                   color="red"
                   comparisonText="vs yesterday"
+                  onClick={() => {
+                    setOrderStatusFilter('cancelled');
+                    setActiveTab('orders');
+                  }}
                 />
                 <StatsCard
                   title="Today's Orders"
@@ -664,6 +718,10 @@ const VendorDashboard = () => {
                   trendValue="12%"
                   color="blue"
                   comparisonText="vs yesterday"
+                  onClick={() => {
+                    setOrderStatusFilter(null);
+                    setActiveTab('orders');
+                  }}
                 />
                 <StatsCard
                   title="Today's Delivered Orders"
@@ -677,6 +735,10 @@ const VendorDashboard = () => {
                   trendValue="8%"
                   color="green"
                   comparisonText="vs yesterday"
+                  onClick={() => {
+                    setOrderStatusFilter('delivered');
+                    setActiveTab('orders');
+                  }}
                 />
                 <StatsCard
                   title="Today's Pending Orders"
@@ -690,6 +752,10 @@ const VendorDashboard = () => {
                   trendValue="3%"
                   color="orange"
                   comparisonText="vs yesterday"
+                  onClick={() => {
+                    setOrderStatusFilter('pending');
+                    setActiveTab('orders');
+                  }}
                 />
               </div>
 
@@ -1130,7 +1196,22 @@ const VendorDashboard = () => {
             <div className="space-y-4">
               {!selectedOrderId && (
                 <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                  <h1 className="text-xl font-bold text-gray-900">Orders</h1>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    Orders
+                    {orderStatusFilter && (
+                      <span className="ml-2 text-sm font-normal text-gray-600">
+                        ({orderStatusFilter.charAt(0).toUpperCase() + orderStatusFilter.slice(1)})
+                      </span>
+                    )}
+                  </h1>
+                  {orderStatusFilter && (
+                    <button
+                      onClick={() => setOrderStatusFilter(null)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                    >
+                      Clear Filter
+                    </button>
+                  )}
                   {orderStats && (
                     <div className="flex items-center space-x-4 text-xs">
                       <div className="text-gray-600">
@@ -1150,12 +1231,21 @@ const VendorDashboard = () => {
               {selectedOrderId ? (
                 <OrderDetails
                   orderId={selectedOrderId}
-                  onBack={() => setSelectedOrderId(null)}
+                  onBack={() => {
+                    setSelectedOrderId(null);
+                    setOrderStatusFilter(null);
+                  }}
                   onUpdateStatus={handleUpdateOrderStatus}
                 />
               ) : (
                 <OrdersTable
-                  orders={orders}
+                  orders={orderStatusFilter ? orders.filter(order => {
+                    const status = order.orderStatus?.toLowerCase() || 'pending';
+                    if (orderStatusFilter === 'cancelled') return status === 'cancelled';
+                    if (orderStatusFilter === 'delivered') return status === 'delivered';
+                    if (orderStatusFilter === 'pending') return status === 'pending';
+                    return true;
+                  }) : orders}
                   isLoading={ordersLoading}
                   onUpdateStatus={handleUpdateOrderStatus}
                   currentPage={ordersPage}

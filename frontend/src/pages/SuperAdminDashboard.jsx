@@ -23,6 +23,7 @@ const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState(null);
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -608,6 +609,13 @@ const SuperAdminDashboard = () => {
     if (activeTab === "add-testimonial") fetchTestimonials(); // Fetch testimonials for reference
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, pendingCity, pendingStartDate, pendingEndDate]);
+
+  // Clear order status filter when navigating away from order-records tab
+  useEffect(() => {
+    if (activeTab !== "order-records") {
+      setOrderStatusFilter(null);
+    }
+  }, [activeTab]);
 
   // Refresh graph when selected month or year changes
   useEffect(() => {
@@ -1364,6 +1372,24 @@ const SuperAdminDashboard = () => {
             </div>
           )}
 
+          {/* Back Button - Show on all pages except dashboard */}
+          {activeTab !== "overview" && (
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  setActiveTab("overview");
+                  setOrderStatusFilter(null);
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <div className="space-y-4">
@@ -1395,6 +1421,12 @@ const SuperAdminDashboard = () => {
                 onClearPendingFilters={handleClearPendingFilters}
                 onCardClick={(tab) => {
                   setActiveTab(tab);
+                  setError("");
+                  setSuccess("");
+                }}
+                onOrderCardClick={(status) => {
+                  setOrderStatusFilter(status);
+                  setActiveTab("order-records");
                   setError("");
                   setSuccess("");
                 }}
@@ -3270,7 +3302,24 @@ const SuperAdminDashboard = () => {
           {/* Order Records Tab */}
           {activeTab === "order-records" && (
             <div className="space-y-4">
-              <OrderRecords userRole="super_admin" />
+              {orderStatusFilter && (
+                <div className="mb-4 flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <span className="text-sm text-blue-800">
+                    Filtered by: <span className="font-semibold capitalize">{orderStatusFilter}</span> orders
+                  </span>
+                  <button
+                    onClick={() => setOrderStatusFilter(null)}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
+              <OrderRecords 
+                userRole="super_admin" 
+                initialOrderStatus={orderStatusFilter}
+                onFilterSet={() => setOrderStatusFilter(null)}
+              />
             </div>
           )}
 

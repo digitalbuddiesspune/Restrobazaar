@@ -24,7 +24,8 @@ const OverviewStats = ({
   pendingCity = '',
   setPendingCity = () => { },
   onClearPendingFilters = () => { },
-  onCardClick = () => { }
+  onCardClick = () => { },
+  onOrderCardClick = () => { }
 }) => {
   return (
     <div className="space-y-6">
@@ -70,7 +71,10 @@ const OverviewStats = ({
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {/* Today's Total Orders */}
-          <div className="relative group overflow-hidden bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1">
+          <div 
+            onClick={() => onOrderCardClick(null)}
+            className="relative group overflow-hidden bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+          >
             <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 group-hover:scale-125 transition-transform duration-500">
               <svg className="w-24 h-24 sm:w-32 sm:h-32 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
@@ -92,7 +96,10 @@ const OverviewStats = ({
           </div>
 
           {/* Pending Orders */}
-          <div className="relative group overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-orange-500/30 transition-all duration-300 transform hover:-translate-y-1">
+          <div 
+            onClick={() => onOrderCardClick('pending')}
+            className="relative group overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-orange-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+          >
             <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 group-hover:scale-125 transition-transform duration-500">
               <svg className="w-24 h-24 sm:w-32 sm:h-32 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -112,7 +119,10 @@ const OverviewStats = ({
           </div>
 
           {/* Delivered Orders */}
-          <div className="relative group overflow-hidden bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-emerald-500/30 transition-all duration-300 transform hover:-translate-y-1">
+          <div 
+            onClick={() => onOrderCardClick('delivered')}
+            className="relative group overflow-hidden bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-emerald-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+          >
             <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 group-hover:scale-125 transition-transform duration-500">
               <svg className="w-24 h-24 sm:w-32 sm:h-32 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -132,7 +142,10 @@ const OverviewStats = ({
           </div>
 
           {/* Cancelled Orders */}
-          <div className="relative group overflow-hidden bg-gradient-to-br from-red-500 via-rose-600 to-pink-600 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-red-500/30 transition-all duration-300 transform hover:-translate-y-1">
+          <div 
+            onClick={() => onOrderCardClick('cancelled')}
+            className="relative group overflow-hidden bg-gradient-to-br from-red-500 via-rose-600 to-pink-600 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-red-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+          >
             <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 group-hover:scale-125 transition-transform duration-500">
               <svg className="w-24 h-24 sm:w-32 sm:h-32 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

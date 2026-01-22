@@ -103,6 +103,10 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
     setActiveTab(tabId);
     onClose(); // Close sidebar on mobile after selection
     setExpandedSection(null); // Close expanded section after selection
+    // Scroll to top when clicking Dashboard/Overview
+    if (tabId === 'overview') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (

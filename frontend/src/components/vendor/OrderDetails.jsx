@@ -973,12 +973,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
         <div className="mb-4">
           <button
             onClick={onBack}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span className="font-medium">Back to Orders</span>
+            Back to Orders
           </button>
         </div>
 
@@ -993,7 +993,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 const orderId = order.orderNumber || order._id || 'N/A';
                 if (!orderId || orderId === 'N/A') return 'N/A';
                 const idString = String(orderId);
-                return idString.length > 6 ? idString.slice(-6) : idString;
+                // Extract only digits and get last 6 digits
+                const digitsOnly = idString.replace(/\D/g, '');
+                return digitsOnly.length > 6 ? digitsOnly.slice(-6) : digitsOnly || 'N/A';
               })()}</p>
             </div>
 
@@ -1173,7 +1175,14 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 {/* Display Order ID */}
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Display Order ID</p>
-                  <p className="text-xs font-medium text-gray-900">{order.orderNumber || order._id || 'N/A'}</p>
+                  <p className="text-xs font-medium text-gray-900">{(() => {
+                    const orderId = order.orderNumber || order._id || 'N/A';
+                    if (!orderId || orderId === 'N/A') return 'N/A';
+                    const idString = String(orderId);
+                    // Extract only digits and get last 6 digits
+                    const digitsOnly = idString.replace(/\D/g, '');
+                    return digitsOnly.length > 6 ? digitsOnly.slice(-6) : digitsOnly || 'N/A';
+                  })()}</p>
                 </div>
 
                 {/* Customer Name */}

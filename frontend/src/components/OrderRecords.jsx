@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const OrderRecords = ({ userRole = 'vendor' }) => {
+const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilterSet = () => {} }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -10,7 +10,7 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
   const [cities, setCities] = useState([]);
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [filters, setFilters] = useState({
-    orderStatus: '',
+    orderStatus: initialOrderStatus || '',
     paymentStatus: '',
     startDate: '',
     endDate: '',
@@ -203,7 +203,18 @@ const OrderRecords = ({ userRole = 'vendor' }) => {
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1); // Reset to first page when filter changes
+    // Notify parent that filter has been set (clear initial filter)
+    if (key === 'orderStatus' && initialOrderStatus) {
+      onFilterSet();
+    }
   };
+
+  // Set initial filter when component mounts or initialOrderStatus changes
+  useEffect(() => {
+    if (initialOrderStatus) {
+      setFilters((prev) => ({ ...prev, orderStatus: initialOrderStatus }));
+    }
+  }, [initialOrderStatus]);
 
   const clearFilters = () => {
     setFilters({

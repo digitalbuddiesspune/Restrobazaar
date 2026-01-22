@@ -1,4 +1,4 @@
-const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue', comparisonText = 'vs yesterday' }) => {
+const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue', comparisonText = 'vs yesterday', onClick }) => {
   // Define gradient classes and icon colors for each card type
   const cardStyles = {
     blue: {
@@ -51,7 +51,10 @@ const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue', comp
   const style = cardStyles[color] || cardStyles.blue;
 
   return (
-    <div className={`relative group overflow-hidden bg-gradient-to-br ${style.gradient} rounded-2xl shadow-lg ${style.shadow} transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl`}>
+    <div 
+      className={`relative group overflow-hidden bg-gradient-to-br ${style.gradient} rounded-2xl shadow-lg ${style.shadow} transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={onClick}
+    >
       {/* Large background icon */}
       <div className="absolute -right-4 -bottom-4 opacity-10 transform rotate-12 group-hover:scale-125 transition-transform duration-500">
         {style.bgIcon}
