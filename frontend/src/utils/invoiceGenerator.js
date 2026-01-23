@@ -179,11 +179,11 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.setFontSize(10);
     doc.setTextColor(255, 255, 255); // White text
     doc.setFont(undefined, 'bold');
-    // Center text vertically in the gray bar (bar center at yPos, adjust for font baseline)
-    doc.text('Invoice Details', leftMargin + 3, yPos - -1);
+    // Center text vertically in the gray bar
+    doc.text('Invoice Details', leftMargin + 3, yPos - -0.5);
     yPos += 8;
 
-    // Invoice details table
+    // Invoice details table with borders and alternating backgrounds
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
     doc.setFont(undefined, 'normal');
@@ -198,15 +198,46 @@ export const generateInvoicePDF = (order, vendor = {}) => {
       ['Payment Status:', order.paymentStatus === 'completed' ? 'Paid' : 'Unpaid'],
     ];
 
-    const col1X = leftMargin + 3;
+    const col1X = leftMargin;
     const col2X = leftMargin + 60;
+    const col1Width = 57;
+    const col2Width = contentWidth - col1Width;
+    const rowHeight = 4;
+    const tableStartY = yPos;
+
+    // Draw table with borders and alternating backgrounds
     invoiceDetails.forEach(([label, value], index) => {
+      const rowY = tableStartY + (index * rowHeight);
+      
+      // Alternating row background (light gray for even rows)
+      if (index % 2 === 1) {
+        doc.setFillColor(240, 240, 240); // Light gray
+        doc.rect(col1X, rowY - 3, contentWidth, rowHeight, 'F');
+      }
+      
+      // Draw cell borders
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.1);
+      // Left border
+      doc.line(col1X, rowY - 3, col1X, rowY - 3 + rowHeight);
+      // Right border
+      doc.line(col1X + contentWidth, rowY - 3, col1X + contentWidth, rowY - 3 + rowHeight);
+      // Top border
+      doc.line(col1X, rowY - 3, col1X + contentWidth, rowY - 3);
+      // Bottom border
+      doc.line(col1X, rowY - 3 + rowHeight, col1X + contentWidth, rowY - 3 + rowHeight);
+      // Middle border between columns
+      doc.line(col2X, rowY - 3, col2X, rowY - 3 + rowHeight);
+      
+      // Draw text
       doc.setFont(undefined, 'normal');
-      doc.text(label, col1X, yPos);
+      doc.setTextColor(0, 0, 0);
+      doc.text(label, col1X + 3, rowY);
       doc.setFont(undefined, 'bold');
-      doc.text(value, col2X, yPos);
-      yPos += 4;
+      doc.text(value, col2X + 3, rowY);
     });
+    
+    yPos = tableStartY + (invoiceDetails.length * rowHeight);
     yPos += 3;
 
     // ========== BILL TO SECTION ==========
@@ -217,7 +248,7 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.setTextColor(255, 255, 255);
     doc.setFont(undefined, 'bold');
     // Center text vertically in the gray bar
-    doc.text('Bill To', leftMargin + 3, yPos - -1);
+    doc.text('Bill To', leftMargin + 3, yPos - -0.5);
     yPos += 8;
 
     // Bill To details
@@ -239,32 +270,75 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.setTextColor(255, 255, 255);
     doc.setFont(undefined, 'bold');
     // Center text vertically in the gray bar
-    doc.text('Order Details', leftMargin + 3, yPos - -1);
+    doc.text('Order Details', leftMargin + 3, yPos - -0.5);
     yPos += 8;
 
-    // Table headers - Remove rupee symbol to avoid encoding issues
+    // Table headers with light gray background and borders
     doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    const orderTableStartY = yPos;
+    const headerRowHeight = 5;
+    
+    // Draw header background
+    doc.setFillColor(230, 230, 230); // Light gray background
+    doc.rect(leftMargin, yPos - 3, contentWidth, headerRowHeight, 'F');
+    
+    // Column positions - adjusted to include GST Amount column with proper spacing
+    const colSrNoX = leftMargin;
+    const colSrNoWidth = 12;
+    const colDescX = leftMargin + 12;
+    const colDescWidth = 42; // Reduced slightly to make room
+    const colHSNX = leftMargin + 54;
+    const colHSNWidth = 18;
+    const colQtyX = leftMargin + 72;
+    const colQtyWidth = 12;
+    const colRateX = leftMargin + 84;
+    const colRateWidth = 18;
+    const colGSTX = leftMargin + 102;
+    const colGSTWidth = 16; // Increased from 12 to prevent overlap
+    const colGSTAmountX = leftMargin + 118;
+    const colGSTAmountWidth = 24; // Increased from 18 to prevent overlap
+    const colAmountX = leftMargin + 142;
+    const colAmountWidth = rightMargin - colAmountX; // Reduced size
+    
+    // Draw header borders
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.1);
+    // Top border
+    doc.line(leftMargin, yPos - 3, rightMargin, yPos - 3);
+    // Bottom border
+    doc.line(leftMargin, yPos - 3 + headerRowHeight, rightMargin, yPos - 3 + headerRowHeight);
+    // Column borders
+    doc.line(colDescX, yPos - 3, colDescX, yPos - 3 + headerRowHeight);
+    doc.line(colHSNX, yPos - 3, colHSNX, yPos - 3 + headerRowHeight);
+    doc.line(colQtyX, yPos - 3, colQtyX, yPos - 3 + headerRowHeight);
+    doc.line(colRateX, yPos - 3, colRateX, yPos - 3 + headerRowHeight);
+    doc.line(colGSTX, yPos - 3, colGSTX, yPos - 3 + headerRowHeight);
+    doc.line(colGSTAmountX, yPos - 3, colGSTAmountX, yPos - 3 + headerRowHeight);
+    doc.line(colAmountX, yPos - 3, colAmountX, yPos - 3 + headerRowHeight);
+    
+    // Header text
     doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    const tableStartY = yPos;
-    // Column positions - use fixed positions, calculate right alignment manually
-    doc.text('Sr No', leftMargin + 3, yPos);
-    doc.text('Item Description', leftMargin + 18, yPos);
-    doc.text('HSN', leftMargin + 65, yPos);
-    // Calculate widths for right-aligned headers
-    doc.setFont('helvetica', 'bold');
+    doc.text('Sr No', colSrNoX + 3, yPos);
+    doc.text('Item Description', colDescX + 3, yPos);
+    doc.text('HSN', colHSNX + 3, yPos);
     const qtyHeaderWidth = doc.getTextWidth('Qty');
+    doc.text('Qty', colQtyX + colQtyWidth - qtyHeaderWidth - 3, yPos);
     const rateHeaderWidth = doc.getTextWidth('Rate');
-    const gstHeaderWidth = doc.getTextWidth('GST %');
+    doc.text('Rate', colRateX + colRateWidth - rateHeaderWidth - 3, yPos);
+    // GST % - center or left align to prevent overlap
+    doc.text('GST %', colGSTX + 3, yPos);
+    // GST Amount - left align with proper spacing
+    doc.text('GST Amount', colGSTAmountX + 3, yPos);
     const amountHeaderWidth = doc.getTextWidth('Amount');
-    doc.text('Qty', leftMargin + 100 - qtyHeaderWidth, yPos);
-    doc.text('Rate', leftMargin + 120 - rateHeaderWidth, yPos);
-    doc.text('GST %', leftMargin + 145 - gstHeaderWidth, yPos);
-    doc.text('Amount', rightMargin - amountHeaderWidth, yPos);
-    yPos += 5;
+    doc.text('Amount', rightMargin - amountHeaderWidth - 3, yPos);
+    yPos += headerRowHeight;
 
-    // Table rows
+    // Table rows with borders
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const baseRowHeight = 5;
+    const lineSpacing = 4;
     order.items?.forEach((item, index) => {
       if (yPos > pageHeight - 60) {
         doc.addPage();
@@ -282,54 +356,87 @@ export const generateInvoicePDF = (order, vendor = {}) => {
       // Item total should be subtotal + GST
       const itemTotal = itemSubtotal + itemGstAmount;
 
-      // Ensure all values are properly converted to strings - use explicit conversion
-      // All calculations already done above, now convert to display strings
+      // Ensure all values are properly converted to strings
       const srNo = String(index + 1);
       const qty = String(itemQty);
       const rate = itemPrice.toFixed(2);
       const gstPercent = itemGstPercentage > 0 ? itemGstPercentage.toFixed(2) : '-';
+      const gstAmount = itemGstAmount.toFixed(2);
       const amount = itemTotal.toFixed(2);
       const hsnCodeStr = String(hsnCode || '482369');
       
-      // Use simple text rendering without special characters
-      doc.text(srNo, leftMargin + 3, yPos);
-      
-      // Wrap product name if too long
-      const maxNameWidth = 45;
+      // Calculate dynamic row height based on product name wrapping
+      const maxNameWidth = 38; // Adjusted to match reduced column width
       const productName = String(item.productName || 'Product');
       const productNameLines = doc.splitTextToSize(productName, maxNameWidth);
-      doc.text(productNameLines[0], leftMargin + 18, yPos);
+      const actualRowHeight = baseRowHeight + (productNameLines.length - 1) * lineSpacing;
+      const rowStartY = yPos - 3;
+      const rowEndY = rowStartY + actualRowHeight;
       
-      // Ensure font is set before each text call to avoid encoding issues
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.text(hsnCodeStr, leftMargin + 65, yPos);
-      // Calculate right-aligned positions manually to avoid encoding issues
+      // Draw cell borders with dynamic height
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.1);
+      // Left border
+      doc.line(leftMargin, rowStartY, leftMargin, rowEndY);
+      // Right border
+      doc.line(rightMargin, rowStartY, rightMargin, rowEndY);
+      // Top border
+      doc.line(leftMargin, rowStartY, rightMargin, rowStartY);
+      // Bottom border
+      doc.line(leftMargin, rowEndY, rightMargin, rowEndY);
+      // Column borders
+      doc.line(colDescX, rowStartY, colDescX, rowEndY);
+      doc.line(colHSNX, rowStartY, colHSNX, rowEndY);
+      doc.line(colQtyX, rowStartY, colQtyX, rowEndY);
+      doc.line(colRateX, rowStartY, colRateX, rowEndY);
+      doc.line(colGSTX, rowStartY, colGSTX, rowEndY);
+      doc.line(colGSTAmountX, rowStartY, colGSTAmountX, rowEndY);
+      doc.line(colAmountX, rowStartY, colAmountX, rowEndY);
+      
+      // Draw text - all columns aligned to top of row
+      doc.setTextColor(0, 0, 0);
+      const textY = rowStartY + 3; // Top alignment with padding
+      
+      // Sr No
+      doc.text(srNo, colSrNoX + 3, textY);
+      
+      // Item Description - can be multiple lines
+      productNameLines.forEach((line, lineIndex) => {
+        doc.text(line, colDescX + 3, textY + (lineIndex * lineSpacing));
+      });
+      
+      // HSN - aligned to top
+      doc.text(hsnCodeStr, colHSNX + 3, textY);
+      
+      // Right-aligned numerical values - all aligned to top
       const qtyWidth = doc.getTextWidth(qty);
+      doc.text(qty, colQtyX + colQtyWidth - qtyWidth - 3, textY);
       const rateWidth = doc.getTextWidth(rate);
+      doc.text(rate, colRateX + colRateWidth - rateWidth - 3, textY);
       const gstPercentWidth = doc.getTextWidth(gstPercent);
+      doc.text(gstPercent, colGSTX + colGSTWidth - gstPercentWidth - 3, textY);
+      const gstAmountWidth = doc.getTextWidth(gstAmount);
+      doc.text(gstAmount, colGSTAmountX + colGSTAmountWidth - gstAmountWidth - 3, textY);
       const amountWidth = doc.getTextWidth(amount);
-      doc.text(qty, leftMargin + 100 - qtyWidth, yPos);
-      doc.text(rate, leftMargin + 120 - rateWidth, yPos);
-      doc.text(gstPercent, leftMargin + 145 - gstPercentWidth, yPos);
-      doc.text(amount, rightMargin - amountWidth, yPos);
+      doc.text(amount, rightMargin - amountWidth - 3, textY);
       
-      if (productNameLines.length > 1) {
-        yPos += 4;
-        doc.text(productNameLines[1], leftMargin + 15, yPos);
-      }
-      
-      yPos += 5;
+      // Move to next row
+      yPos = rowEndY + 3;
     });
 
     yPos += 3;
 
-    // Summary totals - Convert all numbers to strings properly
+    // Summary totals table with borders
     const totalsStartX = leftMargin + 110;
-    doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
+    const totalsLabelWidth = 50;
+    const totalsValueWidth = rightMargin - totalsStartX - totalsLabelWidth;
+    const summaryRowHeight = 5;
+    const summaryStartY = yPos;
     
-    // Convert all numbers to strings to avoid encoding issues - use parseFloat for proper conversion
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    
+    // Convert all numbers to strings
     const subTotalNum = parseFloat(cartTotal) || 0;
     const subTotalStr = subTotalNum.toFixed(2);
     const cgstAmountNum = parseFloat(cgstAmount) || 0;
@@ -343,40 +450,65 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     const sgstRateNum = parseInt(sgstRate) || 0;
     const sgstRateStr = String(sgstRateNum);
     
-    // Ensure font is properly set before rendering numbers
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text('Sub Total:', totalsStartX, yPos);
-    const subTotalWidth = doc.getTextWidth(subTotalStr);
-    doc.text(subTotalStr, rightMargin - subTotalWidth, yPos);
-    yPos += 5;
-
+    // Build summary rows
+    const summaryRows = [
+      { label: 'Sub Total:', value: subTotalStr, isTotal: false }
+    ];
+    
     if (cgstAmount > 0) {
-      const cgstLabel = 'CGST (' + cgstRateStr + '%):';
-      doc.text(cgstLabel, totalsStartX, yPos);
-      const cgstWidth = doc.getTextWidth(cgstAmountStr);
-      doc.text(cgstAmountStr, rightMargin - cgstWidth, yPos);
-      yPos += 5;
+      summaryRows.push({ label: `CGST (${cgstRateStr}%):`, value: cgstAmountStr, isTotal: false });
     }
-
+    
     if (sgstAmount > 0) {
-      const sgstLabel = 'SGST (' + sgstRateStr + '%):';
-      doc.text(sgstLabel, totalsStartX, yPos);
-      const sgstWidth = doc.getTextWidth(sgstAmountStr);
-      doc.text(sgstAmountStr, rightMargin - sgstWidth, yPos);
-      yPos += 5;
+      summaryRows.push({ label: `SGST (${sgstRateStr}%):`, value: sgstAmountStr, isTotal: false });
     }
-
-    // Total Amount in dark box
-    doc.setFillColor(64, 64, 64);
-    doc.rect(totalsStartX - 3, yPos - 3, rightMargin - totalsStartX + 3, 5, 'F');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total Amount:', totalsStartX, yPos - -0.5);
-    const totalAmountWidth = doc.getTextWidth(totalAmountStr);
-    doc.text(totalAmountStr, rightMargin - totalAmountWidth, yPos - -0.5);
-    yPos += 8;
+    
+    summaryRows.push({ label: 'Total Amount:', value: totalAmountStr, isTotal: true });
+    
+    // Draw summary table with borders
+    summaryRows.forEach((row, index) => {
+      const rowTop = summaryStartY - 3 + (index * summaryRowHeight);
+      const rowBottom = rowTop + summaryRowHeight;
+      const rowCenter = rowTop + (summaryRowHeight / 2);
+      
+      // Draw borders
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.1);
+      // Left border
+      doc.line(totalsStartX, rowTop, totalsStartX, rowBottom);
+      // Right border
+      doc.line(rightMargin, rowTop, rightMargin, rowBottom);
+      // Top border
+      doc.line(totalsStartX, rowTop, rightMargin, rowTop);
+      // Bottom border
+      doc.line(totalsStartX, rowBottom, rightMargin, rowBottom);
+      // Middle border between label and value
+      const valueColX = totalsStartX + totalsLabelWidth;
+      doc.line(valueColX, rowTop, valueColX, rowBottom);
+      
+      // Draw background for Total Amount row
+      if (row.isTotal) {
+        doc.setFillColor(64, 64, 64);
+        doc.rect(totalsStartX, rowTop, rightMargin - totalsStartX, summaryRowHeight, 'F');
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+      } else {
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'normal');
+      }
+      
+      // Draw text - properly centered vertically in the row
+      // For font size 8-9, position text at rowTop + 3.5 to center it in row height 5
+      const textY = rowTop + 3.5;
+      doc.text(row.label, totalsStartX + 3, textY);
+      const valueWidth = doc.getTextWidth(row.value);
+      doc.text(row.value, rightMargin - valueWidth - 3, textY);
+    });
+    
+    yPos = summaryStartY + (summaryRows.length * summaryRowHeight);
+    yPos += 3;
 
     // Amount in words
     doc.setFontSize(8);
