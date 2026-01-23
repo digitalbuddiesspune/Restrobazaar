@@ -1,15 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useVendorProfile } from '../../hooks/useVendorQueries';
-import { useCategories } from '../../hooks/useApiQueries';
 import { vendorProductService } from '../../services/vendorService';
-import { categoryAPI } from '../../utils/api';
 
 const CreateOrder = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [sortBy, setSortBy] = useState('name'); // 'name' or '_id'
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]); // Store all products for filtering
@@ -21,10 +18,6 @@ const CreateOrder = () => {
   
   // Product filters
   const [productSearch, setProductSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedSubCategory, setSelectedSubCategory] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [subCategories, setSubCategories] = useState([]);
   
   // Address related state
   const [addresses, setAddresses] = useState([]);
@@ -52,32 +45,10 @@ const CreateOrder = () => {
   const vendorId = vendor?._id || vendor?.id;
   const vendorCityIds = vendor?.serviceCities?.map(city => city._id || city) || [];
   
-  // Fetch categories
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-  
-  // Update subcategories when category changes
-  useEffect(() => {
-    if (selectedCategory) {
-      const category = categories.find(cat => cat._id === selectedCategory);
-      if (category && category.subcategories && Array.isArray(category.subcategories)) {
-        // Subcategories are stored as strings in the category model
-        setSubCategories(category.subcategories);
-      } else {
-        setSubCategories([]);
-      }
-      setSelectedSubCategory(''); // Reset subcategory when category changes
-    } else {
-      setSubCategories([]);
-      setSelectedSubCategory('');
-    }
-  }, [selectedCategory, categories]);
-  
-  // Filter products based on search, category, and subcategory
+  // Filter products based on search
   useEffect(() => {
     filterProducts();
-  }, [productSearch, selectedCategory, selectedSubCategory, allProducts]);
+  }, [productSearch, allProducts]);
   
   // Debug logging
   useEffect(() => {
@@ -86,57 +57,35 @@ const CreateOrder = () => {
     }
   }, [vendor, vendorId, vendorCityIds]);
   
-  const fetchCategories = async () => {
-    try {
-      const response = await categoryAPI.getAllCategories();
-      if (response.success && response.data) {
-        setCategories(response.data.filter(cat => cat.isActive !== false));
-      }
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-    }
-  };
-  
   const filterProducts = () => {
+    // Only show products when there's a search query
+    if (!productSearch || productSearch.trim().length === 0) {
+      setProducts([]);
+      return;
+    }
+    
     let filtered = [...allProducts];
     
     // Filter by product name search
-    if (productSearch) {
-      filtered = filtered.filter(p => {
-        const productName = p.productId?.productName || p.productName || '';
-        return productName.toLowerCase().includes(productSearch.toLowerCase());
-      });
-    }
-    
-    // Filter by category
-    if (selectedCategory) {
-      filtered = filtered.filter(p => {
-        const productCategoryId = p.productId?.category?._id || p.productId?.category || '';
-        return productCategoryId.toString() === selectedCategory;
-      });
-    }
-    
-    // Filter by subcategory (subcategories are stored as strings)
-    if (selectedSubCategory) {
-      filtered = filtered.filter(p => {
-        const productSubCategory = p.productId?.subCategory || '';
-        // Handle both string and object subcategory
-        const subCatValue = typeof productSubCategory === 'string' 
-          ? productSubCategory 
-          : productSubCategory?.name || productSubCategory?._id || '';
-        return subCatValue.toString().toLowerCase() === selectedSubCategory.toString().toLowerCase();
-      });
-    }
+    filtered = filtered.filter(p => {
+      const productName = p.productId?.productName || p.productName || '';
+      return productName.toLowerCase().includes(productSearch.toLowerCase());
+    });
     
     setProducts(filtered);
   };
 
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
-  // Fetch users
+  // Fetch users only when search query has at least 2 characters
   useEffect(() => {
-    fetchUsers();
-  }, [sortBy, searchQuery]);
+    if (searchQuery.trim().length >= 2) {
+      fetchUsers();
+    } else {
+      // Clear users when search is empty or too short
+      setUsers([]);
+    }
+  }, [searchQuery]);
 
   // Fetch products when vendor is available
   useEffect(() => {
@@ -154,7 +103,7 @@ const CreateOrder = () => {
       const params = new URLSearchParams({
         page: '1',
         limit: '1000', // Get all users for selection
-        sortBy: sortBy === 'name' ? 'name' : '_id',
+        sortBy: 'name', // Default sort by name
         sortOrder: 'asc',
       });
       
@@ -279,6 +228,15 @@ const CreateOrder = () => {
     if (userId) {
       fetchUserAddresses(userId);
     }
+  };
+
+  const handleRemoveUser = () => {
+    setSelectedUserId('');
+    setSelectedUser(null);
+    setCartItems([]); // Clear cart when user is removed
+    setSelectedAddressId(''); // Clear selected address
+    setAddresses([]); // Clear addresses
+    setSearchQuery(''); // Clear search query
   };
   
   // Fetch addresses for a user
@@ -641,119 +599,113 @@ const CreateOrder = () => {
     }
   };
 
-  const sortedUsers = useMemo(() => {
-    return [...users].sort((a, b) => {
-      if (sortBy === 'name') {
-        return (a.name || '').localeCompare(b.name || '');
-      } else {
-        return (a._id || '').localeCompare(b._id || '');
-      }
-    });
-  }, [users, sortBy]);
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Create Order for User</h2>
-        <p className="text-sm text-gray-600 mt-1">
+    <div className="space-y-4">
+      <div className="mb-3">
+        <h2 className="text-lg font-bold text-gray-900">Create Order for User</h2>
+        <p className="text-xs text-gray-600 mt-0.5">
           Select a user and add products to create an order on their behalf
         </p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-2 text-xs">
           <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
-            <p className="text-sm font-medium">{error}</p>
+            <p className="text-xs font-medium">{error}</p>
           </div>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-4">
+        <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-xs">
           <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <p className="text-sm font-medium">{success}</p>
+            <p className="text-xs font-medium">{success}</p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* User Selection Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Select User</h3>
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <h3 className="text-base font-semibold text-gray-900 mb-3">Select User</h3>
           
-          {/* Sort and Search */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sort By
-              </label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="name">Name</option>
-                <option value="_id">User ID</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Search */}
+          <div className="mb-3">
+            <div className="relative">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Search
               </label>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, email..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Search by name, email, or ID..."
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
+              
+              {/* Dropdown User List - Only show when search query has at least 2 characters */}
+              {searchQuery.trim().length >= 2 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  {usersLoading ? (
+                    <div className="p-4 text-center text-gray-500">Loading users...</div>
+                  ) : users.length === 0 ? (
+                    <div className="p-2 text-center text-xs text-gray-500">No users found</div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {users.map((user) => (
+                        <button
+                          key={user._id}
+                          onClick={() => {
+                            handleUserSelect(user._id);
+                            setSearchQuery(''); // Clear search after selection
+                          }}
+                          className={`w-full text-left p-2 hover:bg-gray-50 transition ${
+                            selectedUserId === user._id ? 'bg-purple-50 border-l-4 border-purple-600' : ''
+                          }`}
+                        >
+                          <div className="text-sm font-medium text-gray-900">{user.name || 'N/A'}</div>
+                          <div className="text-xs text-gray-600">{user.email}</div>
+                          <div className="text-xs text-gray-500">ID: {user._id}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* User List */}
-          <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
-            {usersLoading ? (
-              <div className="p-4 text-center text-gray-500">Loading users...</div>
-            ) : sortedUsers.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">No users found</div>
-            ) : (
-              <div className="divide-y divide-gray-200">
-                {sortedUsers.map((user) => (
-                  <button
-                    key={user._id}
-                    onClick={() => handleUserSelect(user._id)}
-                    className={`w-full text-left p-4 hover:bg-gray-50 transition ${
-                      selectedUserId === user._id ? 'bg-purple-50 border-l-4 border-purple-600' : ''
-                    }`}
-                  >
-                    <div className="font-medium text-gray-900">{user.name || 'N/A'}</div>
-                    <div className="text-sm text-gray-600">{user.email}</div>
-                    <div className="text-xs text-gray-500">ID: {user._id}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {selectedUser && (
-            <div className="mt-4 space-y-4">
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <div className="font-medium text-gray-900">Selected User:</div>
-                <div className="text-sm text-gray-700">{selectedUser.name}</div>
-                <div className="text-sm text-gray-600">{selectedUser.email}</div>
+            <div className="mt-3 space-y-2">
+              <div className="p-2 bg-purple-50 rounded-lg relative">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-sm font-medium text-gray-900">Selected User:</div>
+                  <button
+                    onClick={handleRemoveUser}
+                    className="text-red-600 hover:text-red-800 transition"
+                    title="Remove selected user"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="text-xs text-gray-700">{selectedUser.name}</div>
+                <div className="text-xs text-gray-600">{selectedUser.email}</div>
                 <div className="text-xs text-gray-500">Phone: {selectedUser.phone || 'N/A'}</div>
               </div>
               
               {/* Address Selection */}
-              <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-gray-900">Delivery Address</h4>
+              <div className="p-2 bg-white border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-gray-900">Delivery Address</h4>
                   {!showAddressForm && (
                     <button
                       type="button"
@@ -762,21 +714,21 @@ const CreateOrder = () => {
                         setAddressFormError('');
                         setAddressFormSuccess('');
                       }}
-                      className="px-3 py-1.5 text-xs font-medium text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-50"
+                      className="px-2 py-1 text-xs font-medium text-purple-600 border border-purple-300 rounded hover:bg-purple-50"
                     >
-                      + Add New Address
+                      + Add Address
                     </button>
                   )}
                 </div>
                 
                 {addressesLoading ? (
-                  <div className="text-sm text-gray-500">Loading addresses...</div>
+                  <div className="text-xs text-gray-500">Loading addresses...</div>
                 ) : addresses.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {addresses.map((address) => (
                       <label
                         key={address._id}
-                        className={`flex items-start p-3 border-2 rounded-lg cursor-pointer transition ${
+                        className={`flex items-start p-2 border-2 rounded-lg cursor-pointer transition ${
                           selectedAddressId === address._id
                             ? 'border-purple-500 bg-purple-50'
                             : 'border-gray-200 hover:border-gray-300'
@@ -788,45 +740,45 @@ const CreateOrder = () => {
                           value={address._id}
                           checked={selectedAddressId === address._id}
                           onChange={(e) => setSelectedAddressId(e.target.value)}
-                          className="mt-1 mr-3"
+                          className="mt-0.5 mr-2"
                         />
                         <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium text-gray-900">{address.name}</span>
+                          <div className="flex items-center space-x-1.5 mb-0.5">
+                            <span className="text-xs font-medium text-gray-900">{address.name}</span>
                             {address.isDefault && (
-                              <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+                              <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded">
                                 Default
                               </span>
                             )}
-                            <span className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 rounded capitalize">
+                            <span className="px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 rounded capitalize">
                               {address.addressType}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-700">{address.addressLine1}</p>
+                          <p className="text-xs text-gray-700">{address.addressLine1}</p>
                           {address.addressLine2 && (
-                            <p className="text-sm text-gray-700">{address.addressLine2}</p>
+                            <p className="text-xs text-gray-700">{address.addressLine2}</p>
                           )}
-                          <p className="text-sm text-gray-700">
+                          <p className="text-xs text-gray-700">
                             {address.city}, {address.state} - {address.pincode}
                           </p>
                           {address.landmark && (
                             <p className="text-xs text-gray-600">Landmark: {address.landmark}</p>
                           )}
-                          <p className="text-xs text-gray-600 mt-1">Phone: {address.phone}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">Phone: {address.phone}</p>
                         </div>
                       </label>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs text-gray-500">
                     No addresses found. Please add an address.
                   </div>
                 )}
                 
                 {/* Add Address Form */}
                 {showAddressForm && (
-                  <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                    <h5 className="text-sm font-semibold text-gray-900 mb-3">Add New Address</h5>
+                  <div className="mt-2 p-2 border border-gray-200 rounded-lg bg-gray-50">
+                    <h5 className="text-xs font-semibold text-gray-900 mb-2">Add New Address</h5>
                     
                     {addressFormError && (
                       <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-2 mb-3 text-xs">
@@ -1035,110 +987,50 @@ const CreateOrder = () => {
         </div>
 
         {/* Products Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Select Products</h3>
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-900">Select Products</h3>
             {products.length > 0 && (
-              <span className="text-sm text-gray-600">
-                {products.length} product{products.length !== 1 ? 's' : ''} available
+              <span className="text-xs text-gray-600">
+                {products.length} product{products.length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
           
-          {/* Product Search and Filters */}
+          {/* Product Search */}
           {selectedUser && (
-            <div className="mb-4 space-y-3 p-4 bg-gray-50 rounded-lg">
-              {/* Search by Product Name */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Search Product by Name
-                </label>
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Search products by name..."
-                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              
-              {/* Category and Subcategory Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Filter by Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="">All Categories</option>
-                    {categories.map((category) => (
-                      <option key={category._id} value={category._id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Filter by Subcategory
-                  </label>
-                  <select
-                    value={selectedSubCategory}
-                    onChange={(e) => setSelectedSubCategory(e.target.value)}
-                    disabled={!selectedCategory}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="">All Subcategories</option>
-                    {subCategories.map((subCat, index) => {
-                      // Subcategories are stored as strings
-                      const subCatValue = typeof subCat === 'string' ? subCat : subCat.name || subCat._id || subCat;
-                      const subCatLabel = typeof subCat === 'string' ? subCat : subCat.name || subCat;
-                      return (
-                        <option key={subCat._id || subCat || index} value={subCatValue}>
-                          {subCatLabel}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              </div>
-              
-              {/* Clear Filters Button */}
-              {(productSearch || selectedCategory || selectedSubCategory) && (
-                <button
-                  onClick={() => {
-                    setProductSearch('');
-                    setSelectedCategory('');
-                    setSelectedSubCategory('');
-                  }}
-                  className="text-sm text-purple-600 hover:text-purple-800 underline"
-                >
-                  Clear Filters
-                </button>
-              )}
+            <div className="mb-3">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Search
+              </label>
+              <input
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search products by name..."
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
             </div>
           )}
           
           {!selectedUser ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-6 text-xs text-gray-500">
               Please select a user first
             </div>
+          ) : !productSearch || productSearch.trim().length === 0 ? (
+            <div className="text-center py-6 text-xs text-gray-500">
+              <p>Search for products to display them</p>
+              <p className="text-xs mt-1">Type a product name in the search box above</p>
+            </div>
           ) : productsLoading ? (
-            <div className="text-center py-8 text-gray-500">Loading products...</div>
+            <div className="text-center py-6 text-xs text-gray-500">Loading products...</div>
           ) : products.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>No products available</p>
-              <p className="text-xs mt-2">Make sure you have added products to your catalog for your service cities.</p>
-              {vendorCityIds.length === 0 && (
-                <p className="text-xs mt-1 text-red-600">No service cities configured for your vendor account.</p>
-              )}
+            <div className="text-center py-6 text-xs text-gray-500">
+              <p>No products found</p>
+              <p className="text-xs mt-1">Try a different search term</p>
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto space-y-2">
+            <div className="max-h-64 overflow-y-auto space-y-1.5">
               {products.map((product) => {
                 const vendorProduct = product;
                 // Get price based on priceType
@@ -1168,32 +1060,32 @@ const CreateOrder = () => {
                 return (
                   <div
                     key={vendorProduct._id}
-                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    className="flex items-center justify-between p-2 border border-gray-200 rounded-lg hover:bg-gray-50"
                   >
-                    <div className="flex items-center space-x-3 flex-1">
+                    <div className="flex items-center space-x-2 flex-1">
                       {productImage ? (
                         <img
                           src={productImage}
                           alt={productName}
-                          className="w-12 h-12 object-contain p-1 bg-white rounded"
+                          className="w-10 h-10 object-contain p-0.5 bg-white rounded"
                           onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/48x48?text=No+Image';
+                            e.target.src = 'https://via.placeholder.com/40x40?text=No+Image';
                             e.target.onerror = null; // Prevent infinite loop
                           }}
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
                       )}
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{productName}</div>
-                        <div className="text-sm text-gray-600">₹{price.toFixed(2)}</div>
+                        <div className="text-sm font-medium text-gray-900">{productName}</div>
+                        <div className="text-xs text-gray-600">₹{price.toFixed(2)}</div>
                         {minimumOrderQuantity > 1 && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            Min. Order: {minimumOrderQuantity}
+                          <div className="text-xs text-gray-500">
+                            Min: {minimumOrderQuantity}
                           </div>
                         )}
                       </div>
@@ -1201,14 +1093,14 @@ const CreateOrder = () => {
                     {inCart ? (
                       <button
                         onClick={() => handleRemoveFromCart(vendorProduct._id)}
-                        className="px-3 py-1 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
+                        className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50"
                       >
                         Remove
                       </button>
                     ) : (
                       <button
                         onClick={() => handleAddToCart(vendorProduct)}
-                        className="px-3 py-1 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+                        className="px-2 py-1 text-xs text-white bg-purple-600 rounded hover:bg-purple-700"
                       >
                         Add
                       </button>
@@ -1223,39 +1115,39 @@ const CreateOrder = () => {
 
       {/* Cart Section */}
       {cartItems.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <h3 className="text-base font-semibold text-gray-900 mb-3">Order Summary</h3>
           
-          <div className="space-y-3 mb-4">
+          <div className="space-y-2 mb-3">
             {cartItems.map((item) => (
-              <div key={item.vendorProductId || item._id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                <div className="flex items-center space-x-3 flex-1">
+              <div key={item.vendorProductId || item._id} className="flex items-center justify-between p-2 border border-gray-200 rounded-lg">
+                <div className="flex items-center space-x-2 flex-1">
                   {item.image ? (
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="w-16 h-16 object-contain p-1 bg-white rounded"
+                      className="w-12 h-12 object-contain p-0.5 bg-white rounded"
                       onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/64x64?text=No+Image';
+                        e.target.src = 'https://via.placeholder.com/48x48?text=No+Image';
                         e.target.onerror = null; // Prevent infinite loop
                       }}
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
-                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
                   )}
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">{item.name}</div>
-                    <div className="text-sm text-gray-600">₹{item.price.toFixed(2)} each</div>
+                    <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                    <div className="text-xs text-gray-600">₹{item.price.toFixed(2)} each</div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <button
                     onClick={() => handleDecreaseQuantity(item.vendorProductId || item._id)}
-                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 text-xs"
                     title={`Decrease by ${item.minimumOrderQuantity || 1}`}
                   >
                     -
@@ -1267,29 +1159,29 @@ const CreateOrder = () => {
                       step={item.minimumOrderQuantity || 1}
                       value={item.quantity}
                       onChange={(e) => handleUpdateQuantity(item.vendorProductId || item._id, parseInt(e.target.value) || (item.minimumOrderQuantity || 1))}
-                      className="w-16 px-2 py-1 text-center border border-gray-300 rounded-lg"
+                      className="w-14 px-1 py-0.5 text-xs text-center border border-gray-300 rounded"
                     />
                     {item.minimumOrderQuantity && item.minimumOrderQuantity > 1 && (
-                      <span className="text-xs text-gray-500 mt-1">
+                      <span className="text-xs text-gray-500">
                         Min: {item.minimumOrderQuantity}
                       </span>
                     )}
                   </div>
                   <button
                     onClick={() => handleIncreaseQuantity(item.vendorProductId || item._id)}
-                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="w-7 h-7 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 text-xs"
                     title={`Increase by ${item.minimumOrderQuantity || 1}`}
                   >
                     +
                   </button>
-                  <div className="w-24 text-right font-medium text-gray-900">
+                  <div className="w-20 text-right text-sm font-medium text-gray-900">
                     ₹{(item.price * item.quantity).toFixed(2)}
                   </div>
                   <button
                     onClick={() => handleRemoveFromCart(item.vendorProductId || item._id)}
                     className="text-red-600 hover:text-red-800"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
@@ -1298,18 +1190,18 @@ const CreateOrder = () => {
             ))}
           </div>
 
-          <div className="border-t border-gray-200 pt-4 space-y-2">
-            <div className="flex justify-between text-sm">
+          <div className="border-t border-gray-200 pt-2 space-y-1">
+            <div className="flex justify-between text-xs">
               <span className="text-gray-600">Subtotal:</span>
               <span className="text-gray-900">₹{calculateTotals.cartTotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-xs">
               <span className="text-gray-600">GST:</span>
               <span className="text-gray-900">₹{calculateTotals.gstAmount.toFixed(2)}</span>
             </div>
             {/* GST Breakdown */}
             {calculateTotals.gstBreakdown && calculateTotals.gstBreakdown.some(item => item.gstPercentage > 0) && (
-              <div className="pl-2 border-l-2 border-gray-200 space-y-1">
+              <div className="pl-2 border-l-2 border-gray-200 space-y-0.5">
                 {calculateTotals.gstBreakdown
                   .filter(item => item.gstPercentage > 0)
                   .map((item, index) => (
@@ -1320,11 +1212,11 @@ const CreateOrder = () => {
                   ))}
               </div>
             )}
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-xs">
               <span className="text-gray-600">Shipping:</span>
               <span className="text-gray-900">₹{calculateTotals.shippingCharges.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
+            <div className="flex justify-between text-sm font-bold pt-1 border-t border-gray-200">
               <span>Total:</span>
               <span>₹{calculateTotals.totalAmount.toFixed(2)}</span>
             </div>
@@ -1333,7 +1225,7 @@ const CreateOrder = () => {
           <button
             onClick={handlePlaceOrder}
             disabled={loading || !selectedUser}
-            className="w-full mt-4 px-4 py-2 text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-3 px-3 py-2 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Placing Order...' : 'Place Order'}
           </button>
