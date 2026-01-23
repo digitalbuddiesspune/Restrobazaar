@@ -7,6 +7,7 @@ import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { isAuthenticated } from '../utils/auth';
 import { useWishlist, useAddToWishlist, useRemoveFromWishlist, useVendorProducts } from '../hooks/useApiQueries';
+import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
@@ -27,6 +28,9 @@ const ProductDetail = () => {
   const [suggestedQuantities, setSuggestedQuantities] = useState({});
   const [showSuggestedQuantitySelector, setShowSuggestedQuantitySelector] = useState({});
   const [addingToCartSuggested, setAddingToCartSuggested] = useState({});
+
+  // Use flying animation hook
+  const { flyingItems, triggerFlyingAnimation, triggerFlyingAnimationForWishlist } = useFlyingAnimation();
 
   // React Query hooks for wishlist
   const { data: wishlistData } = useWishlist({ 
@@ -326,7 +330,7 @@ const ProductDetail = () => {
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e) => {
     if (!product) return;
     
     // Validate quantity
@@ -338,6 +342,14 @@ const ProductDetail = () => {
     if (quantity > product.availableStock) {
       setQuantityError(`Only ${product.availableStock} items available`);
       return;
+    }
+    
+    // Get product image for animation
+    const productImage = product?.productId?.images?.[0]?.url || product?.productId?.img || 'https://via.placeholder.com/50x50?text=Product';
+    
+    // Trigger flying animation if button element is available
+    if (e?.currentTarget) {
+      triggerFlyingAnimation(e.currentTarget, productImage);
     }
     
     setAddingToCart(true);
@@ -467,7 +479,7 @@ const ProductDetail = () => {
     }
   };
 
-  const handleWishlistToggle = async () => {
+  const handleWishlistToggle = async (e) => {
     if (!isAuthenticated()) {
       // Store product ID to add to wishlist after login
       localStorage.setItem('pendingWishlistProduct', product?._id || productId);
@@ -479,6 +491,12 @@ const ProductDetail = () => {
     if (!productIdToUse) {
       console.error('No product ID available');
       return;
+    }
+    
+    // Only trigger animation when adding to wishlist (not removing)
+    if (!isInWishlist && e?.currentTarget) {
+      const productImage = product?.productId?.images?.[0]?.url || product?.productId?.img || 'https://via.placeholder.com/50x50?text=Product';
+      triggerFlyingAnimationForWishlist(e.currentTarget, productImage);
     }
     
     setMainProductWishlistLoading(true);
@@ -508,14 +526,20 @@ const ProductDetail = () => {
     
     if (!suggestedProduct?._id) return;
     
+    const isInWishlistSuggested = wishlistData?.success && wishlistData?.data?.products
+      ? wishlistData.data.products.some(item => item._id === suggestedProduct._id)
+      : false;
+    
+    // Only trigger animation when adding to wishlist (not removing)
+    if (!isInWishlistSuggested) {
+      const productImage = suggestedProduct?.productId?.images?.[0]?.url || suggestedProduct?.productId?.img || 'https://via.placeholder.com/50x50?text=Product';
+      triggerFlyingAnimationForWishlist(e.currentTarget, productImage);
+    }
+    
     setWishlistLoading(prev => ({ ...prev, [suggestedProduct._id]: true }));
     
     try {
-      const isInWishlist = wishlistData?.success && wishlistData?.data?.products
-        ? wishlistData.data.products.some(item => item._id === suggestedProduct._id)
-        : false;
-      
-      if (isInWishlist) {
+      if (isInWishlistSuggested) {
         await removeFromWishlistMutation.mutateAsync(suggestedProduct._id);
       } else {
         await addToWishlistMutation.mutateAsync(suggestedProduct._id);
@@ -646,6 +670,12 @@ const ProductDetail = () => {
     
     const productId = suggestedProduct._id;
     const minQty = suggestedProduct.minimumOrderQuantity || 1;
+    
+    // Get product image for animation
+    const productImage = suggestedProduct?.productId?.images?.[0]?.url || suggestedProduct?.productId?.img || 'https://via.placeholder.com/50x50?text=Product';
+    
+    // Trigger flying animation
+    triggerFlyingAnimation(e.currentTarget, productImage);
     
     // Check if product is already in cart
     const cartItem = cartItems.find(item => item.vendorProductId === productId);
@@ -803,7 +833,10 @@ const ProductDetail = () => {
   const minOrderQty = product?.minimumOrderQuantity || 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-4 pb-8">
+    <div className="min-h-screen bg-gray-50 pt-4 pb-8 relative">
+      {/* Flying Animation Component */}
+      <FlyingAnimation flyingItems={flyingItems} />
+      
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back to Products Button */}
         <div className="mb-2">
@@ -862,7 +895,7 @@ const ProductDetail = () => {
               </button>
               {/* Wishlist Button - Top Right Corner */}
               <button
-                onClick={handleWishlistToggle}
+                onClick={(e) => handleWishlistToggle(e)}
                 disabled={mainProductWishlistLoading}
                 className={`absolute top-2 right-2 sm:top-2.5 sm:right-2.5 md:top-3 md:right-3 p-1.5 sm:p-2 md:p-2.5 rounded-full shadow-lg transition-all z-10 ${
                   isInWishlist
@@ -1143,7 +1176,7 @@ const ProductDetail = () => {
                   )}
 
                   <button
-                    onClick={handleAddToCart}
+                    onClick={(e) => handleAddToCart(e)}
                     disabled={addingToCart || quantityError !== ''}
                     className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >

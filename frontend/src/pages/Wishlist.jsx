@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { useWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
+import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
 
 const Wishlist = () => {
   const navigate = useNavigate();
@@ -13,6 +14,9 @@ const Wishlist = () => {
   const cartItems = useAppSelector(selectCartItems);
   const [removing, setRemoving] = useState({});
   const [addingToCart, setAddingToCart] = useState({});
+
+  // Use flying animation hook
+  const { flyingItems, triggerFlyingAnimation } = useFlyingAnimation();
 
   // React Query hooks for wishlist with caching
   const { data: wishlistResponse, isLoading: loading, error: wishlistError, refetch } = useWishlist({
@@ -79,7 +83,18 @@ const Wishlist = () => {
     return null;
   };
 
-  const handleAddToCart = async (productId) => {
+  const handleAddToCart = async (e, productId) => {
+    // Find the product from wishlist to get image immediately
+    const wishlistProduct = products.find(p => p._id === productId);
+    
+    // Get product image for animation (use wishlist product image if available)
+    const productImage = wishlistProduct?.images?.[0] || wishlistProduct?.image || 'https://via.placeholder.com/50x50?text=Product';
+    
+    // Trigger flying animation immediately when button is clicked
+    if (e?.currentTarget) {
+      triggerFlyingAnimation(e.currentTarget, productImage);
+    }
+    
     setAddingToCart({ ...addingToCart, [productId]: true });
     try {
       // Fetch full vendor product details
@@ -87,6 +102,7 @@ const Wishlist = () => {
       
       if (!response.success || !response.data) {
         alert('Failed to fetch product details. Please try again.');
+        setAddingToCart({ ...addingToCart, [productId]: false });
         return;
       }
 
@@ -95,6 +111,7 @@ const Wishlist = () => {
       // Check if product is in stock
       if (product.availableStock === 0 || product.availableStock === undefined) {
         alert('This product is out of stock');
+        setAddingToCart({ ...addingToCart, [productId]: false });
         return;
       }
 
@@ -105,6 +122,7 @@ const Wishlist = () => {
       
       if (!selectedPrice) {
         alert('Unable to determine price. Please view product details.');
+        setAddingToCart({ ...addingToCart, [productId]: false });
         return;
       }
 
@@ -115,6 +133,7 @@ const Wishlist = () => {
       if (existingCartItem) {
         // Product already in cart
         alert('Product is already in cart!');
+        setAddingToCart({ ...addingToCart, [productId]: false });
         return;
       }
 
@@ -165,7 +184,10 @@ const Wishlist = () => {
   const isEmpty = products.length === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* Flying Animation Component */}
+      <FlyingAnimation flyingItems={flyingItems} />
+      
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-6">
           Wishlist
@@ -280,7 +302,7 @@ const Wishlist = () => {
                         )}
                       </div>
                       <button
-                        onClick={() => handleAddToCart(product._id)}
+                        onClick={(e) => handleAddToCart(e, product._id)}
                         disabled={addingToCart[product._id]}
                         className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 text-[10px] sm:text-xs font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
