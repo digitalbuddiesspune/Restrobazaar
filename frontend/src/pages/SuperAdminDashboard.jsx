@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "../components/super_admin/Sidebar";
 import Header from "../components/super_admin/Header";
-import OrderRecords from "../components/OrderRecords";
+import OrderRecords from "../components/super_admin/OrderRecords";
 import OverviewStats from "../components/super_admin/OverviewStats";
 import ProductForm from "../components/super_admin/ProductForm";
 import CityForm from "../components/super_admin/CityForm";
@@ -3316,7 +3316,6 @@ const SuperAdminDashboard = () => {
                 </div>
               )}
               <OrderRecords 
-                userRole="super_admin" 
                 initialOrderStatus={orderStatusFilter}
                 onFilterSet={() => setOrderStatusFilter(null)}
               />
@@ -3421,47 +3420,49 @@ const SuperAdminDashboard = () => {
                     }
                     required
                     rows={6}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter the review/testimonial text"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={testimonialForm.name}
-                    onChange={(e) =>
-                      setTestimonialForm({
-                        ...testimonialForm,
-                        name: e.target.value,
-                      })
-                    }
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter name"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={testimonialForm.name}
+                      onChange={(e) =>
+                        setTestimonialForm({
+                          ...testimonialForm,
+                          name: e.target.value,
+                        })
+                      }
+                      required
+                      className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter name"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Business Type *
-                  </label>
-                  <input
-                    type="text"
-                    value={testimonialForm.businessType}
-                    onChange={(e) =>
-                      setTestimonialForm({
-                        ...testimonialForm,
-                        businessType: e.target.value,
-                      })
-                    }
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter business type"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Business Type *
+                    </label>
+                    <input
+                      type="text"
+                      value={testimonialForm.businessType}
+                      onChange={(e) =>
+                        setTestimonialForm({
+                          ...testimonialForm,
+                          businessType: e.target.value,
+                        })
+                      }
+                      required
+                      className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter business type"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -3478,7 +3479,7 @@ const SuperAdminDashboard = () => {
                       })
                     }
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter location"
                   />
                 </div>
@@ -3508,7 +3509,7 @@ const SuperAdminDashboard = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading
                       ? "Saving..."
@@ -3530,7 +3531,7 @@ const SuperAdminDashboard = () => {
                         });
                         setActiveTab("testimonials");
                       }}
-                      className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                      className="px-6 py-2 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                     >
                       Cancel
                     </button>

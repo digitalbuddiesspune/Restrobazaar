@@ -952,7 +952,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-            <p className="text-sm font-medium">Error loading order details:</p>
+            <p className="text-xs font-medium">Error loading order details:</p>
             <p className="text-xs mt-1">{error?.response?.data?.message || error?.message || 'Unknown error'}</p>
             <button
               onClick={onBack}
@@ -973,7 +973,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
         <div className="mb-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -989,13 +989,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
             {/* Left: Order ID */}
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order ID</p>
-              <p className="text-sm font-semibold text-gray-900">#{(() => {
-                const orderId = order.orderNumber || order._id || 'N/A';
+              <p className="text-xs font-medium text-gray-900">{(() => {
+                const orderId = order._id || order.orderNumber || 'N/A';
                 if (!orderId || orderId === 'N/A') return 'N/A';
                 const idString = String(orderId);
-                // Extract only digits and get last 6 digits
-                const digitsOnly = idString.replace(/\D/g, '');
-                return digitsOnly.length > 6 ? digitsOnly.slice(-6) : digitsOnly || 'N/A';
+                const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+                return `#${lastSix}`;
               })()}</p>
             </div>
 
@@ -1176,12 +1175,11 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Display Order ID</p>
                   <p className="text-xs font-medium text-gray-900">{(() => {
-                    const orderId = order.orderNumber || order._id || 'N/A';
+                    const orderId = order._id || order.orderNumber || 'N/A';
                     if (!orderId || orderId === 'N/A') return 'N/A';
                     const idString = String(orderId);
-                    // Extract only digits and get last 6 digits
-                    const digitsOnly = idString.replace(/\D/g, '');
-                    return digitsOnly.length > 6 ? digitsOnly.slice(-6) : digitsOnly || 'N/A';
+                    const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+                    return `#${lastSix}`;
                   })()}</p>
                 </div>
 
@@ -1279,12 +1277,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           {/* Order Items */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Order Items</h3>
+              <h3 className="text-xs font-medium text-gray-900">Order Items</h3>
               {!isEditMode && (
                 <button
                   onClick={handleEditOrder}
                   disabled={isDelivered}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 ${
+                  className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors flex items-center space-x-2 ${
                     isDelivered
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -1322,11 +1320,11 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                               <img src={item.productImage} alt={item.productName} className="h-12 w-12 object-contain p-1 bg-white rounded" />
                             )}
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{item.productName}</p>
+                              <p className="text-xs font-medium text-gray-900">{item.productName}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center text-sm text-gray-900">
+                        <td className="px-4 py-3 text-center text-xs text-gray-900">
                           {isEditMode ? (
                             <div className="flex items-center justify-center space-x-2">
                               <button
@@ -1355,7 +1353,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                                 })()}
                                 value={item.quantity || 1}
                                 onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               />
                               <button
                                 onClick={() => handleQuantityIncrease(idx)}
@@ -1371,7 +1369,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             item.quantity || 0
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-900">
+                        <td className="px-4 py-3 text-right text-xs text-gray-900">
                           {isEditMode ? (
                             <div className="flex flex-col items-end">
                               <span className="font-medium">₹{item.price?.toLocaleString() || 0}</span>
@@ -1396,7 +1394,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             `₹${item.price?.toLocaleString() || 0}`
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-900">
+                        <td className="px-4 py-3 text-right text-xs text-gray-900">
                           {(() => {
                             const itemTotal = item.total || (item.price * item.quantity);
                             const gstPercentage = item.gstPercentage !== undefined 
@@ -1417,7 +1415,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             return <span className="text-gray-400">-</span>;
                           })()}
                         </td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">₹{item.total?.toLocaleString() || 0}</td>
+                        <td className="px-4 py-3 text-right text-xs font-medium text-gray-900">₹{item.total?.toLocaleString() || 0}</td>
                         {isEditMode && (
                           <td className="px-4 py-3 text-center">
                             <button
@@ -1437,7 +1435,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             <select
                               value={newItemProductId}
                               onChange={(e) => setNewItemProductId(e.target.value)}
-                              className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                               <option value="">Select a product to add...</option>
                               {vendorProducts
@@ -1460,7 +1458,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             <button
                               onClick={handleAddNewItem}
                               disabled={!newItemProductId}
-                              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                              className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${
                                 newItemProductId
                                   ? 'bg-green-600 text-white hover:bg-green-700'
                                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -1480,14 +1478,14 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
               <div className="mt-4 flex justify-end space-x-3">
                 <button
                   onClick={handleCancelEdit}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveOrder}
                   disabled={updateOrderItemsMutation.isPending || editedItems.length === 0}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${
                     updateOrderItemsMutation.isPending || editedItems.length === 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -1501,7 +1499,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
           {/* Billing Summary */}
           <div className="bg-gray-50 rounded-lg p-3 mb-6">
-            <h3 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Billing Summary</h3>
+            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase tracking-wide">Billing Summary</h3>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal:</span>
@@ -1549,10 +1547,17 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
               })()}
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping Charges:</span>
-                <span className="font-medium text-gray-900">Free</span>
+                <span className="font-medium text-gray-900">
+                  {(() => {
+                    const shippingCharges = isEditMode 
+                      ? calculateBillingDetails().shippingCharges 
+                      : order.billingDetails?.shippingCharges || 0;
+                    return shippingCharges > 0 ? `₹${shippingCharges.toLocaleString()}` : 'Free';
+                  })()}
+                </span>
               </div>
               <div className="border-t border-gray-300 pt-1.5 mt-1.5 flex justify-between">
-                <span className="text-xs font-semibold text-gray-900">Total Amount:</span>
+                <span className="text-xs font-medium text-gray-900">Total Amount:</span>
                 <span className="text-xs font-bold text-red-600">
                   ₹{(
                     isEditMode 
@@ -1567,7 +1572,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           {/* Payment Information */}
           {order.paymentId || order.transactionId ? (
             <div className="bg-gray-50 rounded-lg p-3 mb-6">
-              <h3 className="text-xs font-semibold text-gray-900 mb-2 uppercase tracking-wide">Payment Information</h3>
+              <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase tracking-wide">Payment Information</h3>
               <div className="space-y-1.5 text-xs">
                 {order.paymentId && (
                   <div className="flex justify-between">

@@ -1,21 +1,16 @@
 import { useState, useEffect } from 'react';
 
-const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilterSet = () => {} }) => {
+const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [vendors, setVendors] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [loadingFilters, setLoadingFilters] = useState(false);
   const [filters, setFilters] = useState({
     orderStatus: initialOrderStatus || '',
     paymentStatus: '',
     startDate: '',
     endDate: '',
-    vendorId: '',
-    cityId: '',
   });
   const itemsPerPage = 10;
 
@@ -23,14 +18,7 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
 
   useEffect(() => {
     fetchOrders();
-  }, [page, filters, userRole]);
-
-  // Fetch vendors and cities for super_admin filters
-  useEffect(() => {
-    if (userRole === 'super_admin') {
-      fetchVendorsAndCities();
-    }
-  }, [userRole]);
+  }, [page, filters]);
 
   const fetchOrders = async () => {
     try {
@@ -46,32 +34,15 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
       if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
-      if (filters.vendorId) params.append('vendorId', filters.vendorId);
-      if (filters.cityId) params.append('cityId', filters.cityId);
 
-      const endpoint = userRole === 'super_admin'
-        ? `${baseUrl}/admin/orders`
-        : `${baseUrl}/vendor/orders`;
+      const endpoint = `${baseUrl}/vendor/orders`;
 
-      // Prepare headers - use Authorization header for super_admin, cookies for vendor
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-
-      // Add Authorization header for super_admin (token from localStorage)
-      if (userRole === 'super_admin') {
-        const token = localStorage.getItem('token');
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
-
-      // Use fetch with credentials for cookie-only authentication (vendor)
-      // or Authorization header (super_admin)
       const response = await fetch(`${endpoint}?${params.toString()}`, {
         method: 'GET',
-        credentials: userRole === 'super_admin' ? 'same-origin' : 'include', // Cookie for vendor, same-origin for super_admin
-        headers,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       const data = await response.json();
@@ -112,43 +83,6 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
       setError(err.message || err.response?.data?.message || 'Failed to fetch orders');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchVendorsAndCities = async () => {
-    try {
-      setLoadingFilters(true);
-      const token = localStorage.getItem('token');
-
-      // Fetch vendors
-      const vendorsResponse = await fetch(`${baseUrl}/vendors?isActive=true&isApproved=true`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        credentials: 'same-origin',
-      });
-      const vendorsData = await vendorsResponse.json();
-      if (vendorsData.success) {
-        setVendors(vendorsData.data || []);
-      }
-
-      // Fetch cities
-      const citiesResponse = await fetch(`${baseUrl}/cities?isActive=true&isServiceable=true`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      const citiesData = await citiesResponse.json();
-      if (citiesData.success) {
-        setCities(citiesData.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching vendors and cities:', err);
-    } finally {
-      setLoadingFilters(false);
     }
   };
 
@@ -222,8 +156,6 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
       paymentStatus: '',
       startDate: '',
       endDate: '',
-      vendorId: '',
-      cityId: '',
     });
     setPage(1);
   };
@@ -240,14 +172,12 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-900">Order Records</h1>
-        <div className="text-sm text-gray-600">
-          Total: {orders.length} orders
-        </div>
+     
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <div className={`grid grid-cols-2 ${userRole === 'super_admin' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-4`}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Order Status
@@ -304,31 +234,8 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
-          {userRole === 'super_admin' && (
-            <>
-              {/* Removed Filter by Vendor */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Filter by Service City
-                </label>
-                <select
-                  value={filters.cityId}
-                  onChange={(e) => handleFilterChange('cityId', e.target.value)}
-                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  disabled={loadingFilters}
-                >
-                  <option value="">All Cities</option>
-                  {cities.map((city) => (
-                    <option key={city._id} value={city._id}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
         </div>
-        {(filters.orderStatus || filters.paymentStatus || filters.startDate || filters.endDate || filters.vendorId || filters.cityId) && (
+        {(filters.orderStatus || filters.paymentStatus || filters.startDate || filters.endDate) && (
           <div className="mt-4 flex justify-end">
             <button
               onClick={clearFilters}
@@ -352,45 +259,43 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-200">
               <tr>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Order ID
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   User ID
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Customer Name
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Phone
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Order Date & Time
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Sub Total
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Tax
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Net Total
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Coupon
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Order Status
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Payment Mode
                 </th>
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Payment Status
                 </th>
-
-
-                <th className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider`}>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   City
                 </th>
               </tr>
@@ -398,56 +303,54 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
             <tbody className="bg-white divide-y divide-gray-200">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan="13" className={`px-4 py-8 text-center text-xs text-gray-500`}>
+                  <td colSpan="13" className="px-4 py-8 text-center text-xs text-gray-500">
                     No orders found
                   </td>
                 </tr>
               ) : (
                 orders.map((order, index) => (
                   <tr key={index} className="hover:bg-gray-50 even:bg-gray-50">
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 leading-tight`}>
-                      {getLast6Digits(order.order_id)}
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 leading-tight">
+                      #{getLast6Digits(order.order_id)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {getLast6Digits(order.user_id)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 leading-tight">
                       {order.Customer_Name}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {order.Phone}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {formatDate(order.order_date_and_time)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 font-medium leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-medium leading-tight">
                       {formatCurrency(order.sub_total)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 leading-tight">
                       {formatCurrency(order.Total_Tax)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-900 font-semibold leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 font-semibold leading-tight">
                       {formatCurrency(order.Net_total)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {formatCurrency(order.Coupon_amount)}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap`}>
-                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${getStatusColor(order.Order_status)}`}>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(order.Order_status)}`}>
                         {order.Order_status}
                       </span>
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {order.Payment_mode === 'cod' ? 'COD' : order.Payment_mode === 'online' ? 'Online' : order.Payment_mode}
                     </td>
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap`}>
-                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${getPaymentStatusColor(order.Payment_status)}`}>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getPaymentStatusColor(order.Payment_status)}`}>
                         {order.Payment_status}
                       </span>
                     </td>
-
-
-                    <td className={`${userRole === 'super_admin' ? 'px-2 py-2' : 'px-4 py-3'} whitespace-nowrap text-sm text-gray-600 leading-tight`}>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {order.City}
                     </td>
                   </tr>
@@ -460,21 +363,21 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
-            <div className="text-sm text-gray-700">
+            <div className="text-xs text-gray-700">
               Page {page} of {totalPages}
             </div>
             <div className="flex space-x-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                className="px-3 py-1 border border-gray-300 rounded-lg text-xs disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                className="px-3 py-1 border border-gray-300 rounded-lg text-xs disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
               >
                 Next
               </button>
@@ -487,4 +390,3 @@ const OrderRecords = ({ userRole = 'vendor', initialOrderStatus = null, onFilter
 };
 
 export default OrderRecords;
-

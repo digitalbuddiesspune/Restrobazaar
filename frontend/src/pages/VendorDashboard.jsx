@@ -9,7 +9,7 @@ import ProductForm from '../components/vendor/ProductForm';
 import OrdersTable from '../components/vendor/OrdersTable';
 import OrderDetails from '../components/vendor/OrderDetails';
 import VendorAccount from '../components/vendor/VendorAccount';
-import OrderRecords from '../components/OrderRecords';
+import OrderRecords from '../components/vendor/OrderRecords';
 import CouponForm from '../components/vendor/CouponForm';
 import CouponsTable from '../components/vendor/CouponsTable';
 import UserForm from '../components/vendor/UserForm';
@@ -1260,7 +1260,7 @@ const VendorDashboard = () => {
           {/* Order Records Tab */}
           {activeTab === 'order-records' && (
             <div className="space-y-4">
-              <OrderRecords userRole="vendor" />
+              <OrderRecords />
             </div>
           )}
 

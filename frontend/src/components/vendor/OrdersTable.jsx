@@ -628,7 +628,7 @@ const OrdersTable = ({
   if (!orders || orders.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-        <p className="text-sm text-gray-500">No orders found.</p>
+        <p className="text-xs text-gray-500">No orders found.</p>
       </div>
     );
   }
@@ -636,28 +636,28 @@ const OrdersTable = ({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <table className="min-w-full divide-y divide-gray-200 text-xs">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Order #
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Customer
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Items
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Amount
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Order Status
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Payment
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Date
               </th>
             </tr>
@@ -670,17 +670,18 @@ const OrdersTable = ({
                 onClick={() => onOrderClick && onOrderClick(order._id)}
               >
                 <td className="px-4 py-2 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 leading-tight">
+                  <div className="text-xs font-medium text-gray-900 leading-tight">
                     {(() => {
                       const orderId = order._id || order.orderNumber || 'N/A';
                       if (!orderId || orderId === 'N/A') return 'N/A';
                       const idString = String(orderId);
-                      return idString.length > 6 ? idString.slice(-6) : idString;
+                      const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+                      return `#${lastSix}`;
                     })()}
                   </div>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 leading-tight">
+                  <div className="text-xs text-gray-900 leading-tight">
                     {order.deliveryAddress?.name || 'N/A'}
                   </div>
                   <div className="text-xs text-gray-500 leading-tight">
@@ -688,12 +689,12 @@ const OrdersTable = ({
                   </div>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 font-medium leading-tight">
+                  <div className="text-xs text-gray-900 font-medium leading-tight">
                     {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}
                   </div>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-gray-900 leading-tight">
+                  <div className="text-xs font-semibold text-gray-900 leading-tight">
                     ₹{order.billingDetails?.totalAmount?.toLocaleString() || 0}
                   </div>
                 </td>
@@ -709,7 +710,7 @@ const OrdersTable = ({
                           <button
                             onClick={() => canChangeStatus && setShowStatusDropdown(showStatusDropdown === order._id ? null : order._id)}
                             disabled={!canChangeStatus}
-                            className={`px-2 py-0.5 inline-flex items-center space-x-1 text-[10px] leading-4 font-semibold rounded-full transition ${getStatusColor(
+                            className={`px-2 py-0.5 inline-flex items-center space-x-1 text-xs leading-4 font-semibold rounded-full transition ${getStatusColor(
                               order.orderStatus
                             )} ${
                               canChangeStatus 
@@ -719,16 +720,7 @@ const OrdersTable = ({
                             title={!canChangeStatus ? 'Cannot change status for delivered or cancelled orders' : 'Change order status'}
                           >
                             <span>{order.orderStatus || 'pending'}</span>
-                            {canChangeStatus && (
-                              <svg
-                                className={`w-3 h-3 transition-transform ${showStatusDropdown === order._id ? 'rotate-180' : ''}`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            )}
+                           
                           </button>
                             {showStatusDropdown === order._id && canChangeStatus && (
                               <>
@@ -774,18 +766,16 @@ const OrdersTable = ({
                   <td className="px-4 py-2 whitespace-nowrap">
                     <div>
                       <span
-                        className={`px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full ${getPaymentDisplayColor(
+                        className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getPaymentDisplayColor(
                           order
                         )}`}
                       >
                         {getPaymentDisplayText(order)}
                       </span>
-                      <div className="text-xs text-gray-500 mt-0.5 capitalize leading-tight">
-                        {order.paymentMethod || 'N/A'}
-                      </div>
+                     
                     </div>
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 leading-tight">
+                  <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500 leading-tight">
                     {formatDate(order.createdAt)}
                   </td>
                 </tr>

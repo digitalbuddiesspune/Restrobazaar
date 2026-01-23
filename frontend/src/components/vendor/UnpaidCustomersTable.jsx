@@ -1,41 +1,43 @@
-import { useState } from 'react';
-
 const UnpaidCustomersTable = ({ 
   orders, 
   isLoading,
   onOrderClick,
   onUpdatePaymentStatus,
 }) => {
-  const [expandedCustomer, setExpandedCustomer] = useState(null);
-  const [showPaymentStatusDropdown, setShowPaymentStatusDropdown] = useState(null);
-
-  const paymentStatuses = [
-    { value: 'pending', label: 'Pending', colorClass: 'bg-yellow-500' },
-    { value: 'completed', label: 'Completed', colorClass: 'bg-green-500' },
-    { value: 'failed', label: 'Failed', colorClass: 'bg-red-500' },
-    { value: 'refunded', label: 'Refunded', colorClass: 'bg-orange-500' },
-  ];
-
-  const getPaymentStatusColor = (status) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800',
-      refunded: 'bg-orange-100 text-orange-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+  // Helper function to get last 6 digits of an ID
+  const getLastSixDigits = (id) => {
+    if (!id) return 'N/A';
+    const idString = String(id);
+    return idString.length > 6 ? idString.slice(-6) : idString.padStart(6, '0');
   };
 
+  // Format date like "October 31, 2025, 12:47 am"
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    const options = {
       year: 'numeric',
-      month: 'short',
+      month: 'long',
       day: 'numeric',
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
-    });
+      hour12: true,
+    };
+    return date.toLocaleString('en-US', options).toLowerCase();
+  };
+
+  // Get order status text (delivered, pending, etc.)
+  const getOrderStatusText = (order) => {
+    const status = order.orderStatus || 'pending';
+    const statusMap = {
+      pending: 'Pending',
+      confirmed: 'Pending',
+      processing: 'Pending',
+      shipped: 'Pending',
+      delivered: 'delivered',
+      cancelled: 'Cancelled',
+    };
+    return statusMap[status] || 'Pending';
   };
 
   // Group orders by customer (userId) to show unique customers
@@ -51,9 +53,6 @@ const UnpaidCustomersTable = ({
                          order.userId?.name || 
                          order.Customer_Name || 
                          'Unknown Customer';
-    const customerEmail = order.userId?.email || 
-                          order.Email || 
-                          'N/A';
     const customerPhone = order.deliveryAddress?.phone || 
                           order.userId?.phone || 
                           order.Phone || 
@@ -63,12 +62,9 @@ const UnpaidCustomersTable = ({
       customersMap.set(userId, {
         userId,
         customerName,
-        customerEmail,
         customerPhone,
         orders: [],
         totalUnpaidAmount: 0,
-        orderCount: 0,
-        latestOrderDate: null,
       });
     }
 
@@ -79,13 +75,6 @@ const UnpaidCustomersTable = ({
                         order.totalAmount || 
                         0;
     customer.totalUnpaidAmount += orderAmount;
-    customer.orderCount += 1;
-    
-    // Track latest order date
-    const orderDate = new Date(order.createdAt || order.order_date_and_time || 0);
-    if (!customer.latestOrderDate || orderDate > customer.latestOrderDate) {
-      customer.latestOrderDate = orderDate;
-    }
   });
 
   // Sort customers by total unpaid amount (highest first)
@@ -114,150 +103,94 @@ const UnpaidCustomersTable = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
       <div className="overflow-x-auto scrollbar-hide">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <table className="min-w-full border-collapse text-sm">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
-                Customer Name
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer border-r border-b border-gray-300">
+                Id
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
-                Email
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r border-b border-gray-300">
+                Name
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer border-r border-b border-gray-300">
                 Phone
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
-                Unpaid Orders
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer border-r border-b border-gray-300">
+                Order Information
               </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
-                Total Unpaid Amount
-              </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
-                Latest Order Date
-              </th>
-              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-700 uppercase tracking-wider">
-                Actions
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer border-b border-gray-300">
+                Unpaid Amt
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {customers.map((customer) => (
-              <>
+          <tbody className="bg-white">
+            {customers.map((customer) => {
+              const userIdLastSix = getLastSixDigits(customer.userId);
+              
+              return (
                 <tr 
                   key={customer.userId}
-                  className="hover:bg-gray-50 transition cursor-pointer even:bg-gray-50"
-                  onClick={() => setExpandedCustomer(expandedCustomer === customer.userId ? null : customer.userId)}
+                  className="hover:bg-gray-50 transition even:bg-gray-50 border-b border-gray-200"
                 >
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 leading-tight">
+                  <td className="px-4 py-2 whitespace-nowrap border-r border-gray-200">
+                    <div className="text-xs font-medium text-gray-900">
+                      {userIdLastSix}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap border-r border-gray-200">
+                    <div className="text-xs text-gray-900">
                       {customer.customerName}
                     </div>
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="text-sm text-gray-500 leading-tight">
-                      {customer.customerEmail}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="text-sm text-gray-500 leading-tight">
+                  <td className="px-4 py-2 whitespace-nowrap border-r border-gray-200">
+                    <div className="text-xs text-gray-900">
                       {customer.customerPhone}
                     </div>
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 font-medium leading-tight">
-                      {customer.orderCount} order{customer.orderCount !== 1 ? 's' : ''}
+                  <td className="px-4 py-2 border-r border-gray-200">
+                    <div className="text-xs text-gray-900 space-y-1">
+                      {customer.orders.map((order, index) => {
+                        const orderId = order._id || order.order_id || order.id || order.orderNumber;
+                        const orderIdLastSix = getLastSixDigits(orderId);
+                        const orderAmount = order.billingDetails?.totalAmount || 
+                                          order.Net_total || 
+                                          order.totalAmount || 
+                                          0;
+                        const orderDate = formatDate(order.createdAt || order.order_date_and_time);
+                        const orderStatus = getOrderStatusText(order);
+                        const formattedAmount = orderAmount.toLocaleString('en-IN', { 
+                          minimumFractionDigits: 2, 
+                          maximumFractionDigits: 2 
+                        });
+                        
+                        return (
+                          <div 
+                            key={orderId || index}
+                            className="cursor-pointer hover:text-blue-600"
+                            onClick={() => onOrderClick && onOrderClick(orderId)}
+                          >
+                            Order id - #{orderIdLastSix} / Amt - {formattedAmount} ₹ / Date - {orderDate} ({orderStatus})
+                          </div>
+                        );
+                      })}
                     </div>
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-red-600 leading-tight">
-                      ₹{customer.totalUnpaidAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="text-sm text-gray-500 leading-tight">
-                      {customer.latestOrderDate ? formatDate(customer.latestOrderDate) : 'N/A'}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => {
-                          setExpandedCustomer(expandedCustomer === customer.userId ? null : customer.userId);
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
-                      >
-                        {expandedCustomer === customer.userId ? 'Hide' : 'View'} Orders
-                      </button>
+                    <div className="text-xs font-semibold text-red-600">
+                      {customer.totalUnpaidAmount?.toLocaleString('en-IN', { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                      }) || '0.00'} ₹
                     </div>
                   </td>
                 </tr>
-                {/* Expanded Row - Show All Orders for This Customer */}
-                {expandedCustomer === customer.userId && (
-                  <tr>
-                    <td colSpan="7" className="px-4 py-4 bg-gray-50">
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-semibold text-gray-700 mb-2">
-                          Unpaid Orders for {customer.customerName}
-                        </h4>
-                        <div className="space-y-1">
-                          {customer.orders.map((order, index) => {
-                            const orderId = order._id || order.order_id || order.id;
-                            const orderAmount = order.billingDetails?.totalAmount || order.Net_total || order.totalAmount || 0;
-                            return (
-                              <div
-                                key={orderId || index}
-                                className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition cursor-pointer"
-                                onClick={() => onOrderClick && onOrderClick(orderId)}
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-3">
-                                    <span className="text-xs font-medium text-gray-900">
-                                      Order #{(() => {
-                                        const id = order.orderNumber || orderId || `Order ${index + 1}`;
-                                        if (!id || id.startsWith('Order ')) return id;
-                                        const idString = String(id);
-                                        return idString.length > 6 ? idString.slice(-6) : idString;
-                                      })()}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      {formatDate(order.createdAt || order.order_date_and_time)}
-                                    </span>
-                                    <span className={`text-xs px-2 py-0.5 rounded-full ${getPaymentStatusColor(order.paymentStatus || 'pending')}`}>
-                                      {order.paymentStatus === 'pending' ? 'Unpaid' : order.paymentStatus || 'Pending'}
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {order.items?.length || 0} item{(order.items?.length || 0) !== 1 ? 's' : ''} • 
-                                    Payment: {order.paymentMethod === 'cod' ? 'COD' : order.paymentMethod || 'N/A'}
-                                  </div>
-                                </div>
-                                <div className="text-sm font-semibold text-red-600 ml-4">
-                                  ₹{orderAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
-
-      {/* Customer Details Modal/Expandable Section could be added here */}
-      {customers.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
-          <div className="text-xs text-gray-600">
-            Showing <span className="font-semibold">{customers.length}</span> customer{customers.length !== 1 ? 's' : ''} with unpaid orders
-          </div>
-        </div>
-      )}
     </div>
   );
 };
