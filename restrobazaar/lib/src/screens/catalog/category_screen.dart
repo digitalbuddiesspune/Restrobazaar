@@ -100,29 +100,35 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                           _selectedSubCategory.trim().toLowerCase();
                     }).toList();
 
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _CategoryInfoCard(category: category),
-                    const SizedBox(height: 12),
-                    _SubcategoryFilter(
-                      subcategories: category.subCategories,
-                      selected: _selectedSubCategory,
-                      onSelect: (value) {
-                        setState(() => _selectedSubCategory = value);
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    if (filtered.isEmpty)
-                      _EmptyProducts(message: 'No products found in this category')
-                    else
-                      _ProductGrid(
-                        products: filtered,
-                        onTap: (id) => context.push('/product/$id'),
+              return Container(
+                color: Colors.grey.shade50,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _CategoryHeaderCard(
+                        category: category,
+                        subcategories: category.subCategories,
+                        selected: _selectedSubCategory,
+                        onSelect: (value) {
+                          setState(() => _selectedSubCategory = value);
+                        },
                       ),
-                  ],
+                      const SizedBox(height: 14),
+                      if (filtered.isEmpty)
+                        _EmptyProducts(
+                          title: 'No products found',
+                          subtitle:
+                              'No products available in ${cityState.selected?.displayName ?? 'your city'} for this category',
+                        )
+                      else
+                        _ProductGrid(
+                          products: filtered,
+                          onTap: (id) => context.push('/product/$id'),
+                        ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -135,106 +141,15 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
   }
 }
 
-class _CategoryInfoCard extends StatelessWidget {
-  const _CategoryInfoCard({required this.category});
-
-  final CategoryModel category;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 62,
-            width: 62,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade200),
-              image: category.image != null && category.image!.isNotEmpty
-                  ? DecorationImage(
-                      image: NetworkImage(category.image!),
-                      fit: BoxFit.cover,
-                      onError: (_, __) {},
-                    )
-                  : null,
-            ),
-            child: category.image == null || category.image!.isEmpty
-                ? Icon(
-                    Icons.category_outlined,
-                    color: Colors.grey.shade500,
-                    size: 28,
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  category.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Browse curated products in ${category.name}.',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFfee2e2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${category.subCategories.length} subcategories',
-                    style: const TextStyle(
-                      color: Color(0xFFdc2626),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SubcategoryFilter extends StatelessWidget {
-  const _SubcategoryFilter({
+class _CategoryHeaderCard extends StatelessWidget {
+  const _CategoryHeaderCard({
+    required this.category,
     required this.subcategories,
     required this.selected,
     required this.onSelect,
   });
 
+  final CategoryModel category;
   final List<String> subcategories;
   final String selected;
   final void Function(String value) onSelect;
@@ -257,28 +172,93 @@ class _SubcategoryFilter extends StatelessWidget {
     ];
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 56,
+                width: 56,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                  image: category.image != null && category.image!.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(category.image!),
+                          fit: BoxFit.cover,
+                          onError: (_, __) {},
+                        )
+                      : null,
+                ),
+                child: category.image == null || category.image!.isEmpty
+                    ? Icon(
+                        Icons.category_outlined,
+                        color: Colors.grey.shade500,
+                        size: 26,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Browse curated products in ${category.name}.',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
           const Text(
-            'Filter by subcategory',
+            'Filter by Subcategory:',
             style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: Color(0xFF374151),
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: chips,
+          SizedBox(
+            height: 34,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: chips.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) => chips[index],
+            ),
           ),
         ],
       ),
@@ -301,18 +281,19 @@ class _SubcategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFdc2626) : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(10),
+          color: selected ? const Color(0xFFdc2626) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? const Color(0xFFdc2626) : Colors.grey.shade300,
+            color: selected ? const Color(0xFFdc2626) : Colors.grey.shade200,
           ),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: Colors.red.withOpacity(0.15),
+                    color: Colors.red.withOpacity(0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -323,8 +304,8 @@ class _SubcategoryChip extends StatelessWidget {
           label,
           style: TextStyle(
             color: selected ? Colors.white : const Color(0xFF374151),
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
           ),
         ),
       ),
@@ -374,42 +355,54 @@ class _ProductGrid extends StatelessWidget {
 }
 
 class _EmptyProducts extends StatelessWidget {
-  const _EmptyProducts({required this.message});
+  const _EmptyProducts({required this.title, required this.subtitle});
 
-  final String message;
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 32),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 8),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(Icons.inventory_2_outlined, size: 38, color: Colors.grey.shade500),
-          const SizedBox(height: 10),
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 56,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 12),
           Text(
-            message,
+            title,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: Color(0xFF374151),
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Try a different subcategory or come back later.',
-            style: TextStyle(color: Color(0xFF6b7280)),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF6b7280),
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
         ],
       ),
