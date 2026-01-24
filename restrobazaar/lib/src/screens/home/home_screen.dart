@@ -11,8 +11,11 @@ import '../../models/category.dart';
 import '../../widgets/restrobazaar_logo.dart';
 import '../../widgets/city_selector_sheet.dart';
 
-const _mobileHeroBanner =
-    'https://res.cloudinary.com/debhhnzgh/image/upload/v1766925734/IMG_20251228_181115_c6o3io.png';
+const _heroCarouselImages = [
+  'assets/images/carouselImages/carouselImage1.png',
+  'assets/images/carouselImages/carouselImage2.png',
+  'assets/images/carouselImages/carouselImage3.png',
+];
 const _customPrintingBackground =
     'https://res.cloudinary.com/debhhnzgh/image/upload/v1766044565/ecofriendly-food-packaging-items-paper-cups-plates-containers-catering-street-fast_baydeb.jpg';
 
@@ -62,7 +65,7 @@ class HomeScreen extends ConsumerWidget {
                 );
               },
             ),
-            const _HeroImage(),
+            const _HeroCarousel(),
             _CategoriesSection(categoriesAsync: categoriesAsync),
             const _QualitySection(),
             const _IndustriesSection(),
@@ -143,8 +146,15 @@ class _CityBanner extends StatelessWidget {
   }
 }
 
-class _HeroImage extends StatelessWidget {
-  const _HeroImage();
+class _HeroCarousel extends StatefulWidget {
+  const _HeroCarousel();
+
+  @override
+  State<_HeroCarousel> createState() => _HeroCarouselState();
+}
+
+class _HeroCarouselState extends State<_HeroCarousel> {
+  int _activeIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -153,16 +163,64 @@ class _HeroImage extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: SizedBox(
-          height: 500,
-          child: CachedNetworkImage(
-            imageUrl: _mobileHeroBanner,
-            fit: BoxFit.cover,
-            placeholder: (context, _) => Container(color: Colors.grey.shade200),
-            errorWidget: (_, __, ___) => Container(
-              color: Colors.grey.shade200,
-              alignment: Alignment.center,
-              child: const Icon(Icons.broken_image_outlined),
-            ),
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Stack(
+            children: [
+              CarouselSlider(
+                items: _heroCarouselImages
+                    .map(
+                      (path) => SizedBox.expand(
+                        child: Image.asset(
+                          path,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                options: CarouselOptions(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  viewportFraction: 1,
+                  autoPlay: true,
+                  autoPlayInterval: const Duration(seconds: 4),
+                  autoPlayAnimationDuration: const Duration(milliseconds: 700),
+                  enableInfiniteScroll: _heroCarouselImages.length > 1,
+                  onPageChanged: (index, _) {
+                    if (!mounted) return;
+                    setState(() => _activeIndex = index);
+                  },
+                ),
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 14,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_heroCarouselImages.length, (index) {
+                    final isActive = index == _activeIndex;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      height: 6,
+                      width: isActive ? 18 : 6,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(99),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
           ),
         ),
       ),

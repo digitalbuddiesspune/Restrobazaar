@@ -73,6 +73,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/carouselImages/
     - assets/data/
     - .env
 
