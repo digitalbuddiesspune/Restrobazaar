@@ -746,13 +746,21 @@ class _CustomPrintingSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'Custom Printing & Brand Packaging',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade900,
+          Text.rich(
+            TextSpan(
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade900,
+              ),
+              children: const [
+                TextSpan(text: 'Custom Printing & '),
+                TextSpan(
+                  text: 'Brand Packaging',
+                  style: TextStyle(color: Color(0xFFE7000B)),
+                ),
+              ],
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
