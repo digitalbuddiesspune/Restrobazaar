@@ -300,7 +300,7 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 0.52,
+                childAspectRatio: 0.54,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
