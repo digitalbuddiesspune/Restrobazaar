@@ -13,8 +13,8 @@ import '../../widgets/city_selector_sheet.dart';
 
 const _heroCarouselImages = [
   'assets/images/carouselImages/carouselImage1.png',
-  'assets/images/carouselImages/carouselImage2.png',
-  'assets/images/carouselImages/carouselImage3.png',
+  'assets/images/carouselImages/carouselImage2.jpg',
+  // 'assets/images/carouselImages/carouselImage3.png',
 ];
 const _customPrintingBackground =
     'https://res.cloudinary.com/debhhnzgh/image/upload/v1766044565/ecofriendly-food-packaging-items-paper-cups-plates-containers-catering-street-fast_baydeb.jpg';
@@ -163,22 +163,20 @@ class _HeroCarouselState extends State<_HeroCarousel> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
+          height: 260,
           child: Stack(
             children: [
               CarouselSlider(
                 items: _heroCarouselImages
                     .map(
-                      (path) => SizedBox.expand(
-                        child: Image.asset(
-                          path,
-                          fit: BoxFit.cover,
-                        ),
+                      (path) => Image.asset(
+                        path,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
                       ),
                     )
                     .toList(),
                 options: CarouselOptions(
-                  height: MediaQuery.of(context).size.height * 0.7,
                   viewportFraction: 1,
                   autoPlay: true,
                   autoPlayInterval: const Duration(seconds: 4),
