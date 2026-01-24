@@ -18,7 +18,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _paymentMethod = 'cod';
-  static const _merchantVpa = 'restrobazaar@upi';
+  static const _merchantVpa = '9545235223@kotak';
   static const _merchantName = 'RestroBazaar';
 
   @override

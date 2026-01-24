@@ -31,6 +31,49 @@ class AuthRepository {
     );
   }
 
+  Future<void> sendOtpForLogin({required String phone}) async {
+    final response = await _client.requestJson(
+      '/users/send-otp-login',
+      method: 'POST',
+      data: {'phone': phone},
+    );
+
+    if (response['success'] == true) {
+      return;
+    }
+
+    throw ApiException(
+      statusCode: 400,
+      message:
+          response['message']?.toString() ?? 'Failed to send OTP. Try again.',
+    );
+  }
+
+  Future<AuthResult> verifyOtpLogin({
+    required String phone,
+    required String otp,
+  }) async {
+    final response = await _client.requestJson(
+      '/users/verify-otp-login',
+      method: 'POST',
+      data: {'phone': phone, 'otp': otp},
+    );
+
+    if (response['success'] == true &&
+        response['data'] is Map<String, dynamic>) {
+      final data = response['data'] as Map<String, dynamic>;
+      return AuthResult(
+        user: UserModel.fromJson(data),
+        token: _extractToken(response, data),
+      );
+    }
+
+    throw ApiException(
+      statusCode: 400,
+      message: response['message']?.toString() ?? 'OTP verification failed',
+    );
+  }
+
   Future<AuthResult> signUp({
     required String name,
     required String email,

@@ -112,6 +112,50 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> sendOtpLogin({required String phone}) async {
+    try {
+      state = state.copyWith(loading: true, error: null);
+      await _repository.sendOtpForLogin(phone: phone);
+      state = state.copyWith(loading: false);
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        loading: false,
+        error: error is ApiException ? error.message : error.toString(),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtpLogin({
+    required String phone,
+    required String otp,
+  }) async {
+    try {
+      state = state.copyWith(loading: true, error: null);
+      final result = await _repository.verifyOtpLogin(
+        phone: phone,
+        otp: otp,
+      );
+      await _storage.setJson(userInfoKey, result.user.toJson());
+      if (result.token != null && result.token!.isNotEmpty) {
+        await _storage.setString(authTokenKey, result.token!);
+        _apiClient.setBearerToken(result.token);
+      } else {
+        await _storage.remove(authTokenKey);
+        _apiClient.setBearerToken(null);
+      }
+      state = state.copyWith(user: result.user, loading: false);
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        loading: false,
+        error: error is ApiException ? error.message : error.toString(),
+      );
+      return false;
+    }
+  }
+
   Future<bool> signUp({
     required String name,
     required String email,
