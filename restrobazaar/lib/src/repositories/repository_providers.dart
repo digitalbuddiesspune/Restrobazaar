@@ -5,6 +5,7 @@ import 'address_repository.dart';
 import 'auth_repository.dart';
 import 'catalog_repository.dart';
 import 'city_repository.dart';
+import 'coupon_repository.dart';
 import 'order_repository.dart';
 import 'wishlist_repository.dart';
 
@@ -30,4 +31,8 @@ final addressRepositoryProvider = Provider<AddressRepository>(
 
 final orderRepositoryProvider = Provider<OrderRepository>(
   (ref) => OrderRepository(ref.read(apiClientProvider)),
+);
+
+final couponRepositoryProvider = Provider<CouponRepository>(
+  (ref) => CouponRepository(ref.read(apiClientProvider)),
 );

@@ -6,9 +6,13 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/checkout_controller.dart';
+import '../../core/api_client.dart';
 import '../../core/formatters.dart';
 import '../../core/shipping.dart';
 import '../../models/address.dart';
+import '../../models/cart_item.dart';
+import '../../models/coupon.dart';
+import '../../repositories/repository_providers.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -21,13 +25,163 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _paymentMethod = 'cod';
   static const _merchantVpa = '9545235223@kotak';
   static const _merchantName = 'RestroBazaar';
+  final TextEditingController _couponController = TextEditingController();
+  List<CouponModel> _availableCoupons = [];
+  bool _showCoupons = false;
+  bool _loadingCoupons = false;
+  bool _applyingCoupon = false;
+  CouponValidationResult? _appliedCoupon;
+  String? _couponError;
+  double _couponDiscount = 0;
+  double _lastCartTotal = -1;
+  String? _lastVendorKey;
+  bool _pendingCouponRefresh = false;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       ref.read(checkoutControllerProvider.notifier).loadAddresses();
+      _refreshCoupons(ref.read(cartControllerProvider));
     });
+  }
+
+  String? _singleVendorId(List<CartItem> items) {
+    if (items.isEmpty) return null;
+    final first = items.first.vendorId;
+    if (first.isEmpty) return null;
+    final sameVendor = items.every((item) => item.vendorId == first);
+    return sameVendor ? first : null;
+  }
+
+  String? _vendorKey(CartState cartState) {
+    if (cartState.items.isEmpty) return null;
+    return _singleVendorId(cartState.items) ?? 'multiple';
+  }
+
+  void _scheduleCouponRefresh(CartState cartState) {
+    final vendorKey = _vendorKey(cartState);
+    if (_lastCartTotal == cartState.subtotal && _lastVendorKey == vendorKey) {
+      return;
+    }
+
+    _lastCartTotal = cartState.subtotal;
+    _lastVendorKey = vendorKey;
+
+    if (_pendingCouponRefresh) return;
+    _pendingCouponRefresh = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _refreshCoupons(cartState, clearApplied: true);
+      _pendingCouponRefresh = false;
+    });
+  }
+
+  String _couponErrorMessage(Object error) {
+    if (error is ApiException) return error.message;
+    return error.toString();
+  }
+
+  Future<void> _refreshCoupons(
+    CartState cartState, {
+    bool clearApplied = false,
+  }) async {
+    if (!mounted) return;
+    setState(() {
+      _loadingCoupons = true;
+      _couponError = null;
+      if (clearApplied) {
+        _appliedCoupon = null;
+        _couponDiscount = 0;
+      }
+    });
+
+    if (cartState.items.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _availableCoupons = [];
+        _loadingCoupons = false;
+      });
+      return;
+    }
+
+    final repo = ref.read(couponRepositoryProvider);
+    try {
+      final coupons = await repo.getAvailableCoupons(
+        vendorId: _singleVendorId(cartState.items),
+        cartTotal: cartState.subtotal,
+        cartItems: cartState.items,
+      );
+      if (!mounted) return;
+      setState(() {
+        _availableCoupons = coupons;
+        _loadingCoupons = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _availableCoupons = [];
+        _loadingCoupons = false;
+        _couponError = _couponErrorMessage(error);
+      });
+    }
+  }
+
+  Future<void> _applyCoupon(
+    CartState cartState, {
+    String? overrideCode,
+  }) async {
+    final code = (overrideCode ?? _couponController.text).trim().toUpperCase();
+    if (code.isEmpty) {
+      setState(() {
+        _couponError = 'Please enter a coupon code';
+      });
+      return;
+    }
+
+    setState(() {
+      _applyingCoupon = true;
+      _couponError = null;
+    });
+
+    final repo = ref.read(couponRepositoryProvider);
+    try {
+      final result = await repo.validateCoupon(
+        code: code,
+        cartTotal: cartState.subtotal,
+        vendorId: _singleVendorId(cartState.items),
+        cartItems: cartState.items,
+      );
+      if (!mounted) return;
+      setState(() {
+        _appliedCoupon = result;
+        _couponDiscount = result.discount;
+        _couponController.text = '';
+        _applyingCoupon = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _appliedCoupon = null;
+        _couponDiscount = 0;
+        _couponError = _couponErrorMessage(error);
+        _applyingCoupon = false;
+      });
+    }
+  }
+
+  void _removeCoupon() {
+    setState(() {
+      _appliedCoupon = null;
+      _couponDiscount = 0;
+      _couponError = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    _couponController.dispose();
+    super.dispose();
   }
 
   @override
@@ -80,6 +234,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       );
     }
 
+    _scheduleCouponRefresh(cartState);
+
     final gstBreakdown = cartState.items
         .map((item) {
           final itemTotal =
@@ -91,7 +247,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         .fold<double>(0, (sum, value) => sum + value);
     final gst = double.parse(gstBreakdown.toStringAsFixed(2));
     final shipping = calculateShippingCharges(cartState.subtotal);
-    final totalAmount = cartState.subtotal + gst + shipping;
+    final totalBeforeCoupon = cartState.subtotal + gst + shipping;
+    final discountedTotal = totalBeforeCoupon - _couponDiscount;
+    final double totalAmount =
+        (discountedTotal < 0 ? 0 : discountedTotal).toDouble();
     final upiData =
         _paymentMethod == 'online' ? _buildUpiData(totalAmount) : null;
 
@@ -118,11 +277,35 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               upiData: upiData,
             ),
             const SizedBox(height: 12),
+            _CouponSection(
+              coupons: _availableCoupons,
+              showCoupons: _showCoupons,
+              loading: _loadingCoupons,
+              applying: _applyingCoupon,
+              controller: _couponController,
+              appliedCoupon: _appliedCoupon,
+              couponError: _couponError,
+              onToggleCoupons: () {
+                setState(() => _showCoupons = !_showCoupons);
+              },
+              onApply: () => _applyCoupon(cartState),
+              onRemove: _removeCoupon,
+              onCodeChanged: (value) {
+                setState(() => _couponError = null);
+              },
+              onSelectCoupon: (coupon) {
+                _couponController.text = coupon.code;
+                _applyCoupon(cartState, overrideCode: coupon.code);
+              },
+            ),
+            const SizedBox(height: 12),
             _SummaryCard(
               cartState: cartState,
               gst: gst,
               shipping: shipping,
               totalAmount: totalAmount,
+              couponCode: _appliedCoupon?.code,
+              couponDiscount: _couponDiscount,
               placingOrder: checkoutState.placingOrder,
               error: checkoutState.error,
               onPlaceOrder: () async {
@@ -131,7 +314,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   cartTotal: cartState.subtotal,
                   gstAmount: gst,
                   shippingCharges: shipping,
-                                paymentMethod: _paymentMethod,
+                  totalAmount: totalAmount,
+                  couponCode: _appliedCoupon?.code,
+                  paymentMethod: _paymentMethod,
                 );
                 if (!mounted) return;
                 if (order != null) {
@@ -849,12 +1034,246 @@ class _PaymentTile extends StatelessWidget {
   }
 }
 
+class _CouponSection extends StatelessWidget {
+  const _CouponSection({
+    required this.coupons,
+    required this.showCoupons,
+    required this.loading,
+    required this.applying,
+    required this.controller,
+    required this.appliedCoupon,
+    required this.couponError,
+    required this.onToggleCoupons,
+    required this.onApply,
+    required this.onRemove,
+    required this.onCodeChanged,
+    required this.onSelectCoupon,
+  });
+
+  final List<CouponModel> coupons;
+  final bool showCoupons;
+  final bool loading;
+  final bool applying;
+  final TextEditingController controller;
+  final CouponValidationResult? appliedCoupon;
+  final String? couponError;
+  final VoidCallback onToggleCoupons;
+  final VoidCallback onApply;
+  final VoidCallback onRemove;
+  final ValueChanged<String> onCodeChanged;
+  final ValueChanged<CouponModel> onSelectCoupon;
+
+  String _couponSubtitle(CouponModel coupon) {
+    final isPercentage = coupon.discountType == 'percentage';
+    final valueLabel = isPercentage
+        ? '${coupon.discountValue.toStringAsFixed(0)}% OFF'
+        : '${formatCurrency(coupon.discountValue)} OFF';
+    return '$valueLabel • Min. ${formatCurrency(coupon.minimumOrderAmount)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Have a Coupon?',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              if (loading)
+                const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else if (coupons.isNotEmpty)
+                TextButton(
+                  onPressed: onToggleCoupons,
+                  child: Text(
+                    showCoupons
+                        ? 'Hide Available (${coupons.length})'
+                        : 'View Available (${coupons.length})',
+                  ),
+                ),
+            ],
+          ),
+          if (showCoupons && coupons.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...coupons.map(
+              (coupon) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => onSelectCoupon(coupon),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                coupon.code,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                coupon.description?.isNotEmpty == true
+                                    ? coupon.description!
+                                    : _couponSubtitle(coupon),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF6b7280),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (coupon.estimatedDiscount != null)
+                          Text(
+                            'Save ${formatCurrency(coupon.estimatedDiscount!)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF16A34A),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          if (appliedCoupon == null)
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter coupon code',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: onCodeChanged,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: applying ? null : onApply,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFdc2626),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: applying
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Apply'),
+                ),
+              ],
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${appliedCoupon!.code} Applied',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF166534),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'You saved ${formatCurrency(appliedCoupon!.discount)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF15803D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: onRemove,
+                    child: const Text(
+                      'Remove',
+                      style: TextStyle(color: Color(0xFFdc2626)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (couponError != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              couponError!,
+              style: const TextStyle(
+                color: Color(0xFFdc2626),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.cartState,
     required this.gst,
     required this.shipping,
     required this.totalAmount,
+    this.couponCode,
+    this.couponDiscount = 0,
     required this.placingOrder,
     required this.error,
     required this.onPlaceOrder,
@@ -864,6 +1283,8 @@ class _SummaryCard extends StatelessWidget {
   final double gst;
   final double shipping;
   final double totalAmount;
+  final String? couponCode;
+  final double couponDiscount;
   final bool placingOrder;
   final String? error;
   final VoidCallback onPlaceOrder;
@@ -899,11 +1320,16 @@ class _SummaryCard extends StatelessWidget {
             label: 'Subtotal (${cartState.totalItems} items)',
             value: formatCurrency(cartState.subtotal),
           ),
-                  _SummaryRow(label: 'GST', value: formatCurrency(gst)),
+          _SummaryRow(label: 'GST', value: formatCurrency(gst)),
           _SummaryRow(
             label: 'Shipping',
             value: shipping == 0 ? 'Free' : formatCurrency(shipping),
           ),
+          if (couponDiscount > 0 && couponCode != null)
+            _SummaryRow(
+              label: 'Coupon Discount ($couponCode)',
+              value: '-${formatCurrency(couponDiscount)}',
+            ),
           const Divider(height: 18),
           _SummaryRow(
             label: 'Total',

@@ -121,6 +121,8 @@ class CheckoutController extends StateNotifier<CheckoutState> {
     required double gstAmount,
     required double shippingCharges,
     required String paymentMethod,
+    double? totalAmount,
+    String? couponCode,
     String? paymentId,
     String? transactionId,
   }) async {
@@ -132,14 +134,17 @@ class CheckoutController extends StateNotifier<CheckoutState> {
     state = state.copyWith(placingOrder: true, error: null);
 
     try {
+      final resolvedTotalAmount =
+          totalAmount ?? (cartTotal + gstAmount + shippingCharges);
       final payload = {
         'addressId': state.selectedAddressId,
         'paymentMethod': paymentMethod,
         'cartItems': cartItems.map((item) => item.toJson()).toList(),
-        'totalAmount': cartTotal + gstAmount + shippingCharges,
+        'totalAmount': resolvedTotalAmount,
         'cartTotal': cartTotal,
         'gstAmount': gstAmount,
         'shippingCharges': shippingCharges,
+        'couponCode': couponCode,
         'paymentId': paymentId,
         'transactionId': transactionId,
       };
