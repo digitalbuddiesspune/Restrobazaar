@@ -29,7 +29,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.slug.replaceAll('-', ' ')),
+        title: Text(_titleCase(widget.slug.replaceAll('-', ' '))),
         actions: [
           IconButton(
             onPressed: () => context.push('/search'),
@@ -220,7 +220,7 @@ class _CategoryHeaderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      category.name,
+                      _titleCase(category.name),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -228,7 +228,7 @@ class _CategoryHeaderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Browse curated products in ${category.name}.',
+                      'Browse curated products in ${_titleCase(category.name)}.',
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 13,
@@ -408,4 +408,13 @@ class _EmptyProducts extends StatelessWidget {
       ),
     );
   }
+}
+
+String _titleCase(String value) {
+  final words = value.trim().split(RegExp(r'\s+'));
+  return words
+      .where((word) => word.isNotEmpty)
+      .map((word) =>
+          '${word[0].toUpperCase()}${word.length > 1 ? word.substring(1).toLowerCase() : ''}')
+      .join(' ');
 }
