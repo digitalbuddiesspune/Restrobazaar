@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -563,12 +564,64 @@ class _QualitySection extends StatelessWidget {
   }
 }
 
-class _IndustriesSection extends StatelessWidget {
+class _IndustriesSection extends StatefulWidget {
   const _IndustriesSection();
 
   @override
+  State<_IndustriesSection> createState() => _IndustriesSectionState();
+}
+
+class _IndustriesSectionState extends State<_IndustriesSection>
+    with SingleTickerProviderStateMixin {
+  static const double _marqueeHeight = 180;
+  static const double _marqueeSpeed = 35; // pixels per second
+
+  late final ScrollController _scrollController;
+  late final Ticker _ticker;
+  Duration? _lastTick;
+  double _offset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _ticker = createTicker(_onTick)..start();
+  }
+
+  void _onTick(Duration elapsed) {
+    if (!_scrollController.hasClients) return;
+    if (_lastTick == null) {
+      _lastTick = elapsed;
+      return;
+    }
+    final deltaSeconds =
+        (elapsed - _lastTick!).inMilliseconds.clamp(0, 100) / 1000;
+    _lastTick = elapsed;
+    final max = _scrollController.position.maxScrollExtent;
+    if (max <= 0) return;
+    _offset += _marqueeSpeed * deltaSeconds;
+    if (_offset >= max) {
+      _offset = 0;
+    }
+    _scrollController.jumpTo(_offset);
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final marqueeItems = List.generate(
+      _industries.length * 2,
+      (index) => _industries[index % _industries.length],
+    );
+
     return Container(
+      color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -583,75 +636,83 @@ class _IndustriesSection extends StatelessWidget {
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'RestroBazaar caters to a wide range of industries including cloud kitchens, restaurants, bakeries, sweet shops, and catering services.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade700,
-                height: 1.45,
+            child: Text.rich(
+              TextSpan(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey.shade700,
+                  height: 1.45,
+                ),
+                children: const [
+                  TextSpan(
+                    text:
+                        'RestroBazaar caters to a wide range of industries, which include brands from the ',
+                  ),
+                  TextSpan(
+                    text:
+                        'Cloud Kitchen, Restaurants, Bakeries, Sweet Shops, Catering Services, Household Supply, Medical and Hygiene',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(
+                    text:
+                        ', and more. At ',
+                  ),
+                  TextSpan(
+                    text: 'RestroBazaar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(
+                    text:
+                        ', we provide the best quality ',
+                  ),
+                  TextSpan(
+                    text: 'food packaging boxes and products',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(text: '.'),
+                ],
               ),
+              textAlign: TextAlign.center,
             ),
           ),
           const SizedBox(height: 16),
-          CarouselSlider(
-            options: CarouselOptions(
-              height: 260,
-              viewportFraction: 0.55,
-              enableInfiniteScroll: true,
-              autoPlay: true,
-              autoPlayInterval: const Duration(seconds: 3),
-              enlargeCenterPage: true,
+          SizedBox(
+            height: _marqueeHeight,
+            child: ListView.separated(
+              controller: _scrollController,
+              physics: const NeverScrollableScrollPhysics(),
+              scrollDirection: Axis.horizontal,
+              itemCount: marqueeItems.length,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              separatorBuilder: (_, __) => const SizedBox(width: 18),
+              itemBuilder: (context, index) {
+                final industry = marqueeItems[index];
+                return SizedBox(
+                  width: 220,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: CachedNetworkImage(
+                          imageUrl: industry.image,
+                          fit: BoxFit.contain,
+                          placeholder: (_, __) =>
+                              Container(color: Colors.grey.shade200),
+                          errorWidget: (_, __, ___) =>
+                              Container(color: Colors.grey.shade200),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        industry.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-            items: _industries.map((industry) {
-              return Builder(
-                builder: (context) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: CachedNetworkImage(
-                              imageUrl: industry.image,
-                              fit: BoxFit.contain,
-                              width: double.infinity,
-                              placeholder: (_, __) =>
-                                  Container(color: Colors.grey.shade200),
-                              errorWidget: (_, __, ___) =>
-                                  Container(color: Colors.grey.shade200),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          child: Text(
-                            industry.name,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            }).toList(),
           ),
         ],
       ),
