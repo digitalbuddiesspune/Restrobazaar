@@ -647,7 +647,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     const bankAccountNo = bankDetails.accountNumber || bankDetails.bankAccountNo || '9545235223';
     const branch = bankDetails.branch || 'Baner';
     const bankIFSC = bankDetails.ifscCode || bankDetails.bankIFSC || 'KKBK0001767';
-    const upiId = bankDetails.upiId || 'restrobazaar@upi';
+    const upiId = bankDetails.upiId || '9545235223@kotak';
 
     // Build UPI payment URL for QR (amount + invoice ref)
     const invRef = invoiceNumber || (formattedOrderNo ? `Order ${formattedOrderNo}` : 'Invoice');
