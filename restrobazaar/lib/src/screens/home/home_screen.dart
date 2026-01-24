@@ -24,13 +24,51 @@ const _emerald600 = Color(0xFF059669);
 const _purple600 = Color(0xFF9333EA);
 const _orange600 = Color(0xFFEA580C);
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _didPromptCity = false;
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<CityState>(cityControllerProvider, (previous, next) {
+      if (_didPromptCity || !mounted) return;
+      final hasSelection = next.selected != null;
+      final hasCities = next.available.isNotEmpty;
+      if (!hasSelection && hasCities) {
+        _didPromptCity = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => const CitySelectorSheet(),
+          );
+        });
+      }
+    });
+
     final categoriesAsync = ref.watch(categoriesProvider);
     final cityState = ref.watch(cityControllerProvider);
+
+    if (!_didPromptCity &&
+        cityState.selected == null &&
+        cityState.available.isNotEmpty) {
+      _didPromptCity = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => const CitySelectorSheet(),
+        );
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
