@@ -9,7 +9,13 @@ class ProductModel {
     this.description,
     this.images = const [],
     this.unit,
+    this.weight,
+    this.capacity,
+    this.size,
+    this.isReturnable,
     this.subCategory,
+    this.otherCategory,
+    this.material,
     this.category,
   });
 
@@ -19,11 +25,23 @@ class ProductModel {
   final String? description;
   final List<String> images;
   final String? unit;
+  final String? weight;
+  final String? capacity;
+  final ProductSize? size;
+  final bool? isReturnable;
   final String? subCategory;
+  final String? otherCategory;
+  final String? material;
   final CategoryModel? category;
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final rawImages = json['images'] ?? [];
+    final rawReturnable = json['isReturnable'];
+    final parsedReturnable = rawReturnable is bool
+        ? rawReturnable
+        : (rawReturnable is String
+            ? rawReturnable.toLowerCase() == 'true'
+            : null);
     return ProductModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       productName: (json['productName'] ?? json['name'] ?? '').toString(),
@@ -39,7 +57,15 @@ class ProductModel {
                 .toList()
           : const [],
       unit: json['unit']?.toString(),
+      weight: json['weight']?.toString(),
+      capacity: json['capacity']?.toString(),
+      size: json['size'] is Map<String, dynamic>
+          ? ProductSize.fromJson(json['size'] as Map<String, dynamic>)
+          : null,
+      isReturnable: parsedReturnable,
       subCategory: json['subCategory']?.toString(),
+      otherCategory: json['otherCategory']?.toString(),
+      material: json['material']?.toString(),
       category: json['category'] is Map<String, dynamic>
           ? CategoryModel.fromJson(json['category'] as Map<String, dynamic>)
           : null,
@@ -54,10 +80,38 @@ class ProductModel {
       'description': description,
       'images': images,
       'unit': unit,
+      'weight': weight,
+      'capacity': capacity,
+      'size': size?.toJson(),
+      'isReturnable': isReturnable,
       'subCategory': subCategory,
+      'otherCategory': otherCategory,
+      'material': material,
       'category': category?.toJson(),
     };
   }
+}
+
+class ProductSize {
+  const ProductSize({this.height, this.width, this.base});
+
+  final String? height;
+  final String? width;
+  final String? base;
+
+  factory ProductSize.fromJson(Map<String, dynamic> json) {
+    return ProductSize(
+      height: json['height']?.toString(),
+      width: json['width']?.toString(),
+      base: json['base']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'height': height,
+    'width': width,
+    'base': base,
+  };
 }
 
 class VendorModel {
