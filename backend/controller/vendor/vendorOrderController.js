@@ -203,8 +203,10 @@ export const getVendorOrderById = async (req, res) => {
     const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
     const vendorProductIds = vendorProducts.map((vp) => vp.productId);
 
-    // Find order
-    const order = await Order.findById(orderId).populate('userId', 'name email phone');
+    // Find order with populated productId to get HSN codes
+    const order = await Order.findById(orderId)
+      .populate('userId', 'name email phone')
+      .populate('items.productId', 'hsnCode productName');
 
     if (!order) {
       return res.status(404).json({

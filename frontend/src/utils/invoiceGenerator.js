@@ -116,23 +116,58 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     // Get customer information
     const customer = order.deliveryAddress || {};
     const customerName = customer.name || 'Customer Name';
-    const customerAddress = customer.addressLine1 || '';
+    const customerAddressLine1 = customer.addressLine1 || '';
+    const customerAddressLine2 = customer.addressLine2 || '';
     const customerCity = customer.city || '';
     const customerState = customer.state || '';
     const customerPincode = customer.pincode || '';
     const customerGSTIN = customer.gstNumber || 'URP';
+    
+    // Build full address string
+    const addressParts = [customerAddressLine1];
+    if (customerAddressLine2) addressParts.push(customerAddressLine2);
+    if (customerCity) addressParts.push(customerCity);
+    if (customerState) addressParts.push(customerState);
+    if (customerPincode) addressParts.push(customerPincode);
+    const customerAddress = addressParts.join(', ');
 
-    // Calculate totals
+    // Calculate totals - use stored billingDetails for accuracy
     const billing = order.billingDetails || {};
-    const cartTotal = billing.cartTotal || 0;
-    const totalGstAmount = billing.gstAmount || 0;
-    const shippingCharges = billing.shippingCharges || 0;
-    const totalAmount = billing.totalAmount || (cartTotal + totalGstAmount + shippingCharges);
+    const cartTotal = parseFloat(billing.cartTotal) || 0;
+    const totalGstAmount = parseFloat(billing.gstAmount) || 0;
+    const shippingCharges = parseFloat(billing.shippingCharges) || 0;
+    const totalAmount = parseFloat(billing.totalAmount) || (cartTotal + totalGstAmount + shippingCharges);
+    
+    // Verify totals by summing items (for validation, but use billingDetails for display)
+    let calculatedCartTotal = 0;
+    let calculatedGstAmount = 0;
+    if (order.items && order.items.length > 0) {
+      order.items.forEach(item => {
+        const itemSubtotal = parseFloat(item.total) || (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
+        const itemGst = parseFloat(item.gstAmount) || 0;
+        calculatedCartTotal += itemSubtotal;
+        calculatedGstAmount += itemGst;
+      });
+    }
+    
+    // Use billingDetails values (they are the source of truth), but log if there's a mismatch
+    if (Math.abs(calculatedCartTotal - cartTotal) > 0.01 || Math.abs(calculatedGstAmount - totalGstAmount) > 0.01) {
+      console.warn('Invoice totals mismatch - using billingDetails values:', {
+        billingCartTotal: cartTotal,
+        calculatedCartTotal,
+        billingGstAmount: totalGstAmount,
+        calculatedGstAmount
+      });
+    }
     
     // Calculate CGST and SGST (assuming equal split for intra-state)
     const cgstAmount = totalGstAmount / 2;
     const sgstAmount = totalGstAmount / 2;
-    const cgstRate = totalGstAmount > 0 ? Math.round((cgstAmount / cartTotal) * 100) : 0;
+    // Calculate GST rate - percentage based on cartTotal
+    // Rate = (GST Amount / Cart Total) * 100
+    const cgstRate = cartTotal > 0 && totalGstAmount > 0 
+      ? Math.round((cgstAmount / cartTotal) * 100 * 100) / 100  // Round to 2 decimal places
+      : 0;
     const sgstRate = cgstRate;
 
     // ========== HEADER SECTION ==========
@@ -187,12 +222,28 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
     doc.setFont(undefined, 'normal');
+    // Determine payment mode text
+    const paymentModeText = order.paymentMethod === 'cod' 
+      ? 'Cash' 
+      : order.paymentMethod === 'online' 
+        ? 'UPI / Bank Transfer' 
+        : 'UPI / Cash / Bank Transfer';
+    
+    // Format invoice and order numbers correctly
+    const orderNumber = order.orderNumber || order._id?.toString() || 'N/A';
+    // If orderNumber already starts with 'ORD-', use it as is, otherwise add prefix
+    const formattedOrderNo = orderNumber.startsWith('ORD-') ? orderNumber : `ORD-${orderNumber}`;
+    // Invoice number should be RBZ- prefix with order number (remove ORD- if present)
+    const invoiceNumber = orderNumber.startsWith('ORD-') 
+      ? `RBZ-${orderNumber}` 
+      : `RBZ-${orderNumber}`;
+    
     const invoiceDetails = [
-      ['Invoice No:', `RBZ-${order.orderNumber || order._id?.toString().slice(-5) || '00123'}`],
-      ['Order No:', `ORD-${order.orderNumber || order._id?.toString().slice(-5) || '45678'}`],
+      ['Invoice No:', invoiceNumber],
+      ['Order No:', formattedOrderNo],
       ['Order Status:', getStatusText(order.orderStatus)],
-      ['Place of Supply:', `${order.paymentMethod === 'cod' ? 'Cash' : order.paymentMethod === 'online' ? 'UPI / Bank Transfer' : 'UPI / Cash / Bank Transfer'}`],
-      ['Place of Supply:', `${vendorStateCode}-${vendorState}`],
+      ['Payment Mode:', paymentModeText],
+      ['Place of Supply:', `${vendorStateCode} – ${vendorState}`],
       ['Invoice Date:', formatDateForInvoice(order.createdAt)],
       ['Order Date:', formatDateForInvoice(order.createdAt)],
       ['Payment Status:', order.paymentStatus === 'completed' ? 'Paid' : 'Unpaid'],
@@ -257,7 +308,7 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.setFont(undefined, 'normal');
     doc.text(`Customer Name/ Restaurant Name: ${customerName}`, leftMargin + 3, yPos);
     yPos += 4;
-    doc.text(`Address: ${customerAddress}${customerCity ? `, ${customerCity}` : ''}${customerState ? `, ${customerState}` : ''}${customerPincode ? ` - ${customerPincode}` : ''}`, leftMargin + 3, yPos);
+    doc.text(`Address: ${customerAddress}`, leftMargin + 3, yPos);
     yPos += 4;
     doc.text(`GST No: ${customerGSTIN}`, leftMargin + 3, yPos);
     yPos += 6;
@@ -345,14 +396,25 @@ export const generateInvoicePDF = (order, vendor = {}) => {
         yPos = 20;
       }
 
-      const hsnCode = item.hsnCode || item.productId?.hsnCode || '482369';
-      // Calculate item values properly
+      // Get HSN code from populated productId or fallback to default
+      // Priority: item.hsnCode (if stored) > item.productId.hsnCode (from populated product) > default
+      let hsnCode = '482369'; // Default fallback
+      if (item.hsnCode) {
+        hsnCode = item.hsnCode;
+      } else if (item.productId) {
+        // Check if productId is populated (object) or just an ID (string/ObjectId)
+        if (typeof item.productId === 'object' && item.productId !== null && item.productId.hsnCode) {
+          hsnCode = item.productId.hsnCode;
+        }
+      }
+      // Use stored values from order for accuracy
       const itemPrice = parseFloat(item.price) || 0;
       const itemQty = parseInt(item.quantity) || 0;
-      const itemSubtotal = itemPrice * itemQty;
+      // Use item.total if available (stored subtotal), otherwise calculate
+      const itemSubtotal = parseFloat(item.total) || (itemPrice * itemQty);
       const itemGstPercentage = parseFloat(item.gstPercentage) || 0;
-      // Use gstAmount from item if available, otherwise calculate it
-      const itemGstAmount = parseFloat(item.gstAmount) || (itemSubtotal * itemGstPercentage / 100);
+      // Use stored gstAmount from order (more accurate than recalculating)
+      const itemGstAmount = parseFloat(item.gstAmount) || 0;
       // Item total should be subtotal + GST
       const itemTotal = itemSubtotal + itemGstAmount;
 

@@ -300,7 +300,8 @@ export const getUserOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('userId', 'name email phone');
+      .populate('userId', 'name email phone')
+      .populate('items.productId', 'hsnCode productName');
 
     const total = await Order.countDocuments(query);
 
@@ -330,7 +331,9 @@ export const getUserOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const order = await Order.findOne({ _id: req.params.id, userId }).populate('userId', 'name email phone');
+    const order = await Order.findOne({ _id: req.params.id, userId })
+      .populate('userId', 'name email phone')
+      .populate('items.productId', 'hsnCode productName');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
