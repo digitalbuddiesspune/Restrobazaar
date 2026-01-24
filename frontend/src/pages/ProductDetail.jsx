@@ -965,17 +965,38 @@ const ProductDetail = () => {
               {/* Price Display */}
               {priceInfo?.type === 'single' ? (
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-3xl font-bold text-black">
-                    ₹{priceInfo.price}
-                  </span>
+                  {product.defaultPrice && product.defaultPrice > priceInfo.price ? (
+                    <>
+                      <span className="text-xl font-normal text-gray-400 line-through">
+                        ₹{product.defaultPrice}
+                      </span>
+                      <span className="text-3xl font-bold text-black">
+                        ₹{priceInfo.price}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-3xl font-bold text-black">
+                      ₹{priceInfo.price}
+                    </span>
+                  )}
                   <span className="text-gray-500 text-sm">per piece</span>
                 </div>
               ) : priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 ? (
                 <div className="mb-2">
-                  <span className="text-3xl font-bold text-black">
-                    ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
-                  </span>
-                
+                  {product.defaultPrice && product.defaultPrice > priceInfo.slabs[priceInfo.slabs.length - 1].price ? (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl font-normal text-gray-400 line-through">
+                        ₹{product.defaultPrice}
+                      </span>
+                      <span className="text-3xl font-bold text-black">
+                        ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-3xl font-bold text-black">
+                      ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
+                    </span>
+                  )}
                 </div>
               ) : (
                 <div className="mb-2">
@@ -995,9 +1016,20 @@ const ProductDetail = () => {
                 <span className="text-xs text-gray-600 block mb-1">Price</span>
                 {priceInfo?.type === 'single' ? (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-red-600">
-                      ₹{priceInfo.price}
-                    </span>
+                    {product.defaultPrice && product.defaultPrice > priceInfo.price ? (
+                      <>
+                        <span className="text-base font-normal text-gray-400 line-through">
+                          ₹{product.defaultPrice}
+                        </span>
+                        <span className="text-xl font-bold text-red-600">
+                          ₹{priceInfo.price}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xl font-bold text-red-600">
+                        ₹{priceInfo.price}
+                      </span>
+                    )}
                     <span className="text-gray-500 text-xs">per piece</span>
                   </div>
                 ) : priceInfo?.type === 'bulk' ? (
@@ -1010,7 +1042,7 @@ const ProductDetail = () => {
                           className="flex justify-between items-center text-xs bg-white p-2 rounded"
                         >
                           <span className="text-gray-700">
-                          Buy {slab.minQty} - {slab.maxQty} Pieces 
+                          Buy  {slab.maxQty} Pieces  or more at 
                           </span>
                           <span className="font-semibold text-gray-900">₹{slab.price}/piece</span>
                         </div>

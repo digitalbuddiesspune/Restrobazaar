@@ -896,20 +896,47 @@ const Category = () => {
                             </h3>
 
                             <div className="flex items-center justify-between">
-                              <span className="text-sm lg:text-base text-gray-900 font-bold  whitespace-nowrap truncate">
+                              <div className="flex items-baseline gap-2 whitespace-nowrap">
                                 {product.priceType === 'single' && product.pricing?.single?.price ? (
-                                  `₹${product.pricing.single.price}`
+                                  <>
+                                    {product.defaultPrice && product.defaultPrice > product.pricing.single.price ? (
+                                      <>
+                                        <span className="text-xs lg:text-sm font-normal text-gray-400 line-through">
+                                          ₹{product.defaultPrice}
+                                        </span>
+                                        <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                          ₹{product.pricing.single.price}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                        ₹{product.pricing.single.price}
+                                      </span>
+                                    )}
+                                  </>
                                 ) : product.priceType === 'bulk' && product.pricing?.bulk?.length > 0 ? (
                                   <>
-                                    ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}{' '}
-                                    {/* <span className="text-[10px]  font-semibold">
-                                      ({product.pricing.bulk[product.pricing.bulk.length - 1].minQty}-{product.pricing.bulk[product.pricing.bulk.length - 1].maxQty} pcs)
-                                    </span> */}
+                                    {product.defaultPrice && product.defaultPrice > product.pricing.bulk[product.pricing.bulk.length - 1].price ? (
+                                      <>
+                                        <span className="text-xs lg:text-sm font-normal text-gray-400 line-through">
+                                          ₹{product.defaultPrice}
+                                        </span>
+                                        <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                          ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                        ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}
+                                      </span>
+                                    )}
                                   </>
                                 ) : (
-                                  'Price on request'
+                                  <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                    Price on request
+                                  </span>
                                 )}
-                              </span>
+                              </div>
                             </div>
 
                             {/* Add to Cart Button / Quantity Selector */}
