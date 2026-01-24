@@ -191,6 +191,9 @@ class VendorProductModel {
             singlePrice: json['price'] != null ? _toDouble(json['price']) : null,
           );
 
+    final minimumOrderRaw =
+        json['minimumOrderQuantity'] ?? productJson?['minimumOrderQuantity'];
+
     return VendorProductModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       slug: json['slug']?.toString(),
@@ -202,9 +205,9 @@ class VendorProductModel {
       availableStock: json['availableStock'] is num
           ? (json['availableStock'] as num).toInt()
           : int.tryParse(json['availableStock']?.toString() ?? ''),
-      minimumOrderQuantity: json['minimumOrderQuantity'] is num
-          ? (json['minimumOrderQuantity'] as num).toInt()
-          : int.tryParse(json['minimumOrderQuantity']?.toString() ?? ''),
+      minimumOrderQuantity: minimumOrderRaw is num
+          ? minimumOrderRaw.toInt()
+          : int.tryParse(minimumOrderRaw?.toString() ?? ''),
       subCategory:
           json['subCategory']?.toString() ??
           productJson?['subCategory']?.toString(),

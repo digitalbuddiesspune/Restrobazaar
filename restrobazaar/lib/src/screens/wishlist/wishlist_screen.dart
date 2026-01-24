@@ -7,6 +7,7 @@ import '../../controllers/cart_controller.dart';
 import '../../controllers/wishlist_controller.dart';
 import '../../core/formatters.dart';
 import '../../models/product.dart';
+import '../../repositories/repository_providers.dart';
 
 class WishlistScreen extends ConsumerStatefulWidget {
   const WishlistScreen({super.key});
@@ -37,12 +38,64 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen> {
     if (mounted) setState(() => _removingIds.remove(product.id));
   }
 
+  Future<VendorProductModel?> _fetchFullProduct(VendorProductModel product) {
+    return ref.read(catalogRepositoryProvider).getVendorProductById(product.id);
+  }
+
+  PriceSlab? _slabForQuantity(VendorProductModel product, int qty) {
+    if (product.priceType != 'bulk' || product.pricing.bulk.isEmpty) {
+      return null;
+    }
+    for (final slab in product.pricing.bulk) {
+      final max = slab.maxQty ?? 1000000000;
+      if (qty >= slab.minQty && qty <= max) return slab;
+    }
+    return product.pricing.bulk.last;
+  }
+
+  int _minimumOrderQuantity(VendorProductModel product) {
+    final direct = product.minimumOrderQuantity;
+    if (direct != null && direct > 0) return direct;
+    if (product.pricing.bulk.isNotEmpty) {
+      var min = product.pricing.bulk.first.minQty;
+      for (final slab in product.pricing.bulk) {
+        if (slab.minQty < min) min = slab.minQty;
+      }
+      return min > 0 ? min : 1;
+    }
+    return 1;
+  }
+
+  double? _unitPrice(VendorProductModel product, int qty) {
+    if (product.priceType == 'single') return product.pricing.singlePrice;
+    return _slabForQuantity(product, qty)?.price;
+  }
+
   Future<void> _addToCart(VendorProductModel product) async {
     setState(() => _addingToCartIds.add(product.id));
     try {
+      final needsFetch =
+          (product.minimumOrderQuantity ?? 0) <= 1 ||
+          (product.pricing.singlePrice == null &&
+              product.pricing.bulk.isEmpty);
+      final resolved =
+          needsFetch ? await _fetchFullProduct(product) ?? product : product;
+
+      final normalizedMinQty = _minimumOrderQuantity(resolved);
+      final price = _unitPrice(resolved, normalizedMinQty);
+      if (price == null || price == 0) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Price unavailable for this product'),
+          ),
+        );
+        return;
+      }
       await ref.read(cartControllerProvider.notifier).addToCart(
-            product,
-            quantity: product.minimumOrderQuantity ?? 1,
+            resolved,
+            quantity: normalizedMinQty,
+            selectedSlab: _slabForQuantity(resolved, normalizedMinQty),
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -247,7 +300,7 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 0.58,
+                childAspectRatio: 0.52,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -331,12 +384,12 @@ class _WishlistTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: Colors.grey.shade100),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -352,22 +405,15 @@ class _WishlistTile extends StatelessWidget {
                         top: Radius.circular(16),
                       ),
                       child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.grey.shade50,
-                              Colors.grey.shade100,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
+                        color: Colors.white,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(12),
                         child: imageUrl != null
                             ? CachedNetworkImage(
                                 imageUrl: imageUrl,
-                                fit: BoxFit.cover,
+                                fit: BoxFit.contain,
                                 placeholder: (context, _) => Container(
-                                  color: Colors.grey.shade200,
+                                  color: Colors.grey.shade100,
                                 ),
                                 errorWidget: (_, __, ___) => Icon(
                                   Icons.broken_image_outlined,
@@ -392,8 +438,8 @@ class _WishlistTile extends StatelessWidget {
                         backgroundColor: Colors.white,
                         padding: const EdgeInsets.all(8),
                         shape: const CircleBorder(),
-                        side: BorderSide(color: Colors.grey.shade200),
-                        elevation: 3,
+                        side: BorderSide(color: Colors.grey.shade100),
+                        elevation: 4,
                         shadowColor: Colors.black12,
                       ),
                       icon: removing
@@ -417,17 +463,7 @@ class _WishlistTile extends StatelessWidget {
                 child: Container(
                   width: double.infinity,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.grey.shade100,
-                        Colors.white,
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -437,16 +473,16 @@ class _WishlistTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: Colors.black87,
+                          fontSize: 15,
+                          color: Color(0xFF111827),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       Text(
                         _priceLabel(),
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
                           color: Color(0xFF111827),
                         ),
                       ),
@@ -456,19 +492,20 @@ class _WishlistTile extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: addingToCart ? null : onAddToCart,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFdc2626),
+                            backgroundColor: const Color(0xFFE7000B),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: const EdgeInsets.symmetric(vertical: 0),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            elevation: 1,
+                            elevation: 2,
                             shadowColor: Colors.black12,
                           ),
                           child: Text(
                             addingToCart ? 'Adding...' : 'Add to Cart',
                             style: const TextStyle(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14
                             ),
                           ),
                         ),
