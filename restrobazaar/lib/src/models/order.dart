@@ -67,6 +67,8 @@ class OrderModel {
               'priceType': merged['priceType'] ?? 'single',
               'price': merged['price'] ?? 0,
               'quantity': merged['quantity'] ?? 1,
+              'gstPercentage':
+                  merged['gstPercentage'] ?? merged['gst'] ?? 0,
               'minimumOrderQuantity': merged['minimumOrderQuantity'] ?? 1,
             }),
           );

@@ -14,7 +14,7 @@ class CartState {
   final List<CartItem> items;
 
   double get subtotal =>
-      items.fold(0, (sum, item) => sum + (item.price * item.quantity));
+      items.fold(0, (sum, item) => sum + (item.unitPriceForQuantity(item.quantity) * item.quantity));
 
   int get totalItems => items.fold(0, (count, item) => count + item.quantity);
 
@@ -35,6 +35,15 @@ class CartController extends StateNotifier<CartState> {
   final Ref _ref;
 
   LocalStorage get _storage => _ref.read(localStorageProvider);
+
+  PriceSlab? _slabForQuantity(PricingModel? pricing, int qty) {
+    if (pricing == null || pricing.bulk.isEmpty) return null;
+    for (final slab in pricing.bulk) {
+      final max = slab.maxQty ?? 1000000000;
+      if (qty >= slab.minQty && qty <= max) return slab;
+    }
+    return pricing.bulk.last;
+  }
 
   Future<void> loadCart() async {
     final rawItems = _storage.getString(cartStorageKey);
@@ -67,23 +76,42 @@ class CartController extends StateNotifier<CartState> {
     final normalizedMinQty = minQty > 0 ? minQty : 1;
     var addQuantity = quantity <= 0 ? normalizedMinQty : quantity;
 
+    final resolvedSlab =
+        selectedSlab ?? _slabForQuantity(product.pricing, addQuantity);
     final baseItem = CartItem.fromVendorProduct(
       product,
       quantity: 1,
-      selectedSlab: selectedSlab,
+      selectedSlab: resolvedSlab,
     );
     final updated = [...state.items];
     final existingIndex = updated.indexWhere((item) => item.id == baseItem.id);
     if (existingIndex >= 0) {
       final existing = updated[existingIndex];
+      final newQuantity = existing.quantity + addQuantity;
+      PriceSlab? newSlab;
+      double? newPrice;
+      if (existing.priceType == 'bulk') {
+        final pricing = existing.pricing ?? product.pricing;
+        newSlab = _slabForQuantity(pricing, newQuantity);
+        newPrice = newSlab?.price ?? existing.price;
+      }
       updated[existingIndex] = existing.copyWith(
-        quantity: existing.quantity + addQuantity,
+        quantity: newQuantity,
+        selectedSlab: newSlab ?? existing.selectedSlab,
+        price: newPrice ?? existing.price,
+        pricing: existing.pricing ?? product.pricing,
+        gstPercentage: product.gst ?? existing.gstPercentage,
       );
     } else {
       if (addQuantity < normalizedMinQty) {
         addQuantity = normalizedMinQty;
       }
-      updated.add(baseItem.copyWith(quantity: addQuantity));
+      updated.add(
+        baseItem.copyWith(
+          quantity: addQuantity,
+          pricing: product.pricing,
+        ),
+      );
     }
     state = state.copyWith(items: updated);
     await _persist();
@@ -100,7 +128,19 @@ class CartController extends StateNotifier<CartState> {
     for (final item in state.items) {
       if (item.id == id) {
         if (quantity > 0) {
-          updated.add(item.copyWith(quantity: quantity));
+          PriceSlab? newSlab;
+          double? newPrice;
+          if (item.priceType == 'bulk') {
+            newSlab = _slabForQuantity(item.pricing, quantity);
+            newPrice = newSlab?.price ?? item.price;
+          }
+          updated.add(
+            item.copyWith(
+              quantity: quantity,
+              selectedSlab: newSlab ?? item.selectedSlab,
+              price: newPrice ?? item.price,
+            ),
+          );
         }
       } else {
         updated.add(item);

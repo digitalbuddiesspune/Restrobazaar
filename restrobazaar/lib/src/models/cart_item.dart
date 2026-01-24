@@ -15,7 +15,9 @@ class CartItem {
     required this.price,
     required this.quantity,
     this.selectedSlab,
+    this.pricing,
     this.minimumOrderQuantity = 1,
+    this.gstPercentage = 0,
     this.availableStock,
     this.unit,
   });
@@ -33,13 +35,33 @@ class CartItem {
   final double price;
   final int quantity;
   final PriceSlab? selectedSlab;
+  final PricingModel? pricing;
   final int minimumOrderQuantity;
+  final double gstPercentage;
   final int? availableStock;
   final String? unit;
 
   double get lineTotal => price * quantity;
 
-  CartItem copyWith({String? id, int? quantity, PriceSlab? selectedSlab}) {
+  double unitPriceForQuantity(int qty) {
+    if (priceType == 'bulk' && pricing?.bulk.isNotEmpty == true) {
+      for (final slab in pricing!.bulk) {
+        final max = slab.maxQty ?? 1000000000;
+        if (qty >= slab.minQty && qty <= max) return slab.price;
+      }
+      return pricing!.bulk.last.price;
+    }
+    return price;
+  }
+
+  CartItem copyWith({
+    String? id,
+    int? quantity,
+    PriceSlab? selectedSlab,
+    double? price,
+    PricingModel? pricing,
+    double? gstPercentage,
+  }) {
     return CartItem(
       id: id ?? this.id,
       vendorProductId: vendorProductId,
@@ -51,10 +73,12 @@ class CartItem {
       cityId: cityId,
       cityName: cityName,
       priceType: priceType,
-      price: price,
+      price: price ?? this.price,
       quantity: quantity ?? this.quantity,
       selectedSlab: selectedSlab ?? this.selectedSlab,
+      pricing: pricing ?? this.pricing,
       minimumOrderQuantity: minimumOrderQuantity,
+      gstPercentage: gstPercentage ?? this.gstPercentage,
       availableStock: availableStock,
       unit: unit,
     );
@@ -78,8 +102,14 @@ class CartItem {
       quantity: json['quantity'] is num
           ? (json['quantity'] as num).toInt()
           : int.tryParse(json['quantity']?.toString() ?? '') ?? 1,
+      gstPercentage: json['gstPercentage'] is num
+          ? (json['gstPercentage'] as num).toDouble()
+          : double.tryParse(json['gstPercentage']?.toString() ?? '') ?? 0,
       selectedSlab: json['selectedSlab'] is Map<String, dynamic>
           ? PriceSlab.fromJson(json['selectedSlab'] as Map<String, dynamic>)
+          : null,
+      pricing: json['pricing'] is Map<String, dynamic>
+          ? PricingModel.fromJson(json['pricing'] as Map<String, dynamic>)
           : null,
       minimumOrderQuantity: json['minimumOrderQuantity'] is num
           ? (json['minimumOrderQuantity'] as num).toInt()
@@ -122,7 +152,9 @@ class CartItem {
       price: price,
       quantity: quantity,
       selectedSlab: selectedSlab,
+      pricing: vendorProduct.pricing,
       minimumOrderQuantity: vendorProduct.minimumOrderQuantity ?? 1,
+      gstPercentage: vendorProduct.gst ?? 0,
       availableStock: vendorProduct.availableStock,
       unit: product?.unit,
     );
@@ -143,7 +175,9 @@ class CartItem {
       'price': price,
       'quantity': quantity,
       'selectedSlab': selectedSlab?.toJson(),
+      'pricing': pricing?.toJson(),
       'minimumOrderQuantity': minimumOrderQuantity,
+      'gstPercentage': gstPercentage,
       'availableStock': availableStock,
       'unit': unit,
     };

@@ -739,7 +739,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   final subtotal = order.cartTotal ??
       order.items.fold<double>(0, (sum, item) => sum + item.lineTotal);
   final gstAmount =
-      order.gstAmount ?? double.parse((subtotal * 0.18).toStringAsFixed(2));
+      order.gstAmount ?? _calculateGstFromItems(order.items);
   final shipping = order.shippingCharges ?? 0;
   final totalAmount =
       order.totalAmount != 0 ? order.totalAmount : subtotal + gstAmount + shipping;
@@ -919,7 +919,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
               _summaryLine('Subtotal (Excl. of all taxes):', _rs(subtotal)),
-              _summaryLine('GST (18%):', _rs(gstAmount)),
+              _summaryLine('GST:', _rs(gstAmount)),
               _summaryLine('Shipping Charges:', _rs(shipping)),
               pw.SizedBox(height: 6),
               pw.Row(
@@ -1070,6 +1070,16 @@ pw.Widget _summaryLine(String label, String value) {
       ],
     ),
   );
+}
+
+double _calculateGstFromItems(List<CartItem> items) {
+  final total = items.fold<double>(0, (sum, item) {
+    final itemTotal =
+        item.unitPriceForQuantity(item.quantity) * item.quantity;
+    final gstAmount = (itemTotal * item.gstPercentage) / 100;
+    return sum + gstAmount;
+  });
+  return double.parse(total.toStringAsFixed(2));
 }
 
 String _rs(num value) => 'Rs. ${value.toStringAsFixed(2)}';

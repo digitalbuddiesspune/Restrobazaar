@@ -7,6 +7,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/checkout_controller.dart';
 import '../../core/formatters.dart';
+import '../../core/shipping.dart';
 import '../../models/address.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
@@ -79,8 +80,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       );
     }
 
-    final gst = cartState.subtotal * 0.18;
-    final shipping = cartState.subtotal > 1000 ? 0.0 : 50.0;
+    final gstBreakdown = cartState.items
+        .map((item) {
+          final itemTotal =
+              item.unitPriceForQuantity(item.quantity) * item.quantity;
+          final gstPercentage = item.gstPercentage;
+          final gstAmount = (itemTotal * gstPercentage) / 100;
+          return gstAmount;
+        })
+        .fold<double>(0, (sum, value) => sum + value);
+    final gst = double.parse(gstBreakdown.toStringAsFixed(2));
+    final shipping = calculateShippingCharges(cartState.subtotal);
     final totalAmount = cartState.subtotal + gst + shipping;
     final upiData =
         _paymentMethod == 'online' ? _buildUpiData(totalAmount) : null;
@@ -889,7 +899,7 @@ class _SummaryCard extends StatelessWidget {
             label: 'Subtotal (${cartState.totalItems} items)',
             value: formatCurrency(cartState.subtotal),
           ),
-          _SummaryRow(label: 'GST (18%)', value: formatCurrency(gst)),
+                  _SummaryRow(label: 'GST', value: formatCurrency(gst)),
           _SummaryRow(
             label: 'Shipping',
             value: shipping == 0 ? 'Free' : formatCurrency(shipping),

@@ -204,6 +204,7 @@ class VendorProductModel {
     this.priceType = 'single',
     PricingModel? pricing,
     this.availableStock,
+    this.gst,
     this.minimumOrderQuantity,
     this.subCategory,
     this.originalPrice,
@@ -217,6 +218,7 @@ class VendorProductModel {
   final String priceType;
   final PricingModel pricing;
   final int? availableStock;
+  final double? gst;
   final int? minimumOrderQuantity;
   final String? subCategory;
   final double? originalPrice;
@@ -259,6 +261,9 @@ class VendorProductModel {
       availableStock: json['availableStock'] is num
           ? (json['availableStock'] as num).toInt()
           : int.tryParse(json['availableStock']?.toString() ?? ''),
+      gst: json['gst'] is num
+          ? (json['gst'] as num).toDouble()
+          : double.tryParse(json['gst']?.toString() ?? ''),
       minimumOrderQuantity: minimumOrderRaw is num
           ? minimumOrderRaw.toInt()
           : int.tryParse(minimumOrderRaw?.toString() ?? ''),
@@ -290,6 +295,7 @@ class VendorProductModel {
       'priceType': priceType,
       'pricing': pricing.toJson(),
       'availableStock': availableStock,
+      'gst': gst,
       'minimumOrderQuantity': minimumOrderQuantity,
       'subCategory': subCategory,
       'originalPrice': originalPrice,
