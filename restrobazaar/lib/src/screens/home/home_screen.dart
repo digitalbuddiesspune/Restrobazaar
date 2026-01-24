@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../controllers/catalog_providers.dart';
 import '../../controllers/city_controller.dart';
@@ -723,8 +724,25 @@ class _IndustriesSectionState extends State<_IndustriesSection>
 class _CustomPrintingSection extends StatelessWidget {
   const _CustomPrintingSection();
 
+  Future<void> _launchExternal(BuildContext context, Uri uri) async {
+    final canLaunch = await canLaunchUrl(uri);
+    if (!canLaunch) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open link on this device.')),
+      );
+      return;
+    }
+    await launchUrl(uri, mode: LaunchMode.platformDefault);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final callUri = Uri(scheme: 'tel', path: '9545235223');
+    final whatsappUri = Uri.parse(
+      'https://wa.me/919545235223?text=Hi%2C%20I%27m%20interested%20in%20custom%20printing%2Fbranding%20on%20your%20product.%20Could%20you%20please%20share%20a%20quote%3F',
+    );
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -884,8 +902,9 @@ class _CustomPrintingSection extends StatelessWidget {
                         alignment: WrapAlignment.center,
                         children: [
                           FilledButton(
-                            onPressed: () => context.push('/categories'),
-                            child: const Text('Explore Categories'),
+                            onPressed: () async =>
+                                _launchExternal(context, callUri),
+                            child: const Text('Call Us'),
                           ),
                           OutlinedButton(
                             style: OutlinedButton.styleFrom(
@@ -895,8 +914,9 @@ class _CustomPrintingSection extends StatelessWidget {
                                 alpha: 0.1,
                               ),
                             ),
-                            onPressed: () => context.push('/contact'),
-                            child: const Text('Get Quote'),
+                            onPressed: () async =>
+                                _launchExternal(context, whatsappUri),
+                            child: const Text('Whatsapp Us'),
                           ),
                         ],
                       ),
