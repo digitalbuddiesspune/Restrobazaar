@@ -3,6 +3,10 @@ import VendorProduct from '../../models/vendor/vendorProductSchema.js';
 import Vendor from '../../models/admin/vendor.js';
 import Address from '../../models/users/address.js';
 import Coupon from '../../models/vendor/coupon.js';
+import {
+  sendNotificationToUser,
+  sendNotificationToVendor,
+} from '../../services/notificationService.js';
 
 // @desc    Get orders for a vendor (orders containing vendor's products)
 // @route   GET /api/v1/vendor/orders
@@ -373,6 +377,20 @@ export const updateVendorOrderStatus = async (req, res) => {
     // Populate before sending response
     await order.populate('userId', 'name email phone');
 
+    sendNotificationToUser({
+      userId: order.userId?._id || order.userId,
+      title: 'Order status updated',
+      body: `Order #${order.orderNumber} is now ${order.orderStatus}.`,
+      data: {
+        type: 'order_status_updated',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+        status: order.orderStatus,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (status update):', error)
+    );
+
     res.status(200).json({
       success: true,
       message: 'Order status updated successfully',
@@ -440,6 +458,20 @@ export const updateVendorPaymentStatus = async (req, res) => {
 
     // Populate before sending response
     await order.populate('userId', 'name email phone');
+
+    sendNotificationToUser({
+      userId: order.userId?._id || order.userId,
+      title: 'Payment status updated',
+      body: `Payment for order #${order.orderNumber} is ${order.paymentStatus}.`,
+      data: {
+        type: 'payment_status_updated',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+        status: order.paymentStatus,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (payment update):', error)
+    );
 
     res.status(200).json({
       success: true,
@@ -931,6 +963,32 @@ export const createOrderForUser = async (req, res) => {
 
     // Populate order with user details
     await order.populate('userId', 'name email phone');
+
+    sendNotificationToUser({
+      userId,
+      title: 'Order placed',
+      body: `Order #${order.orderNumber} has been placed for you.`,
+      data: {
+        type: 'order_placed',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (vendor order create):', error)
+    );
+
+    sendNotificationToVendor({
+      vendorId,
+      title: 'Order created',
+      body: `Order #${order.orderNumber} has been created for a customer.`,
+      data: {
+        type: 'order_created',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+      },
+    }).catch((error) =>
+      console.error('FCM vendor notification error (vendor order create):', error)
+    );
 
     res.status(201).json({
       success: true,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/address.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
+import '../core/notifications/notification_service.dart';
 import '../repositories/address_repository.dart';
 import '../repositories/order_repository.dart';
 import '../repositories/repository_providers.dart';
@@ -151,6 +152,13 @@ class CheckoutController extends StateNotifier<CheckoutState> {
 
       final order = await _orderRepository.createOrder(payload);
       state = state.copyWith(placingOrder: false, lastOrder: order);
+      if (order != null) {
+        await NotificationService.instance.showLocalNotification(
+          title: 'Order placed',
+          body: 'Your order #${order.id} has been placed successfully.',
+          payload: {'orderId': order.id},
+        );
+      }
       return order;
     } catch (error) {
       state = state.copyWith(placingOrder: false, error: error.toString());

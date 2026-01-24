@@ -33,6 +33,31 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Wishlist",
     },
+    deviceTokens: [
+      {
+        token: {
+          type: String,
+          trim: true,
+        },
+        platform: {
+          type: String,
+          enum: ["android", "ios", "web", "unknown"],
+          default: "unknown",
+        },
+        deviceId: {
+          type: String,
+          trim: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        lastUsedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

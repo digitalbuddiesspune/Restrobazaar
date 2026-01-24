@@ -726,6 +726,7 @@ export const userSignup = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "User registered successfully",
+      token: token,
       data: {
         id: userResponse._id,
         name: userResponse.name,
@@ -849,6 +850,7 @@ export const userSignin = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Login successful",
+      token: token,
       data: {
         id: userResponse._id,
         name: userResponse.name,
@@ -1478,6 +1480,7 @@ export const verifyOTPAndLogin = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Login successful",
+      token: token,
       data: {
         id: userResponse._id,
         name: userResponse.name,

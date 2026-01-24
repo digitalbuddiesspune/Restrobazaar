@@ -6,6 +6,7 @@ import 'auth_repository.dart';
 import 'catalog_repository.dart';
 import 'city_repository.dart';
 import 'coupon_repository.dart';
+import 'notification_repository.dart';
 import 'order_repository.dart';
 import 'wishlist_repository.dart';
 
@@ -35,4 +36,8 @@ final orderRepositoryProvider = Provider<OrderRepository>(
 
 final couponRepositoryProvider = Provider<CouponRepository>(
   (ref) => CouponRepository(ref.read(apiClientProvider)),
+);
+
+final notificationRepositoryProvider = Provider<NotificationRepository>(
+  (ref) => NotificationRepository(ref.read(apiClientProvider)),
 );
