@@ -378,18 +378,18 @@ class _WishlistTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.grey.shade200),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 10),
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -402,12 +402,12 @@ class _WishlistTile extends StatelessWidget {
                     aspectRatio: 1,
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
+                        top: Radius.circular(18),
                       ),
                       child: Container(
                         color: Colors.white,
                         alignment: Alignment.center,
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(14),
                         child: imageUrl != null
                             ? CachedNetworkImage(
                                 imageUrl: imageUrl,
@@ -432,29 +432,43 @@ class _WishlistTile extends StatelessWidget {
                   Positioned(
                     top: 8,
                     left: 8,
-                    child: IconButton(
-                      onPressed: removing ? null : onRemove,
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        padding: const EdgeInsets.all(8),
-                        shape: const CircleBorder(),
-                        side: BorderSide(color: Colors.grey.shade100),
-                        elevation: 4,
-                        shadowColor: Colors.black12,
-                      ),
-                      icon: removing
-                          ? const SizedBox(
-                              height: 14,
-                              width: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFFdc2626),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: removing ? null : onRemove,
+                        borderRadius: BorderRadius.circular(22),
+                        child: Container(
+                          height: 36,
+                          width: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
-                            )
-                          : const Icon(
-                              Icons.favorite,
-                              color: Color(0xFFdc2626),
-                            ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: removing
+                              ? const SizedBox(
+                                  height: 14,
+                                  width: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFdc2626),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.favorite,
+                                  color: Color(0xFFdc2626),
+                                  size: 18,
+                                ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -463,7 +477,13 @@ class _WishlistTile extends StatelessWidget {
                 child: Container(
                   width: double.infinity,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(18),
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -473,11 +493,11 @@ class _WishlistTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 15,
+                          fontSize: 12,
                           color: Color(0xFF111827),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(
                         _priceLabel(),
                         style: const TextStyle(
@@ -489,14 +509,16 @@ class _WishlistTile extends StatelessWidget {
                       const Spacer(),
                       SizedBox(
                         width: double.infinity,
+                        height: 40,
                         child: ElevatedButton(
                           onPressed: addingToCart ? null : onAddToCart,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFE7000B),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 0),
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                             elevation: 2,
                             shadowColor: Colors.black12,
@@ -504,8 +526,8 @@ class _WishlistTile extends StatelessWidget {
                           child: Text(
                             addingToCart ? 'Adding...' : 'Add to Cart',
                             style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
                             ),
                           ),
                         ),
