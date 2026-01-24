@@ -144,35 +144,6 @@ class ProductCard extends ConsumerWidget {
                       fontSize: 15,
                     ),
                   ),
-                  if (product.availableStock != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Row(
-                        children: [
-                          Icon(
-                            product.availableStock! > 0
-                                ? Icons.check_circle
-                                : Icons.error_outline,
-                            color: product.availableStock! > 0
-                                ? Colors.green
-                                : Colors.red,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            product.availableStock! > 0
-                                ? 'In stock'
-                                : 'Out of stock',
-                            style: TextStyle(
-                              color: product.availableStock! > 0
-                                  ? Colors.green
-                                  : Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
