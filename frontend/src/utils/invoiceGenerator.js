@@ -1,6 +1,19 @@
 import jsPDF from 'jspdf';
 import { formatOrderId } from './orderIdFormatter';
 
+// Fetch QR code image as base64 data URL for UPI payment
+const fetchUPIQRAsDataURL = async (upiUrl) => {
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=5&data=${encodeURIComponent(upiUrl)}`;
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+};
+
 // Convert number to words for invoice amount
 export const numberToWords = (num) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 
@@ -93,7 +106,7 @@ export const getStatusText = (status) => {
 };
 
 // Generate invoice PDF
-export const generateInvoicePDF = (order, vendor = {}) => {
+export const generateInvoicePDF = async (order, vendor = {}) => {
   try {
     const doc = new jsPDF();
     // Set default font and encoding to avoid text rendering issues
@@ -110,7 +123,7 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     // Get vendor information
     const vendorName = vendor.businessName || 'AK Enterprises';
     const vendorEmail = vendor.email || 'support@restrobazaar.com';
-    const vendorGSTIN = vendor.gstNumber || '27AAXXXXXXXX';
+    const vendorGSTIN = vendor.gstNumber || '27DJSPK2679K1ZB';
     const vendorState = vendor.address?.state || 'Maharashtra';
     const vendorStateCode = getStateCode(vendorState) || '27';
 
@@ -137,7 +150,8 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     const cartTotal = parseFloat(billing.cartTotal) || 0;
     const totalGstAmount = parseFloat(billing.gstAmount) || 0;
     const shippingCharges = parseFloat(billing.shippingCharges) || 0;
-    const totalAmount = parseFloat(billing.totalAmount) || (cartTotal + totalGstAmount + shippingCharges);
+    const couponDiscount = parseFloat(order.couponAmount ?? billing.couponDiscount) || 0;
+    const totalAmount = parseFloat(billing.totalAmount) || (cartTotal + totalGstAmount + shippingCharges - couponDiscount);
     
     // Verify totals by summing items (for validation, but use billingDetails for display)
     let calculatedCartTotal = 0;
@@ -548,6 +562,17 @@ export const generateInvoicePDF = (order, vendor = {}) => {
       summaryRows.push({ label: `SGST (${sgstRateStr}%):`, value: sgstAmountStr, isTotal: false });
     }
     
+    // Shipping Charges - always show (Free when 0)
+    const shippingStr = shippingCharges > 0 ? shippingCharges.toFixed(2) : 'Free';
+    summaryRows.push({ label: 'Shipping Charges:', value: shippingStr, isTotal: false });
+    
+    // Coupon Discount - only when coupon applied
+    if (couponDiscount > 0) {
+      const couponCode = order.couponCode || '';
+      const couponLabel = couponCode ? `Coupon Discount (${couponCode}):` : 'Coupon Discount:';
+      summaryRows.push({ label: couponLabel, value: `-${couponDiscount.toFixed(2)}`, isTotal: false });
+    }
+    
     summaryRows.push({ label: 'Total Amount:', value: totalAmountStr, isTotal: true });
     
     // Draw summary table with borders
@@ -616,6 +641,24 @@ export const generateInvoicePDF = (order, vendor = {}) => {
       yPos = 20;
     }
 
+    const bankDetails = vendor.bankDetails || {};
+    const bankName = bankDetails.bankName || 'Kotak Mahindra Bank';
+    const accountName = bankDetails.accountName || 'AK Enterprises';
+    const bankAccountNo = bankDetails.accountNumber || bankDetails.bankAccountNo || '9545235223';
+    const branch = bankDetails.branch || 'Baner';
+    const bankIFSC = bankDetails.ifscCode || bankDetails.bankIFSC || 'KKBK0001767';
+    const upiId = bankDetails.upiId || 'restrobazaar@upi';
+
+    // Build UPI payment URL for QR (amount + invoice ref)
+    const invRef = invoiceNumber || (formattedOrderNo ? `Order ${formattedOrderNo}` : 'Invoice');
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(accountName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invRef)}`;
+    let qrDataUrl = null;
+    try {
+      qrDataUrl = await fetchUPIQRAsDataURL(upiUrl);
+    } catch (qrErr) {
+      console.warn('Could not fetch QR code for invoice, continuing without:', qrErr);
+    }
+
     // Bank Details
     doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
@@ -623,20 +666,32 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     yPos += 5;
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    
-    const bankDetails = vendor.bankDetails || {};
-    const bankName = bankDetails.bankName || 'State Bank of India (SBI)';
-    const bankIFSC = bankDetails.ifscCode || bankDetails.bankIFSC || 'SBIN000XXX';
-    const bankAccountNo = bankDetails.accountNumber || bankDetails.bankAccountNo || '1234567890';
-    const upiId = bankDetails.upiId || 'restrobazaar@upi';
+
+    const bankStartY = yPos;
+    const qrSize = 48;
+    const qrX = rightMargin - qrSize - 5;
 
     doc.text(`Bank: ${bankName}`, leftMargin + 3, yPos);
     yPos += 4;
-    doc.text(`IFSC: ${bankIFSC}`, leftMargin + 3, yPos);
+    doc.text(`Branch: ${branch}`, leftMargin + 3, yPos);
+    yPos += 4;
+    doc.text(`IFSC Code: ${bankIFSC}`, leftMargin + 3, yPos);
+    yPos += 4;
+    doc.text(`Account Name: ${accountName}`, leftMargin + 3, yPos);
     yPos += 4;
     doc.text(`Account No: ${bankAccountNo}`, leftMargin + 3, yPos);
     yPos += 4;
     doc.text(`UPI ID: ${upiId}`, leftMargin + 3, yPos);
+
+    if (qrDataUrl) {
+      doc.setFontSize(7);
+      doc.setFont(undefined, 'bold');
+      doc.text('Scan to Pay', qrX + qrSize / 2 - doc.getTextWidth('Scan to Pay') / 2, bankStartY - 2);
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8);
+      doc.addImage(qrDataUrl, 'PNG', qrX, bankStartY, qrSize, qrSize);
+      yPos = Math.max(yPos, bankStartY + qrSize + 4);
+    }
     yPos += 6;
 
     // Disclaimer

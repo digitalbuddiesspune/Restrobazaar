@@ -1090,7 +1090,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                     }
                   }
 
-                  generateInvoicePDF(orderWithInvoice, vendor);
+                  await generateInvoicePDF(orderWithInvoice, vendor);
                 } catch (error) {
                   console.error('Error generating invoice:', error);
                   console.error('Error details:', {

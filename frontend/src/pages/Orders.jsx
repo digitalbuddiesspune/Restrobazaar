@@ -86,10 +86,10 @@ const Orders = () => {
     });
   };
 
-  const handleDownloadInvoice = (order) => {
+  const handleDownloadInvoice = async (order) => {
     try {
       const vendor = order.vendorId || {};
-      generateInvoicePDF(order, vendor);
+      await generateInvoicePDF(order, vendor);
     } catch (error) {
       console.error('Error generating invoice:', error);
       alert('Failed to generate invoice. Please try again.');
