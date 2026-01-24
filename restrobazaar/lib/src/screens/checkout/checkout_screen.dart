@@ -25,6 +25,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _paymentMethod = 'cod';
   static const _merchantVpa = '9545235223@kotak';
   static const _merchantName = 'RestroBazaar';
+  bool _showPaymentSection = false;
   final TextEditingController _couponController = TextEditingController();
   List<CouponModel> _availableCoupons = [];
   bool _showCoupons = false;
@@ -178,6 +179,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     });
   }
 
+  void _continueToPayment() {
+    setState(() {
+      _showPaymentSection = true;
+    });
+  }
+
   @override
   void dispose() {
     _couponController.dispose();
@@ -236,16 +243,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     _scheduleCouponRefresh(cartState);
 
-    final gstBreakdown = cartState.items
+    final gstBreakdownLines = cartState.items
+        .where((item) => item.gstPercentage > 0)
         .map((item) {
           final itemTotal =
               item.unitPriceForQuantity(item.quantity) * item.quantity;
-          final gstPercentage = item.gstPercentage;
-          final gstAmount = (itemTotal * gstPercentage) / 100;
-          return gstAmount;
+          final gstAmount = (itemTotal * item.gstPercentage) / 100;
+          return _GstBreakdownLine(
+            name: item.productName,
+            percentage: item.gstPercentage,
+            amount: double.parse(gstAmount.toStringAsFixed(2)),
+          );
         })
-        .fold<double>(0, (sum, value) => sum + value);
-    final gst = double.parse(gstBreakdown.toStringAsFixed(2));
+        .toList();
+    final gst = gstBreakdownLines.fold<double>(
+      0,
+      (sum, line) => sum + line.amount,
+    );
     final shipping = calculateShippingCharges(cartState.subtotal);
     final totalBeforeCoupon = cartState.subtotal + gst + shipping;
     final discountedTotal = totalBeforeCoupon - _couponDiscount;
@@ -261,8 +275,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _ProgressSteps(showPayment: _paymentMethod.isNotEmpty),
+            _ProgressSteps(showPayment: _showPaymentSection),
             const SizedBox(height: 12),
+            if (_showPaymentSection) ...[
+              _PaymentSection(
+                selected: _paymentMethod,
+                onSelect: (method) => setState(() => _paymentMethod = method),
+                upiData: upiData,
+              ),
+              const SizedBox(height: 12),
+            ],
             _AddressCard(
               checkoutState: checkoutState,
               onAdd: () => _showAddressForm(context),
@@ -271,44 +293,38 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               onSelect: checkoutNotifier.selectAddress,
             ),
             const SizedBox(height: 12),
-            _PaymentSection(
-              selected: _paymentMethod,
-              onSelect: (method) => setState(() => _paymentMethod = method),
-              upiData: upiData,
-            ),
-            const SizedBox(height: 12),
-            _CouponSection(
+            _BillingDetailsCard(
+              cartState: cartState,
+              gst: gst,
+              gstBreakdown: gstBreakdownLines,
+              shipping: shipping,
+              totalAmount: totalAmount,
               coupons: _availableCoupons,
               showCoupons: _showCoupons,
-              loading: _loadingCoupons,
-              applying: _applyingCoupon,
-              controller: _couponController,
+              loadingCoupons: _loadingCoupons,
+              applyingCoupon: _applyingCoupon,
+              couponController: _couponController,
               appliedCoupon: _appliedCoupon,
               couponError: _couponError,
               onToggleCoupons: () {
                 setState(() => _showCoupons = !_showCoupons);
               },
-              onApply: () => _applyCoupon(cartState),
-              onRemove: _removeCoupon,
-              onCodeChanged: (value) {
-                setState(() => _couponError = null);
-              },
+              onApplyCoupon: () => _applyCoupon(cartState),
+              onRemoveCoupon: _removeCoupon,
+              onCouponChanged: (_) => setState(() => _couponError = null),
               onSelectCoupon: (coupon) {
                 _couponController.text = coupon.code;
                 _applyCoupon(cartState, overrideCode: coupon.code);
               },
-            ),
-            const SizedBox(height: 12),
-            _SummaryCard(
-              cartState: cartState,
-              gst: gst,
-              shipping: shipping,
-              totalAmount: totalAmount,
-              couponCode: _appliedCoupon?.code,
-              couponDiscount: _couponDiscount,
+              showPaymentSection: _showPaymentSection,
               placingOrder: checkoutState.placingOrder,
-              error: checkoutState.error,
-              onPlaceOrder: () async {
+              errorMessage: checkoutState.error,
+              onPrimaryAction: () async {
+                if (!_showPaymentSection) {
+                  _continueToPayment();
+                  return;
+                }
+
                 final order = await checkoutNotifier.placeOrder(
                   cartItems: cartState.items,
                   cartTotal: cartState.subtotal,
@@ -328,6 +344,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   context.go('/orders');
                 }
               },
+              primaryDisabled:
+                  !_showPaymentSection && checkoutState.selectedAddressId == null,
             ),
           ],
         ),
@@ -1034,34 +1052,66 @@ class _PaymentTile extends StatelessWidget {
   }
 }
 
-class _CouponSection extends StatelessWidget {
-  const _CouponSection({
+class _GstBreakdownLine {
+  const _GstBreakdownLine({
+    required this.name,
+    required this.percentage,
+    required this.amount,
+  });
+
+  final String name;
+  final double percentage;
+  final double amount;
+}
+
+class _BillingDetailsCard extends StatelessWidget {
+  const _BillingDetailsCard({
+    required this.cartState,
+    required this.gst,
+    required this.gstBreakdown,
+    required this.shipping,
+    required this.totalAmount,
     required this.coupons,
     required this.showCoupons,
-    required this.loading,
-    required this.applying,
-    required this.controller,
+    required this.loadingCoupons,
+    required this.applyingCoupon,
+    required this.couponController,
     required this.appliedCoupon,
     required this.couponError,
     required this.onToggleCoupons,
-    required this.onApply,
-    required this.onRemove,
-    required this.onCodeChanged,
+    required this.onApplyCoupon,
+    required this.onRemoveCoupon,
+    required this.onCouponChanged,
     required this.onSelectCoupon,
+    required this.showPaymentSection,
+    required this.placingOrder,
+    required this.errorMessage,
+    required this.onPrimaryAction,
+    required this.primaryDisabled,
   });
 
+  final CartState cartState;
+  final double gst;
+  final List<_GstBreakdownLine> gstBreakdown;
+  final double shipping;
+  final double totalAmount;
   final List<CouponModel> coupons;
   final bool showCoupons;
-  final bool loading;
-  final bool applying;
-  final TextEditingController controller;
+  final bool loadingCoupons;
+  final bool applyingCoupon;
+  final TextEditingController couponController;
   final CouponValidationResult? appliedCoupon;
   final String? couponError;
   final VoidCallback onToggleCoupons;
-  final VoidCallback onApply;
-  final VoidCallback onRemove;
-  final ValueChanged<String> onCodeChanged;
+  final VoidCallback onApplyCoupon;
+  final VoidCallback onRemoveCoupon;
+  final ValueChanged<String> onCouponChanged;
   final ValueChanged<CouponModel> onSelectCoupon;
+  final bool showPaymentSection;
+  final bool placingOrder;
+  final String? errorMessage;
+  final VoidCallback onPrimaryAction;
+  final bool primaryDisabled;
 
   String _couponSubtitle(CouponModel coupon) {
     final isPercentage = coupon.discountType == 'percentage';
@@ -1071,226 +1121,18 @@ class _CouponSection extends StatelessWidget {
     return '$valueLabel • Min. ${formatCurrency(coupon.minimumOrderAmount)}';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Have a Coupon?',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              if (loading)
-                const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else if (coupons.isNotEmpty)
-                TextButton(
-                  onPressed: onToggleCoupons,
-                  child: Text(
-                    showCoupons
-                        ? 'Hide Available (${coupons.length})'
-                        : 'View Available (${coupons.length})',
-                  ),
-                ),
-            ],
-          ),
-          if (showCoupons && coupons.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...coupons.map(
-              (coupon) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => onSelectCoupon(coupon),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                coupon.code,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                coupon.description?.isNotEmpty == true
-                                    ? coupon.description!
-                                    : _couponSubtitle(coupon),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF6b7280),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (coupon.estimatedDiscount != null)
-                          Text(
-                            'Save ${formatCurrency(coupon.estimatedDiscount!)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF16A34A),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
-          if (appliedCoupon == null)
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter coupon code',
-                      isDense: true,
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: onCodeChanged,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: applying ? null : onApply,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFdc2626),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: applying
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Apply'),
-                ),
-              ],
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFECFDF3),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${appliedCoupon!.code} Applied',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF166534),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'You saved ${formatCurrency(appliedCoupon!.discount)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF15803D),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: onRemove,
-                    child: const Text(
-                      'Remove',
-                      style: TextStyle(color: Color(0xFFdc2626)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (couponError != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              couponError!,
-              style: const TextStyle(
-                color: Color(0xFFdc2626),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+  String _formatPercentage(double value) {
+    final isWhole = value == value.roundToDouble();
+    return isWhole ? value.toStringAsFixed(0) : value.toStringAsFixed(2);
   }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.cartState,
-    required this.gst,
-    required this.shipping,
-    required this.totalAmount,
-    this.couponCode,
-    this.couponDiscount = 0,
-    required this.placingOrder,
-    required this.error,
-    required this.onPlaceOrder,
-  });
-
-  final CartState cartState;
-  final double gst;
-  final double shipping;
-  final double totalAmount;
-  final String? couponCode;
-  final double couponDiscount;
-  final bool placingOrder;
-  final String? error;
-  final VoidCallback onPlaceOrder;
 
   @override
   Widget build(BuildContext context) {
+    final primaryLabel =
+        showPaymentSection ? 'CONFIRM ORDER' : 'CONTINUE TO PAYMENT';
+    final disableAction =
+        primaryDisabled || (showPaymentSection && placingOrder);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1309,38 +1151,287 @@ class _SummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Order Summary',
+            'BILLING DETAILS',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.grey.shade200),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Have a Coupon?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (loadingCoupons)
+                      const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else if (coupons.isNotEmpty)
+                      TextButton(
+                        onPressed: onToggleCoupons,
+                        child: Text(
+                          showCoupons
+                              ? 'Hide Available (${coupons.length})'
+                              : 'View Available (${coupons.length})',
+                        ),
+                      ),
+                  ],
+                ),
+                if (showCoupons && coupons.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 160),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: coupons.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final coupon = coupons[index];
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () => onSelectCoupon(coupon),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        coupon.code,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        coupon.description?.isNotEmpty == true
+                                            ? coupon.description!
+                                            : _couponSubtitle(coupon),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF6b7280),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (coupon.estimatedDiscount != null)
+                                  Text(
+                                    'Save ${formatCurrency(coupon.estimatedDiscount!)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                      color: Color(0xFF16A34A),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                if (appliedCoupon == null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: couponController,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter coupon code',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: onCouponChanged,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: applyingCoupon ? null : onApplyCoupon,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFdc2626),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: applyingCoupon
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Apply'),
+                      ),
+                    ],
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF3),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${appliedCoupon!.code} Applied',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF166534),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'You saved ${formatCurrency(appliedCoupon!.discount)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF15803D),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: onRemoveCoupon,
+                          child: const Text(
+                            'Remove',
+                            style: TextStyle(color: Color(0xFFdc2626)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (couponError != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    couponError!,
+                    style: const TextStyle(
+                      color: Color(0xFFdc2626),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           _SummaryRow(
-            label: 'Subtotal (${cartState.totalItems} items)',
+            label: 'Cart Total (Excl. of all taxes)',
             value: formatCurrency(cartState.subtotal),
           ),
           _SummaryRow(label: 'GST', value: formatCurrency(gst)),
+          if (gstBreakdown.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 8, top: 4, bottom: 4),
+              child: Column(
+                children: gstBreakdown
+                    .map(
+                      (line) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${line.name} (${_formatPercentage(line.percentage)}%):',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF6b7280),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              formatCurrency(line.amount),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF6b7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
           _SummaryRow(
-            label: 'Shipping',
+            label: 'Shipping Charges',
             value: shipping == 0 ? 'Free' : formatCurrency(shipping),
+            valueColor:
+                shipping == 0 ? const Color(0xFF16A34A) : const Color(0xFF111827),
           ),
-          if (couponDiscount > 0 && couponCode != null)
+          if (appliedCoupon != null)
             _SummaryRow(
-              label: 'Coupon Discount ($couponCode)',
-              value: '-${formatCurrency(couponDiscount)}',
+              label: 'Coupon Discount (${appliedCoupon!.code})',
+              value: '-${formatCurrency(appliedCoupon!.discount)}',
+              valueColor: const Color(0xFF16A34A),
             ),
           const Divider(height: 18),
-          _SummaryRow(
-            label: 'Total',
-            value: formatCurrency(totalAmount),
-            isBold: true,
+          Row(
+            children: [
+              const Text(
+                'Total Amount',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                formatCurrency(totalAmount),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFdc2626),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: placingOrder ? null : onPlaceOrder,
+              onPressed: disableAction ? null : onPrimaryAction,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFdc2626),
                 foregroundColor: Colors.white,
@@ -1349,7 +1440,7 @@ class _SummaryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: placingOrder
+              child: placingOrder && showPaymentSection
                   ? const SizedBox(
                       height: 18,
                       width: 18,
@@ -1358,20 +1449,20 @@ class _SummaryCard extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Place Order',
-                      style: TextStyle(
+                  : Text(
+                      primaryLabel,
+                      style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
             ),
           ),
-          if (error != null)
+          if (errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                error!,
+                errorMessage!,
                 style: const TextStyle(color: Color(0xFFdc2626)),
               ),
             ),
@@ -1386,16 +1477,19 @@ class _SummaryRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.isBold = false,
+    this.valueColor,
   });
 
   final String label;
   final String value;
   final bool isBold;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
     final style = TextStyle(
       fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+      color: isBold ? const Color(0xFF111827) : const Color(0xFF374151),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1403,7 +1497,10 @@ class _SummaryRow extends StatelessWidget {
         children: [
           Text(label, style: style),
           const Spacer(),
-          Text(value, style: style),
+          Text(
+            value,
+            style: style.copyWith(color: valueColor ?? style.color),
+          ),
         ],
       ),
     );
