@@ -317,20 +317,20 @@ const Checkout = () => {
       const selectedAddressData = addresses.find(addr => addr._id === selectedAddress);
       
       // UPI Payment URL format (standard UPI protocol):
-      // upi://pay?pa=<merchant_vpa>&pn=<merchant_name>&am=<amount>&cu=INR&tn=<transaction_note>
-      const merchantVPA = import.meta.env.VITE_RAZORPAY_MERCHANT_VPA || 'restrobazaar@razorpay';
+      // upi://pay?pa=<upi_id>&pn=<merchant_name>&am=<amount>&cu=INR&tn=<transaction_note>
+      const upiId = import.meta.env.VITE_UPI_ID || 'yourname@paytm'; // Your direct UPI ID
       const merchantName = 'RestroBazaar';
       const transactionNote = `Order ${tempOrderId} - RestroBazaar`;
       
       // Create UPI payment URL
-      const upiUrl = `upi://pay?pa=${merchantVPA}&pn=${encodeURIComponent(merchantName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
       
       const qrData = {
         success: true,
         upiUrl: upiUrl,
         amount: totalAmount,
         orderId: tempOrderId,
-        merchantVPA: merchantVPA,
+        merchantVPA: upiId, // Keep for display purposes
       };
       
       setQrCodeData(qrData);
@@ -540,7 +540,7 @@ const Checkout = () => {
                                   <div className="flex justify-between">
                                     <span className="text-gray-600">UPI ID:</span>
                                     <span className="font-mono text-gray-900 text-sm">
-                                      {import.meta.env.VITE_RAZORPAY_MERCHANT_VPA || 'restrobazaar@razorpay'}
+                                      {import.meta.env.VITE_UPI_ID || 'yourname@paytm'}
                                     </span>
                                   </div>
                                 </>
