@@ -1,10 +1,11 @@
-import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendorProducts } from '../../hooks/useVendorQueries';
+import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendorProducts, useVendorProfile } from '../../hooks/useVendorQueries';
 import { useState, useEffect } from 'react';
-import jsPDF from 'jspdf';
+import { generateInvoicePDF } from '../../utils/invoiceGenerator';
 
 const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const { data: orderData, isLoading, isError, error, refetch } = useVendorOrder(orderId);
   const { data: vendorProductsData } = useMyVendorProducts({ limit: 1000 }, { enabled: true });
+  const { data: vendorProfileData } = useVendorProfile();
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [paymentStatusValue, setPaymentStatusValue] = useState('unpaid');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -38,7 +39,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
     if (vendorProduct.priceType === 'bulk' && vendorProduct.pricing?.bulk?.length > 0) {
       // Sort slabs by minQty (ascending) to find the right one
       const sortedSlabs = [...vendorProduct.pricing.bulk].sort((a, b) => a.minQty - b.minQty);
-      
+
       // Find the slab that matches the quantity
       for (let i = sortedSlabs.length - 1; i >= 0; i--) {
         const slab = sortedSlabs[i];
@@ -46,13 +47,13 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           return slab.price;
         }
       }
-      
+
       // If quantity exceeds all slabs, use the highest slab price
       const highestSlab = sortedSlabs[sortedSlabs.length - 1];
       if (quantity > highestSlab.maxQty) {
         return highestSlab.price;
       }
-      
+
       // If quantity is below all slabs, use the lowest slab price
       const lowestSlab = sortedSlabs[0];
       if (quantity < lowestSlab.minQty) {
@@ -91,6 +92,8 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   }, [orderId]);
 
   const isDelivered = order.orderStatus === 'delivered';
+  const isCancelled = order.orderStatus === 'cancelled';
+  const canChangeStatus = !isDelivered && !isCancelled;
 
   const orderStatuses = [
     { value: 'pending', label: 'Pending', colorClass: 'bg-yellow-500' },
@@ -151,12 +154,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const handlePaymentStatusChange = async (selectedValue) => {
     const newStatus = selectedValue === 'paid' ? 'completed' : 'pending';
     const statusLabel = selectedValue === 'paid' ? 'Paid' : 'Unpaid';
-    
+
     if (window.confirm(`Are you sure you want to change payment status to "${statusLabel}"?`)) {
       try {
-        await updatePaymentStatusMutation.mutateAsync({ 
-          id: orderId, 
-          paymentStatus: newStatus 
+        await updatePaymentStatusMutation.mutateAsync({
+          id: orderId,
+          paymentStatus: newStatus
         });
         // Update local state on success
         setPaymentStatusValue(selectedValue);
@@ -205,14 +208,14 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const handleQuantityChange = (index, newQuantity) => {
     const qty = parseInt(newQuantity) || 1;
     if (qty < 1) return;
-    
+
     const updatedItems = [...editedItems];
     const item = updatedItems[index];
     const vendorProduct = findVendorProductForItem(item);
-    
+
     // Get price based on quantity and price slabs
     const price = getPriceForQuantity(vendorProduct, qty);
-    
+
     updatedItems[index] = {
       ...updatedItems[index],
       quantity: qty,
@@ -248,17 +251,17 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
   const handleAddNewItem = () => {
     if (!newItemProductId) return;
-    
+
     const vendorProduct = vendorProducts.find(
       (vp) => vp._id === newItemProductId || vp._id?.toString() === newItemProductId
     );
-    
+
     if (!vendorProduct) return;
 
     const productId = vendorProduct.productId?._id || vendorProduct.productId;
     const productName = vendorProduct.productId?.productName || vendorProduct.productName || 'Product';
     const productImage = vendorProduct.productId?.images?.[0]?.url || vendorProduct.productId?.images?.[0] || vendorProduct.productId?.productImage || vendorProduct.productImage || '';
-    
+
     // Get initial price based on minimum order quantity or 1
     const initialQuantity = vendorProduct.minimumOrderQuantity || 1;
     const price = getPriceForQuantity(vendorProduct, initialQuantity);
@@ -279,13 +282,33 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
   const calculateBillingDetails = () => {
     const cartTotal = editedItems.reduce((sum, item) => sum + (item.total || 0), 0);
-    const gstAmount = cartTotal * 0.18;
+
+    // Calculate GST per product based on each product's GST percentage
+    const gstBreakdown = editedItems.map(item => {
+      const itemTotal = item.total || 0;
+      // Get GST from item if it exists (from order), otherwise from vendorProduct
+      const gstPercentage = item.gstPercentage !== undefined
+        ? item.gstPercentage
+        : (item.vendorProduct?.gst || 0);
+      const gstAmount = item.gstAmount !== undefined
+        ? item.gstAmount
+        : (itemTotal * gstPercentage) / 100;
+
+      return {
+        productName: item.productName,
+        gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
+      };
+    });
+
+    const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
     const shippingCharges = 0; // Free shipping
     const totalAmount = cartTotal + gstAmount + shippingCharges;
 
     return {
       cartTotal,
       gstAmount,
+      gstBreakdown,
       shippingCharges,
       totalAmount,
     };
@@ -326,16 +349,6 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
     });
   };
 
-  const formatDateForInvoice = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   const getStatusText = (status) => {
     const statusMap = {
       pending: 'Pending',
@@ -348,225 +361,62 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
     return statusMap[status] || status;
   };
 
-  const handleDownloadInvoice = (order) => {
-    try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      let yPos = 20;
-      const leftMargin = 20;
-      const rightMargin = pageWidth - 20;
-      const contentWidth = pageWidth - 40;
+  // Helper function to get order tracking status
+  const getOrderTrackingStatus = () => {
+    const status = order.orderStatus || 'pending';
 
-      // Company Header Section
-      doc.setFontSize(24);
-      doc.setTextColor(220, 38, 38);
-      doc.setFont(undefined, 'bold');
-      doc.text('RestroBazaar', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 8;
+    // Determine which steps are completed based on order status
+    const isOrdered = true; // Always true if order exists
+    const isPacked = ['confirmed', 'processing', 'shipped', 'delivered'].includes(status);
+    const isShipped = ['shipped', 'delivered'].includes(status);
+    const isDelivered = status === 'delivered';
+    const isCancelled = status === 'cancelled';
 
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont(undefined, 'normal');
-      doc.text('Your Trusted Restaurant Supply Partner', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
-      doc.text('Email: support@restrobazaar.com | Phone: +91-XXXXXXXXXX', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 10;
+    return [
+      {
+        key: 'ordered',
+        label: 'Ordered',
+        isCompleted: isOrdered,
+        date: order.createdAt,
+      },
+      {
+        key: 'packed',
+        label: 'Packed',
+        isCompleted: isPacked,
+        date: isPacked ? (order.updatedAt || order.createdAt) : null,
+      },
+      {
+        key: 'shipped',
+        label: 'Shipped',
+        isCompleted: isShipped,
+        date: isShipped ? (order.updatedAt || order.createdAt) : null,
+      },
+      {
+        key: 'delivered',
+        label: 'Delivered',
+        isCompleted: isDelivered,
+        date: isDelivered ? (order.updatedAt || order.createdAt) : null,
+      },
+      {
+        key: 'cancelled',
+        label: 'Cancelled',
+        isCompleted: isCancelled,
+        date: isCancelled ? (order.updatedAt || order.createdAt) : null,
+      },
+    ];
+  };
 
-      doc.setFontSize(18);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont(undefined, 'bold');
-      doc.text('TAX INVOICE', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 12;
-
-      const col1X = leftMargin;
-      const col2X = pageWidth / 2 + 10;
-
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Invoice Details:', col1X, yPos);
-      yPos += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Invoice Number: ${order.orderNumber}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Invoice Date: ${formatDateForInvoice(order.createdAt)}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Order Number: ${order.orderNumber}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Order Date: ${formatDateForInvoice(order.createdAt)}`, col1X, yPos);
-      yPos += 6;
-      doc.setFont(undefined, 'bold');
-      doc.text(`Order Status: ${getStatusText(order.orderStatus)}`, col1X, yPos);
-      yPos += 6;
-      doc.setFont(undefined, 'normal');
-      const paymentText = getPaymentDisplayText(order);
-      doc.text(`Payment Status: ${paymentText}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Payment Method: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI Online Payment'}`, col1X, yPos);
-
-      let addressY = yPos - 42;
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Bill To / Ship To:', col2X, addressY);
-      addressY += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`${order.deliveryAddress?.name || 'N/A'}`, col2X, addressY);
-      addressY += 6;
-      doc.text(`${order.deliveryAddress?.addressLine1 || 'N/A'}`, col2X, addressY);
-      addressY += 6;
-      if (order.deliveryAddress?.addressLine2) {
-        doc.text(`${order.deliveryAddress.addressLine2}`, col2X, addressY);
-        addressY += 6;
-      }
-      doc.text(`${order.deliveryAddress?.city || 'N/A'}, ${order.deliveryAddress?.state || 'N/A'}`, col2X, addressY);
-      addressY += 6;
-      doc.text(`Pincode: ${order.deliveryAddress?.pincode || 'N/A'}`, col2X, addressY);
-      addressY += 6;
-      if (order.deliveryAddress?.landmark) {
-        doc.text(`Landmark: ${order.deliveryAddress.landmark}`, col2X, addressY);
-        addressY += 6;
-      }
-      doc.text(`Phone: ${order.deliveryAddress?.phone || 'N/A'}`, col2X, addressY);
-
-      yPos += 15;
-
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text('Order Items:', leftMargin, yPos);
-      yPos += 8;
-
-      doc.setFillColor(240, 240, 240);
-      doc.rect(leftMargin, yPos - 6, contentWidth, 8, 'F');
-      
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('S.No.', leftMargin + 2, yPos);
-      doc.text('Item', leftMargin + 20, yPos);
-      doc.text('Qty', leftMargin + 110, yPos, { align: 'center' });
-      doc.text('Unit Price', leftMargin + 135, yPos, { align: 'right' });
-      doc.text('Total', rightMargin - 2, yPos, { align: 'right' });
-      yPos += 8;
-
-      doc.setFont(undefined, 'normal');
-      doc.setDrawColor(220, 220, 220);
-
-      order.items?.forEach((item, index) => {
-        if (yPos > pageHeight - 80) {
-          doc.addPage();
-          yPos = 20;
-          doc.setFillColor(240, 240, 240);
-          doc.rect(leftMargin, yPos - 6, contentWidth, 8, 'F');
-          doc.setFont(undefined, 'bold');
-          doc.text('S.No.', leftMargin + 2, yPos);
-          doc.text('Item', leftMargin + 20, yPos);
-          doc.text('Qty', leftMargin + 110, yPos, { align: 'center' });
-          doc.text('Unit Price', leftMargin + 135, yPos, { align: 'right' });
-          doc.text('Total', rightMargin - 2, yPos, { align: 'right' });
-          yPos += 8;
-          doc.setFont(undefined, 'normal');
-        }
-
-        doc.text((index + 1).toString(), leftMargin + 2, yPos);
-        const productName = item.productName?.length > 35 
-          ? item.productName.substring(0, 32) + '...' 
-          : item.productName || 'Product';
-        doc.text(productName, leftMargin + 20, yPos);
-        const quantity = String(item.quantity || 0);
-        const price = String(Number(item.price || 0).toFixed(2));
-        const total = String(Number(item.total || 0).toFixed(2));
-        doc.text(quantity, leftMargin + 110, yPos, { align: 'center' });
-        doc.text(`Rs. ${price}`, leftMargin + 135, yPos, { align: 'right' });
-        doc.text(`Rs. ${total}`, rightMargin - 2, yPos, { align: 'right' });
-        yPos += 7;
-      });
-
-      yPos += 5;
-
-      if (yPos > pageHeight - 70) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      const summaryX = leftMargin + 100;
-      const billing = order.billingDetails;
-
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
-      doc.text('Subtotal (Excl. of all taxes):', summaryX, yPos);
-      const cartTotal = String(Number(billing?.cartTotal || 0).toFixed(2));
-      doc.text(`Rs. ${cartTotal}`, rightMargin - 2, yPos, { align: 'right' });
-      yPos += 7;
-
-      doc.text('GST (18%):', summaryX, yPos);
-      const gstAmount = String(Number(billing?.gstAmount || 0).toFixed(2));
-      doc.text(`Rs. ${gstAmount}`, rightMargin - 2, yPos, { align: 'right' });
-      yPos += 7;
-
-      doc.text('Shipping Charges:', summaryX, yPos);
-      doc.setTextColor(0, 128, 0);
-      doc.text('Free', rightMargin - 2, yPos, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 10;
-
-      yPos += 5;
-      doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
-      doc.text('Total Amount:', summaryX, yPos);
-      doc.setTextColor(220, 38, 38);
-      const totalAmount = String(Number(billing?.totalAmount || 0).toFixed(2));
-      doc.text(`Rs. ${totalAmount}`, rightMargin - 2, yPos, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 15;
-
-      if (yPos > pageHeight - 50) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Payment Information:', leftMargin, yPos);
-      yPos += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Payment Method: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI Online Payment'}`, leftMargin, yPos);
-      yPos += 6;
-      doc.text(`Payment Status: ${paymentText}`, leftMargin, yPos);
-      if (order.paymentId) {
-        yPos += 6;
-        doc.text(`Payment ID: ${order.paymentId}`, leftMargin, yPos);
-      }
-      if (order.transactionId) {
-        yPos += 6;
-        doc.text(`Transaction ID: ${order.transactionId}`, leftMargin, yPos);
-      }
-      yPos += 10;
-
-      if (yPos > pageHeight - 40) {
-        doc.addPage();
-        yPos = pageHeight - 30;
-      } else {
-        yPos = pageHeight - 30;
-      }
-
-      doc.setDrawColor(200, 200, 200);
-      doc.line(leftMargin, yPos, rightMargin, yPos);
-      yPos += 8;
-
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont(undefined, 'italic');
-      doc.text('Thank you for your business!', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
-      doc.setFontSize(8);
-      doc.text('This is a computer-generated invoice and does not require a signature.', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
-      doc.text('For any queries, please contact us at support@restrobazaar.com', pageWidth / 2, yPos, { align: 'center' });
-
-      doc.save(`Invoice-${order.orderNumber || order._id}.pdf`);
-    } catch (error) {
-      console.error('Error generating invoice:', error);
-      alert('Failed to generate invoice. Please try again.');
-    }
+  const formatTrackingDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   if (isLoading) {
@@ -588,7 +438,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-            <p className="text-sm font-medium">Error loading order details:</p>
+            <p className="text-xs font-medium">Error loading order details:</p>
             <p className="text-xs mt-1">{error?.response?.data?.message || error?.message || 'Unknown error'}</p>
             <button
               onClick={onBack}
@@ -609,40 +459,54 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
         <div className="mb-4">
           <button
             onClick={onBack}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span className="font-medium">Back to Orders</span>
+            Back to Orders
           </button>
         </div>
 
         {/* Order Details Card */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          {/* Order Header */}
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+          {/* Top Section: Flex with justify-between */}
+          <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+            {/* Left: Order ID */}
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Order Details</h1>
-              <p className="text-sm text-gray-500 mt-1">Order #{order.orderNumber || order._id}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order ID</p>
+              <p className="text-xs font-medium text-gray-900">{(() => {
+                const orderId = order._id || order.orderNumber || 'N/A';
+                if (!orderId || orderId === 'N/A') return 'N/A';
+                const idString = String(orderId);
+                const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+                return `#${lastSix}`;
+              })()}</p>
             </div>
-            <div className="flex items-center space-x-4">
+
+            {/* Right: Order Status and Payment Status */}
+            <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-xs text-gray-500">Order Status</p>
-                <div className="relative mt-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Order Status</p>
+                <div className="relative">
                   <button
-                    onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                    className={`px-3 py-1.5 inline-flex items-center space-x-2 text-sm font-semibold rounded-full ${getStatusColor(order.orderStatus)}`}
+                    onClick={() => canChangeStatus && setShowStatusDropdown(!showStatusDropdown)}
+                    disabled={!canChangeStatus}
+                    className={`px-2.5 py-1 inline-flex items-center space-x-1.5 text-xs font-medium rounded-md ${getStatusColor(order.orderStatus)} ${!canChangeStatus ? 'cursor-not-allowed opacity-75' : 'cursor-pointer hover:shadow-sm transition-shadow'
+                      }`}
+                    title={!canChangeStatus ? 'Cannot change status for delivered or cancelled orders' : 'Change order status'}
                   >
-                    <span>{order.orderStatus || 'pending'}</span>
-                    <svg
-                      className={`w-4 h-4 transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <span className="capitalize">{order.orderStatus || 'pending'}</span>
+                    {canChangeStatus && (
+                      <svg
+                        className={`w-3 h-3 transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
                   </button>
                   {showStatusDropdown && (
                     <>
@@ -650,29 +514,28 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                         className="fixed inset-0 z-10"
                         onClick={() => setShowStatusDropdown(false)}
                       ></div>
-                      <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                      <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
                         <div className="py-1">
                           {orderStatuses.map((status) => (
                             <button
                               key={status.value}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (order.orderStatus !== status.value && onUpdateStatus) {
+                                if (canChangeStatus && order.orderStatus !== status.value && onUpdateStatus) {
                                   onUpdateStatus(orderId, status.value);
                                 }
                                 setShowStatusDropdown(false);
                               }}
-                              disabled={order.orderStatus === status.value}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition flex items-center space-x-2 ${
-                                order.orderStatus === status.value
+                              disabled={!canChangeStatus || order.orderStatus === status.value}
+                              className={`w-full text-left px-3 py-1.5 text-xs transition flex items-center space-x-2 ${!canChangeStatus || order.orderStatus === status.value
                                   ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                                  : 'text-gray-700'
-                              }`}
+                                  : 'text-gray-700 hover:bg-gray-100'
+                                }`}
                             >
-                              <span className={`w-2 h-2 rounded-full ${status.colorClass}`}></span>
+                              <span className={`w-1.5 h-1.5 rounded-full ${status.colorClass}`}></span>
                               <span>{status.label}</span>
                               {order.orderStatus === status.value && (
-                                <span className="ml-auto text-xs">(Current)</span>
+                                <span className="ml-auto text-[10px]">(Current)</span>
                               )}
                             </button>
                           ))}
@@ -682,170 +545,210 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Order Information Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Invoice Details */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Invoice Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Invoice Number:</span>
-                  <span className="font-medium text-gray-900">{order.orderNumber || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Order Date:</span>
-                  <span className="font-medium text-gray-900">{formatDate(order.createdAt)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Payment Method:</span>
-                  <span className="font-medium text-gray-900 capitalize">{order.paymentMethod || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Payment Status:</span>
-                  <select
-                    value={paymentStatusValue}
-                    onChange={(e) => handlePaymentStatusChange(e.target.value)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-0 ${
-                      paymentStatusValue === 'paid' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    } focus:ring-2 focus:ring-blue-500 cursor-pointer`}
-                    disabled={updatePaymentStatusMutation.isPending || isLoading}
-                  >
-                    <option value="unpaid">Unpaid</option>
-                    <option value="paid">Paid</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Delivery Address */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Delivery Address</h3>
-              <div className="text-sm text-gray-700">
-                <p className="font-medium">{order.deliveryAddress?.name || 'N/A'}</p>
-                <p className="mt-1">{order.deliveryAddress?.addressLine1 || ''}</p>
-                {order.deliveryAddress?.addressLine2 && (
-                  <p>{order.deliveryAddress.addressLine2}</p>
-                )}
-                <p>
-                  {order.deliveryAddress?.city || ''}, {order.deliveryAddress?.state || ''} - {order.deliveryAddress?.pincode || ''}
-                </p>
-                {order.deliveryAddress?.landmark && (
-                  <p className="text-gray-600">Landmark: {order.deliveryAddress.landmark}</p>
-                )}
-                <p className="mt-2">Phone: {order.deliveryAddress?.phone || 'N/A'}</p>
+              <div className="text-right">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Payment Status</p>
+                <select
+                  value={paymentStatusValue}
+                  onChange={(e) => handlePaymentStatusChange(e.target.value)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md border-0 ${paymentStatusValue === 'paid'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                    } focus:ring-1 focus:ring-blue-500 cursor-pointer hover:shadow-sm transition-shadow`}
+                  disabled={updatePaymentStatusMutation.isPending || isLoading}
+                >
+                  <option value="unpaid">Unpaid</option>
+                  <option value="paid">Paid</option>
+                </select>
               </div>
             </div>
           </div>
 
-          {/* Order Details Section - Full Width */}
+          {/* Order Details Section */}
           <div className="mb-6">
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg">Order Details</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+            <div className="bg-gray-50 rounded-lg p-3 text-xs">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {/* Row 1: Date | Payment */}
+                <div>
+                  <span className="text-gray-600">Date:</span>
+                  <span className="ml-1 font-medium text-gray-900">{formatDate(order.createdAt)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Payment:</span>
+                  <span className="ml-1 font-medium text-gray-900 capitalize">{order.paymentMethod || 'N/A'}</span>
+                </div>
+                {/* Row 2: Customer | Phone */}
+                <div>
+                  <span className="text-gray-600">Customer:</span>
+                  <span className="ml-1 font-medium text-gray-900">{order.deliveryAddress?.name || order.userId?.name || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Phone:</span>
+                  <span className="ml-1 font-medium text-gray-900">{order.deliveryAddress?.phone || order.userId?.phone || 'N/A'}</span>
+                </div>
+                {/* Row 3: Email | (empty) */}
+                <div>
+                  <span className="text-gray-600">Email:</span>
+                  <span className="ml-1 font-medium text-gray-900">{order.userId?.email || 'N/A'}</span>
+                </div>
+                <div></div>
+                {/* Row 4: Address (full row) */}
+                <div className="col-span-2">
+                  <span className="text-gray-600">Address:</span>
+                  <span className="ml-1 font-medium text-gray-900">
+                    {order.deliveryAddress?.addressLine1 || ''}
+                    {order.deliveryAddress?.addressLine2 ? `, ${order.deliveryAddress.addressLine2}` : ''}
+                    {order.deliveryAddress?.city ? `, ${order.deliveryAddress.city}` : ''}
+                    {order.deliveryAddress?.state ? `, ${order.deliveryAddress.state}` : ''}
+                    {order.deliveryAddress?.pincode ? ` - ${order.deliveryAddress.pincode}` : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Order Tracking Window - Small Fonts */}
+          <div className="mb-6 bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between text-xs">
+              {getOrderTrackingStatus().map((step, index) => (
+                <div key={step.key} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${step.isCompleted
+                        ? step.key === 'cancelled' ? 'bg-red-500' : 'bg-green-500'
+                        : 'bg-gray-300'
+                      }`}>
+                      {step.isCompleted ? (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                      )}
+                    </div>
+                    <span className={`text-xs font-medium ${step.isCompleted ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {step.label}
+                    </span>
+                    {step.date && (
+                      <span className="text-xs text-gray-500 mt-0.5 text-center">
+                        {formatTrackingDate(step.date)}
+                      </span>
+                    )}
+                  </div>
+                  {index < getOrderTrackingStatus().length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-2 ${step.isCompleted && getOrderTrackingStatus()[index + 1]?.isCompleted ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Additional Order Details Section - Minimal */}
+          <div className="mb-6">
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div className="grid grid-cols-4 gap-x-4 gap-y-2.5">
                 {/* User ID */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">User ID:</p>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">User ID</p>
+                  <p className="text-xs font-medium text-gray-900">
                     {order.userId?._id ? order.userId._id.toString().slice(-6) : order.userId || 'N/A'}
                   </p>
                 </div>
 
                 {/* Display Order ID */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Display Order ID:</p>
-                  <p className="font-medium text-gray-900">{order.orderNumber || order._id || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Display Order ID</p>
+                  <p className="text-xs font-medium text-gray-900">{(() => {
+                    const orderId = order._id || order.orderNumber || 'N/A';
+                    if (!orderId || orderId === 'N/A') return 'N/A';
+                    const idString = String(orderId);
+                    const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+                    return `#${lastSix}`;
+                  })()}</p>
                 </div>
 
                 {/* Customer Name */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Customer Name:</p>
-                  <p className="font-medium text-purple-600">{order.deliveryAddress?.name || order.userId?.name || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Customer Name</p>
+                  <p className="text-xs font-medium text-purple-600">{order.deliveryAddress?.name || order.userId?.name || 'N/A'}</p>
                 </div>
 
                 {/* Mobile Number */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Mobile Number:</p>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Mobile Number</p>
+                  <p className="text-xs font-medium text-gray-900">
                     {order.deliveryAddress?.phone ? `+91 ${order.deliveryAddress.phone}` : order.userId?.phone || 'N/A'}
                   </p>
                 </div>
 
                 {/* Email */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Email:</p>
-                  <p className="font-medium text-gray-900">{order.userId?.email || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Email</p>
+                  <p className="text-xs font-medium text-gray-900">{order.userId?.email || 'N/A'}</p>
                 </div>
 
                 {/* Payment Status */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Payment Status:</p>
-                  <span className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
-                    paymentStatusValue === 'paid' 
-                      ? 'bg-green-100 text-green-800' 
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Payment Status</p>
+                  <span className={`px-1.5 py-0.5 inline-flex text-[10px] font-medium rounded ${paymentStatusValue === 'paid'
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                    }`}>
                     {getPaymentDisplayText(order)}
                   </span>
                 </div>
 
                 {/* Order Status */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Order Status:</p>
-                  <span className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${getStatusColor(order.orderStatus)}`}>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order Status</p>
+                  <span className={`px-1.5 py-0.5 inline-flex text-[10px] font-medium rounded ${getStatusColor(order.orderStatus)}`}>
                     {getStatusText(order.orderStatus)}
                   </span>
                 </div>
 
                 {/* Code Applied */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Code Applied?:</p>
-                  <p className="font-medium text-gray-900">{order.promoCode || order.discountCode ? 'Yes' : 'No'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Code Applied</p>
+                  <p className="text-xs font-medium text-gray-900">{order.promoCode || order.discountCode ? 'Yes' : 'No'}</p>
                 </div>
 
                 {/* Payment Mode */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Payment Mode:</p>
-                  <p className="font-medium text-gray-900 capitalize">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Payment Mode</p>
+                  <p className="text-xs font-medium text-gray-900 capitalize">
                     {order.paymentMethod === 'cod' ? 'Cash' : order.paymentMethod === 'online' ? 'Online' : order.paymentMethod || 'N/A'}
                   </p>
                 </div>
 
                 {/* Delivery Code */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Delivery Code:</p>
-                  <p className="font-medium text-gray-900">{order.deliveryCode || order.trackingCode || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Delivery Code</p>
+                  <p className="text-xs font-medium text-gray-900">{order.deliveryCode || order.trackingCode || 'N/A'}</p>
                 </div>
 
                 {/* GST Number */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">GST Number:</p>
-                  <p className="font-medium text-gray-900">{order.gstNumber || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">GST Number</p>
+                  <p className="text-xs font-medium text-gray-900">{order.gstNumber || 'N/A'}</p>
                 </div>
 
                 {/* Order Date & Time */}
                 <div>
-                  <p className="text-gray-600 text-xs mb-1">Order Date & Time:</p>
-                  <p className="font-medium text-gray-900">{formatDate(order.createdAt)}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order Date & Time</p>
+                  <p className="text-xs font-medium text-gray-900">{formatDate(order.createdAt)}</p>
                 </div>
 
                 {/* Order Cancel Date Time (if cancelled) */}
                 {order.orderStatus === 'cancelled' && order.updatedAt && (
                   <div>
-                    <p className="text-gray-600 text-xs mb-1">Order Cancel Date Time:</p>
-                    <p className="font-medium text-gray-900">{formatDate(order.updatedAt)}</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Cancel Date Time</p>
+                    <p className="text-xs font-medium text-gray-900">{formatDate(order.updatedAt)}</p>
                   </div>
                 )}
 
                 {/* Cancel Reason (if cancelled) */}
                 {order.orderStatus === 'cancelled' && (
-                  <div className="col-span-2 md:col-span-3 lg:col-span-4">
-                    <p className="text-gray-600 text-xs mb-1">Cancel Reason:</p>
-                    <p className="font-medium text-gray-900">{order.cancelReason || order.cancellationReason || 'N/A'}</p>
+                  <div className="col-span-4">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Cancel Reason</p>
+                    <p className="text-xs font-medium text-gray-900">{order.cancelReason || order.cancellationReason || 'N/A'}</p>
                   </div>
                 )}
               </div>
@@ -855,16 +758,15 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           {/* Order Items */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Order Items</h3>
+              <h3 className="text-xs font-medium text-gray-900">Order Items</h3>
               {!isEditMode && (
                 <button
                   onClick={handleEditOrder}
                   disabled={isDelivered}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center space-x-2 ${
-                    isDelivered
+                  className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors flex items-center space-x-2 ${isDelivered
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                    }`}
                   title={isDelivered ? 'Cannot edit delivered orders' : 'Edit Order'}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -877,31 +779,32 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-200">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Item</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Quantity</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Unit Price</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">GST</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Total</th>
                       {isEditMode && (
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Actions</th>
                       )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {(isEditMode ? editedItems : order.items || []).map((item, idx) => (
-                      <tr key={idx}>
+                      <tr key={idx} className="even:bg-gray-50">
                         <td className="px-4 py-3">
                           <div className="flex items-center space-x-3">
                             {item.productImage && (
-                              <img src={item.productImage} alt={item.productName} className="h-12 w-12 object-cover rounded" />
+                              <img src={item.productImage} alt={item.productName} className="h-12 w-12 object-contain p-1 bg-white rounded" />
                             )}
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{item.productName}</p>
+                              <p className="text-xs font-medium text-gray-900">{item.productName}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center text-sm text-gray-900">
+                        <td className="px-4 py-3 text-center text-xs text-gray-900">
                           {isEditMode ? (
                             <div className="flex items-center justify-center space-x-2">
                               <button
@@ -930,7 +833,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                                 })()}
                                 value={item.quantity || 1}
                                 onChange={(e) => handleQuantityChange(idx, e.target.value)}
-                                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               />
                               <button
                                 onClick={() => handleQuantityIncrease(idx)}
@@ -946,7 +849,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             item.quantity || 0
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-900">
+                        <td className="px-4 py-3 text-right text-xs text-gray-900">
                           {isEditMode ? (
                             <div className="flex flex-col items-end">
                               <span className="font-medium">₹{item.price?.toLocaleString() || 0}</span>
@@ -971,7 +874,28 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             `₹${item.price?.toLocaleString() || 0}`
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">₹{item.total?.toLocaleString() || 0}</td>
+                        <td className="px-4 py-3 text-right text-xs text-gray-900">
+                          {(() => {
+                            const itemTotal = item.total || (item.price * item.quantity);
+                            const gstPercentage = item.gstPercentage !== undefined
+                              ? item.gstPercentage
+                              : (item.vendorProduct?.gst || (isEditMode ? (item.vendorProduct?.gst || findVendorProductForItem(item)?.gst || 0) : 0));
+                            const gstAmount = item.gstAmount !== undefined
+                              ? item.gstAmount
+                              : (itemTotal * gstPercentage) / 100;
+
+                            if (gstPercentage > 0) {
+                              return (
+                                <div className="flex flex-col items-end">
+                                  <span className="font-medium">₹{gstAmount.toFixed(2)}</span>
+                                  <span className="text-xs text-gray-500">({gstPercentage}%)</span>
+                                </div>
+                              );
+                            }
+                            return <span className="text-gray-400">-</span>;
+                          })()}
+                        </td>
+                        <td className="px-4 py-3 text-right text-xs font-medium text-gray-900">₹{item.total?.toLocaleString() || 0}</td>
                         {isEditMode && (
                           <td className="px-4 py-3 text-center">
                             <button
@@ -986,12 +910,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                     ))}
                     {isEditMode && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-3 bg-gray-50">
+                        <td colSpan={6} className="px-4 py-3 bg-gray-50">
                           <div className="flex items-center space-x-3">
                             <select
                               value={newItemProductId}
                               onChange={(e) => setNewItemProductId(e.target.value)}
-                              className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                               <option value="">Select a product to add...</option>
                               {vendorProducts
@@ -1014,11 +938,10 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                             <button
                               onClick={handleAddNewItem}
                               disabled={!newItemProductId}
-                              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                                newItemProductId
+                              className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${newItemProductId
                                   ? 'bg-green-600 text-white hover:bg-green-700'
                                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              }`}
+                                }`}
                             >
                               Add Item
                             </button>
@@ -1034,18 +957,17 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
               <div className="mt-4 flex justify-end space-x-3">
                 <button
                   onClick={handleCancelEdit}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveOrder}
                   disabled={updateOrderItemsMutation.isPending || editedItems.length === 0}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    updateOrderItemsMutation.isPending || editedItems.length === 0
+                  className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${updateOrderItemsMutation.isPending || editedItems.length === 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                    }`}
                 >
                   {updateOrderItemsMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -1054,39 +976,70 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           </div>
 
           {/* Billing Summary */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Billing Summary</h3>
-            <div className="space-y-2 text-sm">
+          <div className="bg-gray-50 rounded-lg p-3 mb-6">
+            <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase tracking-wide">Billing Summary</h3>
+            <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-medium text-gray-900">
                   ₹{(
-                    isEditMode 
-                      ? calculateBillingDetails().cartTotal 
+                    isEditMode
+                      ? calculateBillingDetails().cartTotal
                       : order.billingDetails?.cartTotal || 0
                   ).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">GST (18%):</span>
+                <span className="text-gray-600">GST:</span>
                 <span className="font-medium text-gray-900">
                   ₹{(
-                    isEditMode 
-                      ? calculateBillingDetails().gstAmount 
+                    isEditMode
+                      ? calculateBillingDetails().gstAmount
                       : order.billingDetails?.gstAmount || 0
                   ).toLocaleString()}
                 </span>
               </div>
+              {/* GST Breakdown */}
+              {(() => {
+                const gstBreakdown = isEditMode
+                  ? calculateBillingDetails().gstBreakdown
+                  : order.items?.filter(item => item.gstPercentage > 0).map(item => ({
+                    productName: item.productName,
+                    gstPercentage: item.gstPercentage || 0,
+                    gstAmount: item.gstAmount || 0,
+                  }));
+
+                if (gstBreakdown && gstBreakdown.length > 0) {
+                  return (
+                    <div className="pl-2 border-l-2 border-gray-200 space-y-0.5 mt-0.5">
+                      {gstBreakdown.map((item, index) => (
+                        <div key={index} className="flex justify-between text-[10px] text-gray-600">
+                          <span>{item.productName} ({item.gstPercentage}%):</span>
+                          <span>₹{item.gstAmount?.toFixed(2) || '0.00'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping Charges:</span>
-                <span className="font-medium text-gray-900">Free</span>
+                <span className="font-medium text-gray-900">
+                  {(() => {
+                    const shippingCharges = isEditMode
+                      ? calculateBillingDetails().shippingCharges
+                      : order.billingDetails?.shippingCharges || 0;
+                    return shippingCharges > 0 ? `₹${shippingCharges.toLocaleString()}` : 'Free';
+                  })()}
+                </span>
               </div>
-              <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between">
-                <span className="text-base font-semibold text-gray-900">Total Amount:</span>
-                <span className="text-base font-bold text-red-600">
+              <div className="border-t border-gray-300 pt-1.5 mt-1.5 flex justify-between">
+                <span className="text-xs font-medium text-gray-900">Total Amount:</span>
+                <span className="text-xs font-bold text-red-600">
                   ₹{(
-                    isEditMode 
-                      ? calculateBillingDetails().totalAmount 
+                    isEditMode
+                      ? calculateBillingDetails().totalAmount
                       : order.billingDetails?.totalAmount || 0
                   ).toLocaleString()}
                 </span>
@@ -1096,9 +1049,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
           {/* Payment Information */}
           {order.paymentId || order.transactionId ? (
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Payment Information</h3>
-              <div className="space-y-2 text-sm">
+            <div className="bg-gray-50 rounded-lg p-3 mb-6">
+              <h3 className="text-xs font-medium text-gray-900 mb-2 uppercase tracking-wide">Payment Information</h3>
+              <div className="space-y-1.5 text-xs">
                 {order.paymentId && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Payment ID:</span>
@@ -1116,12 +1069,19 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           ) : null}
 
           {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
             <button
-              onClick={() => handleDownloadInvoice(order)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              onClick={() => {
+                try {
+                  generateInvoicePDF(order, vendor);
+                } catch (error) {
+                  console.error('Error generating invoice:', error);
+                  alert('Failed to generate invoice. Please try again.');
+                }
+              }}
+              className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1.5 text-xs"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span>Download Invoice</span>

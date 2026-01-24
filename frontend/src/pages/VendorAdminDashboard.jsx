@@ -83,6 +83,14 @@ const VendorAdminDashboard = () => {
     productId: "",
     cityId: "",
     priceType: "single",
+    defaultPrice: 0,
+    productPurchasedFrom: "",
+    purchasedMode: "",
+    purchasedAmount: "",
+    gst: 0,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
     pricing: {
       single: {
         price: "",
@@ -202,6 +210,14 @@ const VendorAdminDashboard = () => {
       productId: product.productId._id || product.productId,
       cityId: cityId,
       priceType: product.priceType,
+      defaultPrice: product.defaultPrice || 0,
+      productPurchasedFrom: product.productPurchasedFrom || "",
+      purchasedMode: product.purchasedMode || "",
+      purchasedAmount: product.purchasedAmount || "",
+      gst: product.gst || 0,
+      cgst: product.cgst || 0,
+      sgst: product.sgst || 0,
+      igst: product.igst || 0,
       pricing: product.pricing || {
         single: { price: "" },
         bulk: [],
@@ -295,6 +311,14 @@ const VendorAdminDashboard = () => {
         productId: productForm.productId,
         cityId: vendorInfo?.cityId || productForm.cityId,
         priceType: productForm.priceType,
+        defaultPrice: parseFloat(productForm.defaultPrice) || 0,
+        productPurchasedFrom: productForm.productPurchasedFrom || undefined,
+        purchasedMode: productForm.purchasedMode || undefined,
+        purchasedAmount: productForm.purchasedAmount || undefined,
+        gst: parseFloat(productForm.gst) || 0,
+        cgst: parseFloat(productForm.cgst) || 0,
+        sgst: parseFloat(productForm.sgst) || 0,
+        igst: parseFloat(productForm.igst) || 0,
         pricing: pricingData,
         availableStock: parseFloat(productForm.availableStock) || 0,
         minimumOrderQuantity:
@@ -329,6 +353,14 @@ const VendorAdminDashboard = () => {
         productId: "",
         cityId: vendorInfo?.cityId || "",
         priceType: "single",
+        defaultPrice: 0,
+        productPurchasedFrom: "",
+        purchasedMode: "",
+        purchasedAmount: "",
+        gst: 0,
+        cgst: 0,
+        sgst: 0,
+        igst: 0,
         pricing: {
           single: {
             price: "",
@@ -711,7 +743,7 @@ const VendorAdminDashboard = () => {
                             <img
                               src={product.img || product.images[0].url}
                               alt={product.images?.[0]?.alt || product.productName}
-                              className="h-12 w-12 object-cover rounded"
+                              className="h-12 w-12 object-contain p-1 bg-white rounded"
                             />
                           ) : (
                             <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
@@ -889,7 +921,116 @@ const VendorAdminDashboard = () => {
           const paginatedProducts = getPaginatedData(filteredProducts, myProductsPage, itemsPerPage);
           
           return (
-          <div className="bg-white rounded-lg shadow">
+          <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <svg
+                      className="w-8 h-8 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Total Products</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.totalProducts}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <svg
+                      className="w-8 h-8 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Active Products</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.activeProducts}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-orange-100 rounded-lg">
+                    <svg
+                      className="w-8 h-8 text-orange-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Low Stock</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.lowStock}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <svg
+                      className="w-8 h-8 text-purple-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600">Total Stock</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.totalStock.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Products Table */}
+            <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-900">
@@ -943,7 +1084,7 @@ const VendorAdminDashboard = () => {
                               <img
                                 src={product.productId.images?.[0]?.url || product.productId.img}
                                 alt={product.productId?.productName || "Product"}
-                                className="h-10 w-10 object-cover rounded mr-3"
+                                className="h-10 w-10 object-contain p-0.5 bg-white rounded mr-3"
                               />
                             ) : (
                               <div className="h-10 w-10 bg-gray-200 rounded mr-3 flex items-center justify-center">
@@ -1128,6 +1269,7 @@ const VendorAdminDashboard = () => {
                 </div>
               </div>
             )}
+            </div>
           </div>
           );
         })()}
@@ -1384,6 +1526,154 @@ const VendorAdminDashboard = () => {
                 )}
               </div>
 
+              {/* Purchase Information */}
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold mb-4">Purchase Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Default Price
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={productForm.defaultPrice}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          defaultPrice: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Purchased From
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.productPurchasedFrom}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          productPurchasedFrom: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="Where was it purchased"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Purchase Mode
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.purchasedMode}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          purchasedMode: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="e.g., Cash, Online"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Purchase Amount
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.purchasedAmount}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          purchasedAmount: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tax Information */}
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold mb-4">Tax Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      GST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.gst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, gst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CGST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.cgst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, cgst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SGST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.sgst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, sgst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      IGST (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productForm.igst}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, igst: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Stock Management */}
               <div className="border-b border-gray-200 pb-6">
                 <h3 className="text-lg font-semibold mb-4">Stock Management</h3>
@@ -1473,6 +1763,14 @@ const VendorAdminDashboard = () => {
                       productId: "",
                       cityId: vendorInfo?.cityId || "",
                       priceType: "single",
+                      defaultPrice: 0,
+                      productPurchasedFrom: "",
+                      purchasedMode: "",
+                      purchasedAmount: "",
+                      gst: 0,
+                      cgst: 0,
+                      sgst: 0,
+                      igst: 0,
                       pricing: {
                         single: {
                           price: "",

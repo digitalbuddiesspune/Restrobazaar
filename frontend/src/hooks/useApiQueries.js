@@ -6,6 +6,11 @@ import {
   categoryAPI,
   vendorProductAPI,
   globalProductAPI,
+  wishlistAPI,
+  addressAPI,
+  orderAPI,
+  userCouponAPI,
+  testimonialAPI,
 } from '../utils/api';
 
 // Query Keys Factory - Centralized query key management
@@ -65,6 +70,42 @@ export const queryKeys = {
     lists: () => [...queryKeys.globalProducts.all, 'list'],
     list: (filters) => [...queryKeys.globalProducts.lists(), filters],
     detail: (id) => [...queryKeys.globalProducts.all, id],
+  },
+  
+  // Wishlist
+  wishlist: {
+    all: ['wishlist'],
+    list: () => [...queryKeys.wishlist.all, 'list'],
+  },
+  
+  // Addresses
+  addresses: {
+    all: ['addresses'],
+    lists: () => [...queryKeys.addresses.all, 'list'],
+    list: () => [...queryKeys.addresses.lists()],
+    detail: (id) => [...queryKeys.addresses.all, id],
+  },
+  
+  // Orders
+  orders: {
+    all: ['orders'],
+    lists: () => [...queryKeys.orders.all, 'list'],
+    list: (filters) => [...queryKeys.orders.lists(), filters],
+    detail: (id) => [...queryKeys.orders.all, id],
+  },
+  
+  // User Coupons
+  userCoupons: {
+    all: ['userCoupons'],
+    available: (filters) => [...queryKeys.userCoupons.all, 'available', filters],
+  },
+  
+  // Testimonials
+  testimonials: {
+    all: ['testimonials'],
+    lists: () => [...queryKeys.testimonials.all, 'list'],
+    list: (filters) => [...queryKeys.testimonials.lists(), filters],
+    detail: (id) => [...queryKeys.testimonials.all, id],
   },
 };
 
@@ -344,3 +385,246 @@ export const useLogout = () => {
   });
 };
 
+// ==================== WISHLIST QUERIES ====================
+
+/**
+ * Get user wishlist
+ */
+export const useWishlist = (options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.wishlist.list(),
+    queryFn: () => wishlistAPI.getWishlist(),
+    staleTime: 2 * 60 * 1000, // 2 minutes - wishlist may change frequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+};
+
+// ==================== WISHLIST MUTATIONS ====================
+
+/**
+ * Add to wishlist mutation
+ */
+export const useAddToWishlist = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (productId) => wishlistAPI.addToWishlist(productId),
+    onSuccess: () => {
+      // Invalidate and refetch wishlist
+      queryClient.invalidateQueries({ queryKey: queryKeys.wishlist.all });
+    },
+  });
+};
+
+/**
+ * Remove from wishlist mutation
+ */
+export const useRemoveFromWishlist = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (productId) => wishlistAPI.removeFromWishlist(productId),
+    onSuccess: () => {
+      // Invalidate and refetch wishlist
+      queryClient.invalidateQueries({ queryKey: queryKeys.wishlist.all });
+    },
+  });
+};
+
+// ==================== ADDRESS QUERIES ====================
+
+/**
+ * Get user addresses
+ */
+export const useAddresses = (options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.addresses.list(),
+    queryFn: () => addressAPI.getUserAddresses(),
+    staleTime: 5 * 60 * 1000, // 5 minutes - addresses don't change too often
+    gcTime: 15 * 60 * 1000, // 15 minutes
+    ...options,
+  });
+};
+
+/**
+ * Get address by ID
+ */
+export const useAddressById = (addressId, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.addresses.detail(addressId),
+    queryFn: () => addressAPI.getAddressById(addressId),
+    enabled: !!addressId, // Only run if addressId is provided
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes
+    ...options,
+  });
+};
+
+// ==================== ADDRESS MUTATIONS ====================
+
+/**
+ * Create address mutation
+ */
+export const useCreateAddress = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (addressData) => addressAPI.createAddress(addressData),
+    onSuccess: () => {
+      // Invalidate and refetch addresses
+      queryClient.invalidateQueries({ queryKey: queryKeys.addresses.all });
+    },
+  });
+};
+
+/**
+ * Update address mutation
+ */
+export const useUpdateAddress = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ addressId, addressData }) => addressAPI.updateAddress(addressId, addressData),
+    onSuccess: (data, variables) => {
+      // Invalidate addresses list and specific address
+      queryClient.invalidateQueries({ queryKey: queryKeys.addresses.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.addresses.detail(variables.addressId) });
+    },
+  });
+};
+
+/**
+ * Delete address mutation
+ */
+export const useDeleteAddress = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (addressId) => addressAPI.deleteAddress(addressId),
+    onSuccess: () => {
+      // Invalidate and refetch addresses
+      queryClient.invalidateQueries({ queryKey: queryKeys.addresses.all });
+    },
+  });
+};
+
+// ==================== ORDER QUERIES ====================
+
+/**
+ * Get user orders
+ */
+export const useOrders = (filters = {}, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.orders.list(filters),
+    queryFn: () => orderAPI.getUserOrders(filters),
+    staleTime: 1 * 60 * 1000, // 1 minute - orders can change frequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+};
+
+/**
+ * Get order by ID
+ */
+export const useOrderById = (orderId, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.orders.detail(orderId),
+    queryFn: () => orderAPI.getOrderById(orderId),
+    enabled: !!orderId, // Only run if orderId is provided
+    staleTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+};
+
+// ==================== ORDER MUTATIONS ====================
+
+/**
+ * Create order mutation
+ */
+export const useCreateOrder = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (orderData) => orderAPI.createOrder(orderData),
+    onSuccess: () => {
+      // Invalidate orders list
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+      // Also invalidate wishlist in case items were removed
+      queryClient.invalidateQueries({ queryKey: queryKeys.wishlist.all });
+    },
+  });
+};
+
+/**
+ * Cancel order mutation
+ */
+export const useCancelOrder = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (orderId) => orderAPI.cancelOrder(orderId),
+    onSuccess: (data, orderId) => {
+      // Invalidate orders list and specific order
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(orderId) });
+    },
+  });
+};
+
+// ==================== USER COUPON QUERIES ====================
+
+/**
+ * Get available coupons for user
+ */
+export const useAvailableCoupons = (filters = {}, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.userCoupons.available(filters),
+    queryFn: () => userCouponAPI.getAvailableCoupons(filters),
+    staleTime: 2 * 60 * 1000, // 2 minutes - coupons may change
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+};
+
+// ==================== TESTIMONIAL QUERIES ====================
+
+/**
+ * Get all testimonials
+ */
+export const useTestimonials = (filters = {}, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.testimonials.list(filters),
+    queryFn: () => testimonialAPI.getAllTestimonials(filters),
+    staleTime: 10 * 60 * 1000, // 10 minutes - testimonials don't change often
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    ...options,
+  });
+};
+
+/**
+ * Get testimonial by ID
+ */
+export const useTestimonial = (id, options = {}) => {
+  return useQuery({
+    queryKey: queryKeys.testimonials.detail(id),
+    queryFn: () => testimonialAPI.getTestimonialById(id),
+    enabled: !!id, // Only fetch if ID is provided
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    ...options,
+  });
+};
+
+// ==================== USER COUPON MUTATIONS ====================
+
+/**
+ * Validate coupon mutation
+ */
+export const useValidateCoupon = () => {
+  return useMutation({
+    mutationFn: ({ code, cartTotal, vendorId, cartItems }) =>
+      userCouponAPI.validateCoupon(code, cartTotal, vendorId, cartItems),
+  });
+};

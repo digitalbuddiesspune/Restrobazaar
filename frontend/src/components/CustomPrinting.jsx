@@ -113,12 +113,12 @@ export default function CustomPrinting() {
               reinforces your brand identity with every order.
             </p>
             <div className="mt-6 sm:mt-8 md:mt-10 flex justify-center gap-3 sm:gap-4 flex-wrap">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
-                Explore Categories
-              </button>
-              <button className="bg-white hover:bg-gray-50 border-2 border-white hover:border-red-600 text-gray-800 px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
-                Get Quote
-              </button>
+              <a href="tel:9545235223" className="bg-red-600 hover:bg-red-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-body">
+                Call Us
+              </a>
+              <a href="https://wa.me/919545235223?text=Hi%2C%20I%27m%20interested%20in%20custom%20printing%2Fbranding%20on%20your%20product.%20Could%20you%20please%20share%20a%20quote%3F" target="_blank" rel="noopener noreferrer" className="bg-white hover:bg-gray-50 border-2 border-white hover:border-red-600 text-gray-800 px-6 sm:px-8 py-3 sm:py-4 rounded-lg md:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 font-body">
+                 Whatsapp Us
+              </a>
             </div>
           </div>
         </div>

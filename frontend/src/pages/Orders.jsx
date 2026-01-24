@@ -1,42 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { orderAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import Modal from '../components/Modal';
-import jsPDF from 'jspdf';
+import { useOrders, useCancelOrder } from '../hooks/useApiQueries';
+import Button from '../components/Button';
+import { generateInvoicePDF } from '../utils/invoiceGenerator';
 
 const Orders = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(null);
+
+  // React Query hooks for orders with caching
+  const { data: ordersResponse, isLoading: loading, error: ordersError } = useOrders({}, {
+    enabled: isAuthenticated(),
+    retry: false,
+  });
+
+  const cancelOrderMutation = useCancelOrder();
 
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/signin');
       return;
     }
-    fetchOrders();
   }, [navigate]);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await orderAPI.getUserOrders();
-      if (response.success && response.data) {
-        setOrders(response.data);
-      }
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-      setError(err.response?.data?.message || 'Failed to load orders');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const orders = ordersResponse?.success && ordersResponse?.data ? ordersResponse.data : [];
+  const error = ordersError ? (ordersError.response?.data?.message || 'Failed to load orders') : '';
 
   const handleViewOrder = (order) => {
     setSelectedOrder(order);
@@ -50,11 +42,9 @@ const Orders = () => {
 
     try {
       setCancellingOrder(orderId);
-      const response = await orderAPI.cancelOrder(orderId);
-      if (response.success) {
-        await fetchOrders();
-        alert('Order cancelled successfully');
-      }
+      await cancelOrderMutation.mutateAsync(orderId);
+      // Query will automatically refetch due to invalidation in the mutation
+      alert('Order cancelled successfully');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to cancel order');
     } finally {
@@ -97,242 +87,8 @@ const Orders = () => {
 
   const handleDownloadInvoice = (order) => {
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      let yPos = 20;
-      const leftMargin = 20;
-      const rightMargin = pageWidth - 20;
-      const contentWidth = pageWidth - 40;
-
-      // Company Header Section
-      doc.setFontSize(24);
-      doc.setTextColor(220, 38, 38); // Red color
-      doc.setFont(undefined, 'bold');
-      doc.text('RestroBazaar', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 8;
-
-      // Company Details
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont(undefined, 'normal');
-      doc.text('Your Trusted Restaurant Supply Partner', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
-      doc.text('Email: support@restrobazaar.com | Phone: +91-XXXXXXXXXX', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 10;
-
-      // Invoice Title
-      doc.setFontSize(18);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont(undefined, 'bold');
-      doc.text('TAX INVOICE', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 12;
-
-      // Two Column Layout: Invoice Details and Delivery Address
-      const col1X = leftMargin;
-      const col2X = pageWidth / 2 + 10;
-
-      // Left Column - Invoice Details
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Invoice Details:', col1X, yPos);
-      yPos += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Invoice Number: ${order.orderNumber}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Invoice Date: ${formatDate(order.createdAt)}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Order Number: ${order.orderNumber}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Order Date: ${formatDate(order.createdAt)}`, col1X, yPos);
-      yPos += 6;
-      doc.setFont(undefined, 'bold');
-      doc.text(`Order Status: ${getStatusText(order.orderStatus)}`, col1X, yPos);
-      yPos += 6;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Payment Status: ${order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}`, col1X, yPos);
-      yPos += 6;
-      doc.text(`Payment Method: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI Online Payment'}`, col1X, yPos);
-
-      // Right Column - Delivery Address
-      let addressY = yPos - 42; // Align with invoice details
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Bill To / Ship To:', col2X, addressY);
-      addressY += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`${order.deliveryAddress.name}`, col2X, addressY);
-      addressY += 6;
-      doc.text(`${order.deliveryAddress.addressLine1}`, col2X, addressY);
-      addressY += 6;
-      if (order.deliveryAddress.addressLine2) {
-        doc.text(`${order.deliveryAddress.addressLine2}`, col2X, addressY);
-        addressY += 6;
-      }
-      doc.text(`${order.deliveryAddress.city}, ${order.deliveryAddress.state}`, col2X, addressY);
-      addressY += 6;
-      doc.text(`Pincode: ${order.deliveryAddress.pincode}`, col2X, addressY);
-      addressY += 6;
-      if (order.deliveryAddress.landmark) {
-        doc.text(`Landmark: ${order.deliveryAddress.landmark}`, col2X, addressY);
-        addressY += 6;
-      }
-      doc.text(`Phone: ${order.deliveryAddress.phone}`, col2X, addressY);
-
-      yPos += 15;
-
-      // Order Items Table
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text('Order Items:', leftMargin, yPos);
-      yPos += 8;
-
-      // Table Header with background
-      doc.setFillColor(240, 240, 240);
-      doc.rect(leftMargin, yPos - 6, contentWidth, 8, 'F');
-      
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('S.No.', leftMargin + 2, yPos);
-      doc.text('Item', leftMargin + 20, yPos);
-      doc.text('Qty', leftMargin + 110, yPos, { align: 'center' });
-      doc.text('Unit Price', leftMargin + 135, yPos, { align: 'right' });
-      doc.text('Total', rightMargin - 2, yPos, { align: 'right' });
-      yPos += 8;
-
-      // Table Rows
-      doc.setFont(undefined, 'normal');
-      doc.setDrawColor(220, 220, 220);
-      let itemSubtotal = 0;
-
-      order.items.forEach((item, index) => {
-        if (yPos > pageHeight - 80) {
-          doc.addPage();
-          yPos = 20;
-          // Redraw table header on new page
-          doc.setFillColor(240, 240, 240);
-          doc.rect(leftMargin, yPos - 6, contentWidth, 8, 'F');
-          doc.setFont(undefined, 'bold');
-          doc.text('S.No.', leftMargin + 2, yPos);
-          doc.text('Item', leftMargin + 20, yPos);
-          doc.text('Qty', leftMargin + 110, yPos, { align: 'center' });
-          doc.text('Unit Price', leftMargin + 135, yPos, { align: 'right' });
-          doc.text('Total', rightMargin - 2, yPos, { align: 'right' });
-          yPos += 8;
-          doc.setFont(undefined, 'normal');
-        }
-
-        // Row content
-        doc.text((index + 1).toString(), leftMargin + 2, yPos);
-        
-        // Handle long product names
-        const productName = item.productName.length > 35 
-          ? item.productName.substring(0, 32) + '...' 
-          : item.productName;
-        doc.text(productName, leftMargin + 20, yPos);
-        
-        doc.text(item.quantity.toString(), leftMargin + 110, yPos, { align: 'center' });
-        doc.text(`Rs. ${item.price.toFixed(2)}`, leftMargin + 135, yPos, { align: 'right' });
-        doc.text(`Rs. ${item.total.toFixed(2)}`, rightMargin - 2, yPos, { align: 'right' });
-        
-        itemSubtotal += item.total;
-        yPos += 7;
-      });
-
-      yPos += 5;
-
-      // Billing Summary Section
-      if (yPos > pageHeight - 70) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      const summaryX = leftMargin + 100;
-      const summaryWidth = rightMargin - summaryX;
-
-      // Subtotal
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
-      doc.text('Subtotal (Excl. of all taxes):', summaryX, yPos);
-      const billing = order.billingDetails;
-      doc.text(`Rs. ${billing?.cartTotal?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      yPos += 7;
-
-      // GST
-      doc.text('GST (18%):', summaryX, yPos);
-      doc.text(`Rs. ${billing?.gstAmount?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      yPos += 7;
-
-      // Shipping Charges
-      doc.text('Shipping Charges:', summaryX, yPos);
-      if (billing?.shippingCharges === 0) {
-        doc.setTextColor(0, 128, 0); // Green for free
-        doc.text('Free', rightMargin - 2, yPos, { align: 'right' });
-        doc.setTextColor(0, 0, 0);
-      } else {
-        doc.text(`Rs. ${billing?.shippingCharges?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      }
-      yPos += 10;
-
-      // Total Amount
-      yPos += 5;
-
-      doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
-      doc.text('Total Amount:', summaryX, yPos);
-      doc.setTextColor(220, 38, 38); // Red color
-      doc.text(`Rs. ${billing?.totalAmount?.toFixed(2) || '0.00'}`, rightMargin - 2, yPos, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 15;
-
-      // Payment Information
-      if (yPos > pageHeight - 50) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Payment Information:', leftMargin, yPos);
-      yPos += 7;
-      doc.setFont(undefined, 'normal');
-      doc.text(`Payment Method: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI Online Payment'}`, leftMargin, yPos);
-      yPos += 6;
-      doc.text(`Payment Status: ${order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}`, leftMargin, yPos);
-      if (order.paymentId) {
-        yPos += 6;
-        doc.text(`Payment ID: ${order.paymentId}`, leftMargin, yPos);
-      }
-      if (order.transactionId) {
-        yPos += 6;
-        doc.text(`Transaction ID: ${order.transactionId}`, leftMargin, yPos);
-      }
-      yPos += 10;
-
-      // Footer
-      if (yPos > pageHeight - 40) {
-        doc.addPage();
-        yPos = pageHeight - 30;
-      } else {
-        yPos = pageHeight - 30;
-      }
-
-      doc.setDrawColor(200, 200, 200);
-      doc.line(leftMargin, yPos, rightMargin, yPos);
-      yPos += 8;
-
-      doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont(undefined, 'italic');
-      doc.text('Thank you for your business!', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
-      doc.setFontSize(8);
-      doc.text('This is a computer-generated invoice and does not require a signature.', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
-      doc.text('For any queries, please contact us at support@restrobazaar.com', pageWidth / 2, yPos, { align: 'center' });
-
-      // Save the PDF
-      doc.save(`Invoice-${order.orderNumber}.pdf`);
+      const vendor = order.vendorId || {};
+      generateInvoicePDF(order, vendor);
     } catch (error) {
       console.error('Error generating invoice:', error);
       alert('Failed to generate invoice. Please try again.');
@@ -410,12 +166,13 @@ const Orders = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">Order #{order.orderNumber}</span>
-                      <button
+                      <Button
+                        variant="text"
+                        size="sm"
                         onClick={() => handleViewOrder(order)}
-                        className="text-sm text-red-600 hover:text-red-700 font-medium"
                       >
                         Order Details
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -443,13 +200,13 @@ const Orders = () => {
                             <img
                               src={item.productImage}
                               alt={item.productName}
-                              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded border border-gray-200"
+                              className="w-20 h-20 sm:w-24 sm:h-24 object-contain p-1 bg-white rounded border border-gray-200"
                               onError={(e) => {
                                 e.target.src = 'https://via.placeholder.com/96?text=No+Image';
                               }}
                             />
                           ) : (
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded border border-gray-200 flex items-center justify-center">
                               <svg
                                 className="w-8 h-8 text-gray-400"
                                 fill="none"
@@ -486,39 +243,44 @@ const Orders = () => {
                   {/* Action Buttons */}
                   <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-2">
                     {order.orderStatus === 'delivered' && (
-                      <button className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Button variant="secondary" size="md">
                         Buy Again
-                      </button>
+                      </Button>
                     )}
                     {order.orderStatus !== 'delivered' && order.orderStatus !== 'cancelled' && (
                       <>
-                        <button className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                        <Button variant="secondary" size="md">
                           Track Package
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="md"
                           onClick={() => handleCancelOrder(order._id)}
                           disabled={cancellingOrder === order._id}
-                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          loading={cancellingOrder === order._id}
                         >
-                          {cancellingOrder === order._id ? 'Cancelling...' : 'Cancel Order'}
-                        </button>
+                          Cancel Order
+                        </Button>
                       </>
                     )}
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="md"
                       onClick={() => handleViewOrder(order)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       View Order Details
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="md"
                       onClick={() => handleDownloadInvoice(order)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+                      className="flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       Download Invoice
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -567,7 +329,7 @@ const Orders = () => {
                         <img
                           src={item.productImage}
                           alt={item.productName}
-                          className="w-16 h-16 object-cover rounded"
+                          className="w-16 h-16 object-contain p-1 bg-white rounded"
                           onError={(e) => {
                             e.target.src = 'https://via.placeholder.com/64?text=No+Image';
                           }}
@@ -630,6 +392,22 @@ const Orders = () => {
                     <span className="text-gray-600">GST:</span>
                     <span className="font-medium">₹{selectedOrder.billingDetails?.gstAmount?.toFixed(2) || '0.00'}</span>
                   </div>
+                  {/* GST Breakdown */}
+                  {selectedOrder.items?.filter(item => item.gstPercentage > 0).length > 0 && (
+                    <div className="pl-2 border-l-2 border-gray-200 space-y-1 mt-1">
+                      {selectedOrder.items
+                        .filter(item => item.gstPercentage > 0)
+                        .map((item, index) => {
+                          const itemGstAmount = item.gstAmount || ((item.total || 0) * (item.gstPercentage || 0) / 100);
+                          return (
+                            <div key={index} className="flex justify-between text-xs text-gray-600">
+                              <span>{item.productName} ({item.gstPercentage}%):</span>
+                              <span>₹{itemGstAmount.toFixed(2)}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping:</span>
                     <span className="font-medium">₹{selectedOrder.billingDetails?.shippingCharges?.toFixed(2) || '0.00'}</span>
@@ -653,21 +431,24 @@ const Orders = () => {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => handleDownloadInvoice(selectedOrder)}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium flex items-center gap-2"
+                className="flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Download Invoice
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => setShowOrderModal(false)}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         )}

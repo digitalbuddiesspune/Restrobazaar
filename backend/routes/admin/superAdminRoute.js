@@ -13,6 +13,8 @@ import {
   updateLastLogin,
   superAdminLogin,
 } from "../../controller/admin/superAdminController.js";
+import { getAllOrders } from "../../controller/admin/adminOrderController.js";
+import { getAllUsers } from "../../controller/users/userController.js";
 import { authenticate, authorize } from "../../middleware/authMiddleware.js";
 
 // Super Admin routes - All routes require super_admin authentication
@@ -84,4 +86,21 @@ superAdminRouter.patch(
 );
 
 superAdminRouter.post("/admin/super-admin/login", superAdminLogin);
+
+// Order routes for super admin
+superAdminRouter.get(
+  "/admin/orders",
+  authenticate,
+  authorize("super_admin"),
+  getAllOrders
+);
+
+// User routes for super admin
+superAdminRouter.get(
+  "/admin/users",
+  authenticate,
+  authorize("super_admin"),
+  getAllUsers
+);
+
 export default superAdminRouter;

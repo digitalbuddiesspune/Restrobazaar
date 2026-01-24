@@ -1,14 +1,13 @@
-import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
   const [productDropdownOpen, setProductDropdownOpen] = useState(false);
+  const [orderDropdownOpen, setOrderDropdownOpen] = useState(false);
 
   const menuItems = [
-    { id: 'overview', label: 'Dashboard', icon: '📊' },
-    { id: 'orders', label: 'Orders', icon: '📋' },
+    { id: 'create-user', label: 'Create User', icon: '👥' },
+    { id: 'coupons', label: 'Coupons', icon: '🎫' },
     { id: 'account', label: 'Account', icon: '👤' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
   ];
 
   const productSubItems = [
@@ -17,7 +16,25 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
     { id: 'add-product', label: 'Add Product', icon: '➕' },
   ];
 
+  const orderSubItems = [
+    { id: 'orders', label: 'All Orders', icon: '📋' },
+    { id: 'unpaid-customers', label: 'Unpaid Customers', icon: '💳' },
+    { id: 'order-records', label: 'Order Records', icon: '📄' },
+    { id: 'create-order', label: 'Create Order', icon: '🛒' },
+  ];
+
   const isProductActive = ['products', 'catalog', 'add-product'].includes(activeTab);
+  const isOrderActive = ['orders', 'unpaid-customers', 'order-records', 'create-order'].includes(activeTab);
+
+  // Auto-expand dropdowns when a sub-item is active
+  useEffect(() => {
+    if (isProductActive && !isCollapsed) {
+      setProductDropdownOpen(true);
+    }
+    if (isOrderActive && !isCollapsed) {
+      setOrderDropdownOpen(true);
+    }
+  }, [activeTab, isCollapsed, isProductActive, isOrderActive]);
 
   return (
     <>
@@ -31,14 +48,14 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 h-full bg-[#2b2b2b] text-white shadow-2xl z-50 transform transition-all duration-300 ease-in-out ${
+        className={`fixed left-0 top-0 h-full bg-[#2b2b2b] text-white shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 ${
           isCollapsed ? 'w-16' : 'w-64'
         }`}
       >
         {/* Logo */}
-        <div className={`flex items-center justify-center h-16 border-b border-gray-600 ${isCollapsed ? 'px-2' : ''}`}>
+        <div className={`flex items-center justify-center h-16 border-b border-gray-600 flex-shrink-0 ${isCollapsed ? 'px-2' : ''}`}>
           {isCollapsed ? (
             <span className="text-lg font-bold">R</span>
           ) : (
@@ -48,7 +65,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
 
         {/* User Profile */}
         {!isCollapsed && (
-          <div className="p-3 border-b border-gray-600">
+          <div className="p-3 border-b border-gray-600 flex-shrink-0">
             <div className="flex items-center space-x-2">
               <div className="w-10 h-10 bg-[#e50914] rounded-full flex items-center justify-center text-sm font-semibold">
                 V
@@ -85,8 +102,27 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
         </div>
 
         {/* Navigation Menu */}
-        <nav className="p-3 space-y-1">
-          {/* Products Dropdown */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-hide min-h-0">
+          {/* Dashboard - First Menu Item */}
+          <button
+            onClick={() => {
+              setActiveTab('overview');
+              onClose(); // Close sidebar on mobile after selection
+              // Scroll to top of the page
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg transition-all duration-200 text-sm ${
+              activeTab === 'overview'
+                ? 'bg-[#e50914] text-white shadow-lg'
+                : 'text-white hover:bg-[#4a4a4a] hover:text-white'
+            }`}
+            title={isCollapsed ? 'Dashboard' : ''}
+          >
+            <span className="text-base">📊</span>
+            {!isCollapsed && <span className="font-medium">Dashboard</span>}
+          </button>
+
+          {/* Products Dropdown - Second Menu Item */}
           <div className="relative">
             <button
               onClick={() => {
@@ -146,6 +182,66 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
             )}
           </div>
 
+          {/* Orders Dropdown - Third Menu Item */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (!isCollapsed) {
+                  setOrderDropdownOpen(!orderDropdownOpen);
+                } else {
+                  // If collapsed, just switch to first order tab
+                  setActiveTab('orders');
+                  onClose();
+                }
+              }}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg transition-all duration-200 text-sm ${
+                isOrderActive
+                  ? 'bg-[#e50914] text-white shadow-lg'
+                  : 'text-white hover:bg-[#4a4a4a] hover:text-white'
+              }`}
+              title={isCollapsed ? 'Orders' : ''}
+            >
+              <span className="text-base">📋</span>
+              {!isCollapsed && (
+                <>
+                  <span className="font-medium flex-1 text-left">Orders</span>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${orderDropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </>
+              )}
+            </button>
+
+            {/* Dropdown Menu */}
+            {!isCollapsed && orderDropdownOpen && (
+              <div className="mt-1 ml-4 space-y-1">
+                {orderSubItems.map((subItem) => (
+                  <button
+                    key={subItem.id}
+                    onClick={() => {
+                      setActiveTab(subItem.id);
+                      setOrderDropdownOpen(false);
+                      onClose(); // Close sidebar on mobile after selection
+                    }}
+                    className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 text-xs ${
+                      activeTab === subItem.id
+                        ? 'bg-[#e50914] text-white shadow-md'
+                        : 'text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
+                    }`}
+                  >
+                    <span className="text-sm">{subItem.icon}</span>
+                    <span className="font-medium">{subItem.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Other Menu Items */}
           {menuItems.map((item) => (
             <button
@@ -167,8 +263,22 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
           ))}
         </nav>
 
+        {/* Visit Website Button */}
+        <div className="mt-auto p-3 border-t border-gray-600 bg-[#2b2b2b] flex-shrink-0">
+          <a
+            href="https://restrobazaar.in/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg text-white hover:bg-[#e50914] hover:text-white transition-all duration-200 text-sm`}
+            title={isCollapsed ? 'Visit Website' : 'Visit RestroBazaar Website'}
+          >
+            <span className="text-base">🌐</span>
+            {!isCollapsed && <span className="font-medium">Visit Website</span>}
+          </a>
+        </div>
+
         {/* Logout Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-600">
+        <div className="p-3 border-t border-gray-600 bg-[#2b2b2b] flex-shrink-0">
           <button
             onClick={onLogout}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg text-white hover:bg-[#e50914] hover:text-white transition-all duration-200 text-sm`}
@@ -179,6 +289,17 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollaps
           </button>
         </div>
       </div>
+
+      {/* Hide Scrollbar Styles */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </>
   );
 };

@@ -1,209 +1,160 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { categoryAPI, vendorProductAPI, getSelectedCityId, wishlistAPI } from '../utils/api';
+import { getSelectedCityId } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { isAuthenticated } from '../utils/auth';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
+import { useCategories, useCategoryBySlug, useVendorProductsByCityAndCategory, useWishlist, useAddToWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
+import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
 
 const Category = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [productsLoading, setProductsLoading] = useState(false);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedCity, setSelectedCity] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState('all');
-  const [allProducts, setAllProducts] = useState([]);
-  const [wishlistItems, setWishlistItems] = useState(new Set());
   const [wishlistLoading, setWishlistLoading] = useState({});
   const [addingToCart, setAddingToCart] = useState({});
   const [quantities, setQuantities] = useState({});
   const [showQuantitySelector, setShowQuantitySelector] = useState({});
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+  const subcategoryScrollRef = useRef(null);
+  
+  // Use flying animation hook
+  const { flyingItems, triggerFlyingAnimation, triggerFlyingAnimationForWishlist } = useFlyingAnimation();
   const dispatch = useAppDispatch();
   const cartItems = useAppSelector(selectCartItems);
 
-  // Fetch categories for sidebar
+  // Get city ID from localStorage
+  const cityId = getSelectedCityId();
+
+  // React Query hooks for categories with caching
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
+  const { data: categoryBySlugData, isLoading: categoryBySlugLoading } = useCategoryBySlug(
+    slug || '',
+    { enabled: !!slug } // Only fetch if slug is provided
+  );
+
+  // Process categories - filter active and sort by priority
+  const categories = useMemo(() => {
+    if (!categoriesData?.success || !categoriesData?.data) return [];
+    return categoriesData.data
+      .filter(cat => cat.isActive !== false)
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  }, [categoriesData]);
+
+  // React Query hooks for products with caching
+  const productFilters = useMemo(() => ({
+    cityId: cityId || undefined,
+    page: selectedSubcategory === 'all' ? page : 1,
+    limit: selectedSubcategory === 'all' ? 20 : 1000, // Fetch all when filtering by subcategory
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  }), [cityId, page, selectedSubcategory]);
+
+  const { 
+    data: productsResponse, 
+    isLoading: productsLoading,
+    error: productsError 
+  } = useVendorProductsByCityAndCategory(
+    selectedCategory?._id || '',
+    productFilters,
+    { 
+      enabled: !!selectedCategory?._id && !!cityId, // Only fetch if category and city are selected
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+    }
+  );
+
+  // Process products data
+  const allProducts = productsResponse?.success && productsResponse?.data 
+    ? productsResponse.data 
+    : [];
+  
+  const totalPages = productsResponse?.pagination?.pages || 1;
+
+  // Filter products by subcategory
+  const products = useMemo(() => {
+    if (selectedSubcategory === 'all') {
+      return allProducts;
+    }
+    return allProducts.filter((product) => {
+      const productSubCategory = product.productId?.subCategory || product.subCategory;
+      return productSubCategory?.trim() === selectedSubcategory.trim();
+    });
+  }, [allProducts, selectedSubcategory]);
+
+  // React Query hook for wishlist with caching
+  const { data: wishlistData } = useWishlist({ 
+    enabled: isAuthenticated() && products.length > 0,
+  });
+
+  // Process wishlist items
+  const wishlistItems = useMemo(() => {
+    if (!wishlistData?.success || !wishlistData?.data?.products) {
+      return new Set();
+    }
+    return new Set(wishlistData.data.products.map(item => item._id));
+  }, [wishlistData]);
+
+  const loading = categoriesLoading || categoryBySlugLoading;
+
+  // Handle category selection based on slug
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await categoryAPI.getAllCategories();
-        if (response.success && response.data) {
-          const activeCategories = response.data
-            .filter(cat => cat.isActive !== false)
-            .sort((a, b) => (b.priority || 0) - (a.priority || 0));
-          setCategories(activeCategories);
-
-          // If slug is provided, find and select that category
-          if (slug) {
-            const category = activeCategories.find(
-              cat => cat.slug === slug || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug
-            );
-            if (category) {
-              console.log('Category found in list:', category.name, 'Subcategories:', category.subcategories);
-              setSelectedCategory(category);
-            } else {
-              // Try to fetch category by slug from API
-              try {
-                const categoryResponse = await categoryAPI.getCategoryBySlug(slug);
-                if (categoryResponse.success && categoryResponse.data) {
-                  console.log('Category fetched by slug:', categoryResponse.data.name, 'Subcategories:', categoryResponse.data.subcategories);
-                  setSelectedCategory(categoryResponse.data);
-                } else {
-                  setError('Category not found');
-                }
-              } catch (err) {
-                console.error('Error fetching category by slug:', err);
-                setError('Category not found');
-              }
-            }
-          } else if (activeCategories.length > 0) {
-            // If no slug, select first category by default
-            setSelectedCategory(activeCategories[0]);
-            navigate(`/category/${activeCategories[0].slug}`, { replace: true });
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-        setError('Failed to load categories');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-
     // Get selected city
     const savedCity = localStorage.getItem(CITY_STORAGE_KEY) || 'Select City';
     setSelectedCity(savedCity);
-  }, [slug]);
 
-  const fetchProducts = async (categoryId, pageNum = 1, fetchAll = false) => {
-    try {
-      setProductsLoading(true);
-      setError('');
-
-      const cityId = getSelectedCityId();
-      if (!cityId) {
-        setError('Please select a city to view products');
-        setProductsLoading(false);
-        return;
-      }
-
-      // If filtering by subcategory, fetch all products (use a large limit)
-      const limit = fetchAll ? 1000 : 20;
-
-      const response = await vendorProductAPI.getVendorProductsByCityAndCategory(categoryId, {
-        page: pageNum,
-        limit: limit,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
-      });
-
-      if (response.success) {
-        const fetchedProducts = response.data || [];
-        console.log('Fetched products count:', fetchedProducts.length);
-        console.log('Sample product:', fetchedProducts[0]);
-        setAllProducts(fetchedProducts); // Store all products
-        
-        // Apply subcategory filter if one is selected
-        if (selectedSubcategory && selectedSubcategory !== 'all') {
-          const filtered = fetchedProducts.filter((product) => {
-            // Check both possible locations for subCategory
-            const productSubCategory = product.productId?.subCategory || product.subCategory;
-            // Trim and compare (in case of whitespace issues)
-            const matches = productSubCategory?.trim() === selectedSubcategory.trim();
-            if (matches) {
-              console.log('Product matches subcategory:', product.productId?.productName, productSubCategory);
-            }
-            return matches;
-          });
-          console.log('Filtered products count:', filtered.length);
-          setProducts(filtered);
-        } else {
-          setProducts(fetchedProducts);
-        }
-        setTotalPages(response.pagination?.pages || 1);
-      } else {
-        console.error('Failed to fetch products:', response.message);
-        setError(response.message || 'Failed to fetch products');
-      }
-    } catch (err) {
-      console.error('Error fetching products:', err);
-      setError(err.message || 'Failed to load products. Please try again.');
-      setProducts([]);
-    } finally {
-      setProductsLoading(false);
+    if (!categories.length && !categoryBySlugLoading && !categoriesLoading) {
+      return;
     }
-  };
 
-  // Fetch products when category is selected
+    if (slug) {
+      // Try to find category in the categories list first (cached)
+      const category = categories.find(
+        cat => cat.slug === slug || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug
+      );
+      
+      if (category) {
+        console.log('Category found in list:', category.name, 'Subcategories:', category.subcategories);
+        setSelectedCategory(category);
+      } else if (categoryBySlugData?.success && categoryBySlugData?.data) {
+        // Use the category fetched by slug (also cached)
+        console.log('Category fetched by slug:', categoryBySlugData.data.name, 'Subcategories:', categoryBySlugData.data.subcategories);
+        setSelectedCategory(categoryBySlugData.data);
+      } else if (!categoryBySlugLoading) {
+        setError('Category not found');
+      }
+    } else if (categories.length > 0) {
+      // If no slug, select first category by default
+      setSelectedCategory(categories[0]);
+      navigate(`/category/${categories[0].slug}`, { replace: true });
+    }
+  }, [slug, categories, categoryBySlugData, categoryBySlugLoading, categoriesLoading, navigate]);
+
+  // Handle product errors
+  useEffect(() => {
+    if (productsError) {
+      setError(productsError.message || 'Failed to load products. Please try again.');
+    } else if (!cityId && selectedCategory) {
+      setError('Please select a city to view products');
+    } else {
+      setError('');
+    }
+  }, [productsError, cityId, selectedCategory]);
+
+  // Reset subcategory when category changes
   useEffect(() => {
     if (selectedCategory) {
-      setSelectedSubcategory('all'); // Reset subcategory when category changes
-      fetchProducts(selectedCategory._id, page, false);
+      setSelectedSubcategory('all');
+      setPage(1); // Reset to first page when category changes
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, page]);
-
-  // When subcategory changes, refetch all products to filter properly
-  useEffect(() => {
-    if (selectedCategory && selectedSubcategory && selectedSubcategory !== 'all') {
-      // Fetch all products when filtering by subcategory
-      fetchProducts(selectedCategory._id, 1, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubcategory]);
-
-  // Filter products when subcategory changes (client-side filter as backup)
-  useEffect(() => {
-    if (selectedSubcategory && selectedSubcategory !== 'all' && allProducts.length > 0) {
-      const filtered = allProducts.filter((product) => {
-        // Check both possible locations for subCategory
-        const productSubCategory = product.productId?.subCategory || product.subCategory;
-        // Trim and compare (in case of whitespace issues)
-        return productSubCategory?.trim() === selectedSubcategory.trim();
-      });
-      setProducts(filtered);
-    } else if (selectedSubcategory === 'all') {
-      setProducts(allProducts);
-    }
-  }, [selectedSubcategory, allProducts]);
-
-  // Fetch wishlist items when products change
-  useEffect(() => {
-    const fetchWishlist = async () => {
-      if (!isAuthenticated() || products.length === 0) {
-        setWishlistItems(new Set());
-        return;
-      }
-      
-      try {
-        const response = await wishlistAPI.getWishlist();
-        if (response.success && response.data?.products) {
-          const wishlistProductIds = new Set(
-            response.data.products.map(item => item._id)
-          );
-          setWishlistItems(wishlistProductIds);
-        }
-      } catch (err) {
-        // Silently fail if user is not authenticated
-        if (err.response?.status !== 401 && err.response?.status !== 403) {
-          console.error('Error fetching wishlist:', err);
-        }
-        setWishlistItems(new Set());
-      }
-    };
-    
-    fetchWishlist();
-  }, [products]);
+  }, [selectedCategory?._id]); // Only when category ID changes
 
   // Initialize quantities and show quantity selector for products in cart
   useEffect(() => {
@@ -253,6 +204,52 @@ const Category = () => {
     setPage(1); // Reset to first page when filtering
   };
 
+  const checkScrollButtons = () => {
+    if (subcategoryScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = subcategoryScrollRef.current;
+      const canScroll = scrollWidth > clientWidth;
+      setShowLeftArrow(canScroll && scrollLeft > 0);
+      setShowRightArrow(canScroll && scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  const scrollSubcategories = (direction) => {
+    if (subcategoryScrollRef.current) {
+      const scrollAmount = 200; // pixels to scroll
+      const newScrollLeft = subcategoryScrollRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+      subcategoryScrollRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+      // Check button visibility after scroll
+      setTimeout(checkScrollButtons, 100);
+    }
+  };
+
+  // Check scroll position on mount and when subcategories change
+  useEffect(() => {
+    const scrollElement = subcategoryScrollRef.current;
+    if (scrollElement) {
+      // Initial check
+      setTimeout(checkScrollButtons, 100);
+      // Add scroll listener
+      scrollElement.addEventListener('scroll', checkScrollButtons);
+      
+      // Check scroll buttons on resize
+      const handleResize = () => {
+        checkScrollButtons();
+      };
+      
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        scrollElement.removeEventListener('scroll', checkScrollButtons);
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [selectedCategory, selectedCategory?.subcategories]);
+
   const getProductPrice = (product) => {
     if (product.priceType === 'single' && product.pricing?.single?.price) {
       return `₹${product.pricing.single.price}`;
@@ -270,31 +267,39 @@ const Category = () => {
     return 'https://via.placeholder.com/300x300?text=Product';
   };
 
+  // React Query mutation hooks for wishlist
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+
   const handleWishlistToggle = async (e, product) => {
     e.stopPropagation(); // Prevent card click navigation
     
     if (!isAuthenticated()) {
+      // Store product ID to add to wishlist after login
+      localStorage.setItem('pendingWishlistProduct', product._id);
       navigate('/sign-in');
       return;
     }
     
     if (!product?._id) return;
     
+    const isInWishlist = wishlistItems.has(product._id);
+    
+    // Only trigger animation when adding to wishlist (not removing)
+    if (!isInWishlist) {
+      const productImage = getProductImage(product);
+      triggerFlyingAnimationForWishlist(e.currentTarget, productImage);
+    }
+    
     setWishlistLoading(prev => ({ ...prev, [product._id]: true }));
     
     try {
-      const isInWishlist = wishlistItems.has(product._id);
-      
       if (isInWishlist) {
-        await wishlistAPI.removeFromWishlist(product._id);
-        setWishlistItems(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(product._id);
-          return newSet;
-        });
+        await removeFromWishlistMutation.mutateAsync(product._id);
+        // React Query will automatically refetch and update wishlistItems via cache invalidation
       } else {
-        await wishlistAPI.addToWishlist(product._id);
-        setWishlistItems(prev => new Set(prev).add(product._id));
+        await addToWishlistMutation.mutateAsync(product._id);
+        // React Query will automatically refetch and update wishlistItems via cache invalidation
       }
     } catch (err) {
       console.error('Error updating wishlist:', err);
@@ -393,6 +398,7 @@ const Category = () => {
     return null;
   };
 
+
   const handleAddToCartClick = async (e, product) => {
     e.stopPropagation(); // Prevent card click navigation
     
@@ -407,11 +413,31 @@ const Category = () => {
     const productId = product._id;
     const minQty = product.minimumOrderQuantity || 1;
     
+    // Get product image for animation
+    const productImage = getProductImage(product);
+    
+    // Trigger flying animation
+    triggerFlyingAnimation(e.currentTarget, productImage);
+    
     // Check if product is already in cart
     const cartItem = cartItems.find(item => item.vendorProductId === productId);
     
     if (!cartItem) {
       // Product not in cart - add to cart with minimum quantity
+      try {
+        const selectedPrice = getSelectedPriceForQuantity(product, minQty);
+        if (selectedPrice) {
+          dispatch(addToCart({
+            vendorProduct: product,
+            quantity: minQty,
+            selectedPrice: selectedPrice,
+          }));
+        }
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+      }
+    } else {
+      // Product already in cart - add minimum orderable quantity
       try {
         const selectedPrice = getSelectedPriceForQuantity(product, minQty);
         if (selectedPrice) {
@@ -444,6 +470,12 @@ const Category = () => {
     const quantity = getProductQuantity(product);
     setAddingToCart(prev => ({ ...prev, [product._id]: true }));
     
+    // Get product image for animation
+    const productImage = getProductImage(product);
+    
+    // Trigger flying animation
+    triggerFlyingAnimation(e.currentTarget, productImage);
+    
     try {
       // Get the selected price based on quantity
       const selectedPrice = getSelectedPriceForQuantity(product, quantity);
@@ -459,9 +491,10 @@ const Category = () => {
       const existingCartItem = cartItems.find(item => item.id === cartItemId);
       
       if (existingCartItem) {
-        // Update quantity if item exists
-        dispatch(updateQuantity({ itemId: cartItemId, quantity: existingCartItem.quantity + quantity }));
-        alert(`Added ${quantity} more item(s) to cart!`);
+        // Update quantity if item exists - use minimum orderable quantity
+        const minQty = product.minimumOrderQuantity || 1;
+        dispatch(updateQuantity({ itemId: cartItemId, quantity: existingCartItem.quantity + minQty }));
+        alert(`Added ${minQty} more item(s) to cart!`);
       } else {
         // Add new item to cart
         dispatch(addToCart({
@@ -553,41 +586,21 @@ const Category = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 w-full relative">
+      {/* Flying Animation Component */}
+      <FlyingAnimation flyingItems={flyingItems} />
+      
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl lg:max-w-[1600px]">
        
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Mobile Sidebar Toggle */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow mb-4"
-          >
-            <svg
-              className="w-5 h-5 text-gray-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-            <span className="font-medium text-gray-700">
-              {sidebarOpen ? 'Hide' : 'Show'} Categories
-            </span>
-          </button>
-
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 xl:gap-6">
           {/* Sidebar - Categories */}
           <aside
             className={`lg:w-64 flex-shrink-0 ${
               sidebarOpen ? 'block' : 'hidden'
             } lg:block`}
           >
-            <div className="bg-white rounded-lg shadow-md p-4 lg:sticky lg:top-4">
+            <div className="bg-white rounded-lg shadow-md p-4 sticky top-[104px] sm:top-[112px] md:top-[120px] lg:top-[120px] self-start z-20">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <svg
                   className="w-5 h-5 text-red-600"
@@ -604,7 +617,7 @@ const Category = () => {
                 </svg>
                 Categories
               </h2>
-              <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+              <div className="space-y-1 max-h-[calc(100vh-200px)] overflow-y-auto hide-scrollbar">
                 {categories.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">No categories available</p>
                 ) : (
@@ -612,10 +625,10 @@ const Category = () => {
                     <button
                       key={category._id}
                       onClick={() => handleCategorySelect(category)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                      className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-200 border ${
                         selectedCategory?._id === category._id
-                          ? 'bg-red-600 text-white font-semibold shadow-md'
-                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm'
+                          ? 'bg-red-600 text-white font-semibold shadow-md border-red-700'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border-gray-300'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -623,7 +636,7 @@ const Category = () => {
                           <img
                             src={category.image}
                             alt={category.name}
-                            className="w-8 h-8 rounded object-cover flex-shrink-0"
+                            className="w-10 h-10 rounded object-cover flex-shrink-0"
                             onError={(e) => {
                               e.target.style.display = 'none';
                             }}
@@ -639,7 +652,7 @@ const Category = () => {
           </aside>
 
           {/* Main Content - Products */}
-          <main className="flex-1 min-w-0">
+          <main className="flex-1 min-w-0 w-full">
             {!selectedCategory ? (
               <div className="bg-white rounded-lg shadow-md p-12 text-center">
                 <svg
@@ -685,30 +698,82 @@ const Category = () => {
                     {selectedCategory.subcategories && Array.isArray(selectedCategory.subcategories) && selectedCategory.subcategories.length > 0 ? (
                       <>
                         <h3 className="text-xs font-semibold text-gray-700 mb-2">Filter by Subcategory:</h3>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => handleSubcategorySelect('all')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                              selectedSubcategory === 'all'
-                                ? 'bg-red-600 text-white shadow-md'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            All
-                          </button>
-                          {selectedCategory.subcategories.map((subcat, index) => (
+                        <div className="relative">
+                          {/* Left Scroll Button - Desktop Only */}
+                          {showLeftArrow && (
                             <button
-                              key={index}
-                              onClick={() => handleSubcategorySelect(subcat)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                selectedSubcategory === subcat
-                                  ? 'bg-red-600 text-white shadow-md'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
+                              onClick={() => scrollSubcategories('left')}
+                              className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full p-1 shadow-md transition-all hover:shadow-lg"
+                              aria-label="Scroll left"
                             >
-                              {subcat}
+                              <svg
+                                className="w-4 h-4 text-red-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 19l-7-7 7-7"
+                                />
+                              </svg>
                             </button>
-                          ))}
+                          )}
+                          {/* Right Scroll Button - Desktop Only */}
+                          {showRightArrow && (
+                            <button
+                              onClick={() => scrollSubcategories('right')}
+                              className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-red-50 hover:bg-red-100 border border-red-200 rounded-full p-1 shadow-md transition-all hover:shadow-lg"
+                              aria-label="Scroll right"
+                            >
+                              <svg
+                                className="w-4 h-4 text-red-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                          <div
+                            ref={subcategoryScrollRef}
+                            className={`overflow-x-auto hide-scrollbar ${showLeftArrow ? 'lg:pl-10' : ''} ${showRightArrow ? 'lg:pr-10' : ''}`}
+                            style={{ WebkitOverflowScrolling: 'touch' }}
+                          >
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleSubcategorySelect('all')}
+                                className={`px-3 py-1 rounded text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+                                  selectedSubcategory === 'all'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                                }`}
+                              >
+                                All
+                              </button>
+                              {selectedCategory.subcategories.map((subcat, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => handleSubcategorySelect(subcat)}
+                                  className={`px-3 py-1 rounded text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+                                    selectedSubcategory === subcat
+                                      ? 'bg-red-600 text-white shadow-md'
+                                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {subcat}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -772,11 +837,11 @@ const Category = () => {
                 ) : (
                   <>
                     {/* Products Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 mb-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-1.5 sm:gap-2 lg:gap-2 xl:gap-2.5 2xl:gap-3 mb-8">
                       {products.map((product) => (
                         <div
                           key={product._id}
-                          className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
+                          className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer flex flex-col"
                           onClick={() => {
                             const categorySlug = selectedCategory?.slug || selectedCategory?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                             if (categorySlug) {
@@ -787,20 +852,21 @@ const Category = () => {
                           }}
                         >
                           {/* Product Image */}
-                          <div className="aspect-square overflow-hidden bg-gray-100 relative">
+                          <div className="aspect-square overflow-hidden bg-white relative flex items-center justify-center">
                             <img
                               src={getProductImage(product)}
                               alt={product.productId?.productName || 'Product'}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-contain p-2 hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
                                 e.target.src = 'https://via.placeholder.com/300x300?text=Product';
                               }}
                             />
-                            {/* Wishlist Button - Top Left Corner */}
+                           
+                            {/* Wishlist Button - Top Right Corner */}
                             <button
                               onClick={(e) => handleWishlistToggle(e, product)}
                               disabled={wishlistLoading[product._id]}
-                              className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2 p-1.5 sm:p-2 rounded-full shadow-lg transition-all z-10 ${
+                              className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1.5 sm:p-2 rounded-full shadow-lg transition-all z-10 ${
                                 wishlistItems.has(product._id)
                                   ? 'bg-red-600 text-white hover:bg-red-700'
                                   : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-300'
@@ -821,37 +887,33 @@ const Category = () => {
                                 />
                               </svg>
                             </button>
-                            {/* Stock Status Badge on Image */}
-                            {product.availableStock !== undefined && (
-                              <span className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-semibold shadow-md ${
-                                product.availableStock > 0
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-red-500 text-white'
-                              }`}>
-                                {product.availableStock > 0 ? 'In Stock' : 'Out of Stock'}
-                              </span>
-                            )}
                           </div>
 
                           {/* Product Info */}
-                          <div className="p-4">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
+                          <div className="p-4 flex flex-col flex-1">
+                            <h3 className="text-xs font-semibold text-gray-900 mb-2 line-clamp-2 h-8">
                               {product.productId?.productName || 'Product Name'}
                             </h3>
-                            
-                            {product.productId?.shortDescription && (
-                              <p className="text-xs text-gray-600 mb-3 line-clamp-2">
-                                {product.productId.shortDescription}
-                              </p>
-                            )}
 
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-bold text-red-600">
-                                {getProductPrice(product)}
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm lg:text-base text-gray-900 font-bold  whitespace-nowrap truncate">
+                                {product.priceType === 'single' && product.pricing?.single?.price ? (
+                                  `₹${product.pricing.single.price}`
+                                ) : product.priceType === 'bulk' && product.pricing?.bulk?.length > 0 ? (
+                                  <>
+                                    ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}{' '}
+                                    {/* <span className="text-[10px]  font-semibold">
+                                      ({product.pricing.bulk[product.pricing.bulk.length - 1].minQty}-{product.pricing.bulk[product.pricing.bulk.length - 1].maxQty} pcs)
+                                    </span> */}
+                                  </>
+                                ) : (
+                                  'Price on request'
+                                )}
                               </span>
                             </div>
 
                             {/* Add to Cart Button / Quantity Selector */}
+                            <div className="mt-2">
                             {product.availableStock > 0 ? (
                               (() => {
                                 // Check if product is in cart
@@ -860,7 +922,7 @@ const Category = () => {
                                 
                                 return shouldShowQuantitySelector ? (
                                 // Show Quantity Selector with light gray background and black border (same size as Add to Cart button)
-                                <div className="w-full bg-gray-50 border border-black rounded-lg flex items-stretch overflow-hidden" style={{ minHeight: '40px' }}>
+                                <div className="w-full bg-gray-50 border border-black rounded-lg flex items-stretch overflow-hidden" style={{ minHeight: '32px' }}>
                                   <button
                                     onClick={(e) => handleQuantityChange(e, product, -(product.minimumOrderQuantity || 1))}
                                     disabled={false}
@@ -911,7 +973,8 @@ const Category = () => {
                                 // Show initial Add to Cart Button
                                 <button
                                   onClick={(e) => handleAddToCartClick(e, product)}
-                                  className="w-full py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
+                                  className="w-full bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
+                                  style={{ minHeight: '32px' }}
                                 >
                                   <svg
                                     className="w-4 h-4"
@@ -933,11 +996,13 @@ const Category = () => {
                             ) : (
                               <button
                                 disabled
-                                className="w-full py-2 bg-gray-400 text-white rounded-lg font-semibold cursor-not-allowed text-xs sm:text-sm"
+                                className="w-full bg-gray-400 text-white rounded-lg font-semibold cursor-not-allowed text-xs sm:text-sm"
+                                style={{ minHeight: '32px' }}
                               >
                                 Out of Stock
                               </button>
                             )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -993,6 +1058,13 @@ const Category = () => {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #a0aec0;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
         }
         .line-clamp-2 {
           display: -webkit-box;

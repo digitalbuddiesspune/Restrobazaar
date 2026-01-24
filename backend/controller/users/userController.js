@@ -1,8 +1,10 @@
 import User from "../../models/users/user.js";
 import Cart from "../../models/users/cart.js";
 import Wishlist from "../../models/users/wishlist.js";
+import Address from "../../models/users/address.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { sendAndSaveOTP, verifyOTPFromDB } from "../../services/otpService.js";
 
 // @desc    Get all users
 // @route   GET /api/v1/admin/users
@@ -20,13 +22,26 @@ export const getAllUsers = async (req, res) => {
     // Build query
     const query = {};
 
-    // Search by name, email, or phone
+    // Search by name, email, phone, or city
     if (search) {
+      // First, find addresses matching the city search
+      const matchingAddresses = await Address.find({
+        city: { $regex: search, $options: "i" }
+      }).select('userId');
+      
+      const cityUserIds = matchingAddresses.map(addr => addr.userId);
+      
+      // Build search query: name, email, phone OR city (via userIds from addresses)
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
         { phone: { $regex: search, $options: "i" } },
       ];
+      
+      // If city matches found, add userIds to search
+      if (cityUserIds.length > 0) {
+        query.$or.push({ _id: { $in: cityUserIds } });
+      }
     }
 
     // Pagination
@@ -48,12 +63,54 @@ export const getAllUsers = async (req, res) => {
       .skip(skip)
       .limit(limitNum);
 
+    // Get addresses for all users
+    const userIds = users.map(user => user._id);
+    const addresses = await Address.find({ userId: { $in: userIds } })
+      .sort({ isDefault: -1, createdAt: -1 }); // Default address first, then newest
+    
+    // Debug: Log addresses found
+    console.log(`Found ${addresses.length} addresses for ${userIds.length} users`);
+
+    // Create a map of userId to default address (or first address)
+    const addressMap = {};
+    addresses.forEach(address => {
+      // Handle both ObjectId and string userId - address.userId is ObjectId from schema
+      const userIdStr = address.userId ? address.userId.toString() : null;
+      if (userIdStr) {
+        // Prefer default address, otherwise use first one found
+        if (!addressMap[userIdStr]) {
+          addressMap[userIdStr] = address;
+        } else if (address.isDefault && !addressMap[userIdStr].isDefault) {
+          addressMap[userIdStr] = address;
+        }
+      }
+    });
+
+    // Add address and city to each user
+    const usersWithAddress = users.map(user => {
+      const userObj = user.toObject();
+      const userIdStr = user._id.toString();
+      const userAddress = addressMap[userIdStr];
+      if (userAddress && userAddress.addressLine1) {
+        const addressParts = [userAddress.addressLine1];
+        if (userAddress.addressLine2 && userAddress.addressLine2.trim()) {
+          addressParts.push(userAddress.addressLine2);
+        }
+        userObj.address = addressParts.join(', ');
+        userObj.city = userAddress.city || null;
+      } else {
+        userObj.address = null;
+        userObj.city = null;
+      }
+      return userObj;
+    });
+
     // Get total count
     const total = await User.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      data: users,
+      data: usersWithAddress,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -378,13 +435,90 @@ export const getUserByEmail = async (req, res) => {
   }
 };
 
+// @desc    Get user cart
+// @route   GET /api/v1/users/:id/cart
+// @access  Private (User can get own cart)
+export const getUserCart = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId || req.user?.id;
+
+    // Users can only view their own cart
+    if (userId !== id) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this user's cart",
+      });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Find cart for the user
+    let cart = await Cart.findOne({ user: id })
+      .populate({
+        path: "items.product",
+        select: "-__v",
+        populate: {
+          path: "productId",
+          select: "productName images img unit",
+        },
+      })
+      .select("-__v");
+
+    // If cart doesn't exist, create an empty one
+    if (!cart) {
+      cart = new Cart({
+        user: id,
+        items: [],
+      });
+      await cart.save();
+      
+      // Update user's cart reference
+      user.cart = cart._id;
+      await user.save();
+
+      // Populate the newly created cart
+      cart = await Cart.findById(cart._id)
+        .populate({
+          path: "items.product",
+          select: "-__v",
+          populate: {
+            path: "productId",
+            select: "productName images img unit",
+          },
+        })
+        .select("-__v");
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        cart: cart,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching cart",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Update user cart
 // @route   PATCH /api/v1/users/:id/cart
 // @access  Private (User can update own cart)
 export const updateUserCart = async (req, res) => {
   try {
     const { id } = req.params;
-    const { cart } = req.body;
+    const { items, deliveryCity, deliveryPincode } = req.body; // Accept items array instead of cart object
     const userId = req.user?.userId || req.user?.id;
 
     // Users can only update their own cart
@@ -404,18 +538,81 @@ export const updateUserCart = async (req, res) => {
       });
     }
 
-    user.cart = cart;
+    // Validate items array
+    if (!Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: "Items must be an array",
+      });
+    }
+
+    // Find or create cart for the user
+    let cart = await Cart.findOne({ user: id });
+
+    if (!cart) {
+      // Create new cart if it doesn't exist
+      cart = new Cart({
+        user: id,
+        items: [],
+        deliveryCity: deliveryCity || null,
+        deliveryPincode: deliveryPincode || null,
+      });
+    }
+
+    // Map frontend cart items to Cart schema format
+    const cartItems = items.map((item) => {
+      // Validate required fields
+      if (!item.vendorProductId || !item.quantity || item.price === undefined) {
+        throw new Error(
+          "Each cart item must have vendorProductId, quantity, and price"
+        );
+      }
+
+      return {
+        product: item.vendorProductId, // Reference to VendorProduct
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        productName: item.productName || "Product",
+        productImage: item.productImage || "",
+      };
+    });
+
+    // Update cart items
+    cart.items = cartItems;
+
+    // Update delivery info if provided
+    if (deliveryCity !== undefined) {
+      cart.deliveryCity = deliveryCity;
+    }
+    if (deliveryPincode !== undefined) {
+      cart.deliveryPincode = deliveryPincode;
+    }
+
+    // Save cart (totalAmount will be calculated by pre-save hook)
+    await cart.save();
+
+    // Update user's cart reference
+    user.cart = cart._id;
     await user.save();
 
-    const updatedUser = await User.findById(id).populate({
-      path: "cart",
-      select: "-__v",
-    });
+    // Populate cart with product details
+    const populatedCart = await Cart.findById(cart._id)
+      .populate({
+        path: "items.product",
+        select: "-__v",
+        populate: {
+          path: "productId",
+          select: "productName images img unit",
+        },
+      })
+      .select("-__v");
 
     res.status(200).json({
       success: true,
       message: "Cart updated successfully",
-      data: updatedUser,
+      data: {
+        cart: populatedCart,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -929,6 +1126,370 @@ export const removeFromWishlist = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error removing from wishlist",
+      error: error.message,
+    });
+  }
+};
+
+// ==================== OTP ENDPOINTS ====================
+
+// @desc    Send OTP for signup
+// @route   POST /api/v1/users/send-otp-signup
+// @access  Public
+export const sendOTPForSignup = async (req, res) => {
+  try {
+    const { phone, email } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    // Validate and clean phone number
+    const cleanedPhone = phone.replace(/\D/g, "");
+    let validPhone = cleanedPhone;
+    
+    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+      validPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      validPhone = cleanedPhone.substring(1);
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(validPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid phone number",
+      });
+    }
+
+    // Check if user with phone number already exists
+    const existingUserByPhone = await User.findOne({ phone: validPhone });
+    if (existingUserByPhone) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this phone number already exists",
+      });
+    }
+
+    // Send OTP
+    const result = await sendAndSaveOTP(validPhone, email || null, "signup");
+
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: result.message || "OTP sent successfully to your phone number",
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message || "Failed to send OTP. Please try again.",
+      });
+    }
+  } catch (error) {
+    console.error("Error sending OTP for signup:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error sending OTP",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Verify OTP for signup and create user
+// @route   POST /api/v1/users/verify-otp-signup
+// @access  Public
+export const verifyOTPAndSignup = async (req, res) => {
+  try {
+    const { name, email, phone, password, otp } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !phone || !password || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, phone, password, and OTP are required",
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Validate and clean phone number
+    const cleanedPhone = phone.replace(/\D/g, "");
+    let validPhone = cleanedPhone;
+    
+    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+      validPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      validPhone = cleanedPhone.substring(1);
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(validPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid phone number",
+      });
+    }
+
+    // Verify OTP
+    const isOTPValid = await verifyOTPFromDB(validPhone, otp, "signup");
+
+    if (!isOTPValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP. Please request a new OTP.",
+      });
+    }
+
+    // Check if user with email already exists
+    const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
+    if (existingUserByEmail) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
+
+    // Check if user with phone number already exists
+    const existingUserByPhone = await User.findOne({ phone: validPhone });
+    if (existingUserByPhone) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this phone number already exists",
+      });
+    }
+
+    // Create user (password will be hashed by pre-save hook)
+    const user = await User.create({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      phone: validPhone,
+      password,
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "30d",
+      }
+    );
+
+    // Set JWT in HTTP-only cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: "/",
+    };
+
+    res.cookie("token", token, cookieOptions);
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: {
+        id: userResponse._id,
+        name: userResponse.name,
+        email: userResponse.email,
+        role: userResponse.role || "user",
+      },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email or phone already exists",
+      });
+    }
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        error: error.message,
+      });
+    }
+
+    console.error("Error in verifyOTPAndSignup:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error registering user",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Send OTP for login
+// @route   POST /api/v1/users/send-otp-login
+// @access  Public
+export const sendOTPForLogin = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    // Validate and clean phone number
+    const cleanedPhone = phone.replace(/\D/g, "");
+    let validPhone = cleanedPhone;
+    
+    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+      validPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      validPhone = cleanedPhone.substring(1);
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(validPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid phone number",
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ phone: validPhone });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this phone number. Please sign up first.",
+      });
+    }
+
+    // Send OTP
+    const result = await sendAndSaveOTP(validPhone, user.email || null, "login");
+
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: result.message || "OTP sent successfully to your phone number",
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message || "Failed to send OTP. Please try again.",
+      });
+    }
+  } catch (error) {
+    console.error("Error sending OTP for login:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error sending OTP",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Verify OTP and login
+// @route   POST /api/v1/users/verify-otp-login
+// @access  Public
+export const verifyOTPAndLogin = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+
+    if (!phone || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number and OTP are required",
+      });
+    }
+
+    // Validate and clean phone number
+    const cleanedPhone = phone.replace(/\D/g, "");
+    let validPhone = cleanedPhone;
+    
+    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+      validPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      validPhone = cleanedPhone.substring(1);
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(validPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid phone number",
+      });
+    }
+
+    // Verify OTP
+    const isOTPValid = await verifyOTPFromDB(validPhone, otp, "login");
+
+    if (!isOTPValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP. Please request a new OTP.",
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ phone: validPhone });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "30d",
+      }
+    );
+
+    // Set JWT in HTTP-only cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: "/",
+    };
+
+    res.cookie("token", token, cookieOptions);
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        id: userResponse._id,
+        name: userResponse.name,
+        email: userResponse.email,
+        role: userResponse.role || "user",
+      },
+    });
+  } catch (error) {
+    console.error("Error in verifyOTPAndLogin:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error logging in",
       error: error.message,
     });
   }

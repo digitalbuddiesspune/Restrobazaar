@@ -7,7 +7,15 @@ import {
   updateVendorPaymentStatus,
   updateVendorOrderItems,
   getVendorOrderStats,
+  createOrderForUser,
 } from '../../controller/vendor/vendorOrderController.js';
+import { getVendorUsers } from '../../controller/vendor/vendorUserController.js';
+import {
+  getUserAddresses,
+  createUserAddress,
+  updateUserAddress,
+  deleteUserAddress,
+} from '../../controller/vendor/vendorAddressController.js';
 import { authenticate, authorize } from '../../middleware/authMiddleware.js';
 
 // Vendor order routes - All require vendor authentication
@@ -17,6 +25,16 @@ vendorOrderRouter.get('/vendor/orders/:id', authenticate, authorize('vendor'), g
 vendorOrderRouter.patch('/vendor/orders/:id/status', authenticate, authorize('vendor'), updateVendorOrderStatus);
 vendorOrderRouter.patch('/vendor/orders/:id/payment-status', authenticate, authorize('vendor'), updateVendorPaymentStatus);
 vendorOrderRouter.patch('/vendor/orders/:id/items', authenticate, authorize('vendor'), updateVendorOrderItems);
+
+// Vendor user routes - For creating orders on behalf of users
+vendorOrderRouter.get('/vendor/users', authenticate, authorize('vendor'), getVendorUsers);
+vendorOrderRouter.post('/vendor/orders/create-for-user', authenticate, authorize('vendor'), createOrderForUser);
+
+// Vendor address routes - For managing user addresses
+vendorOrderRouter.get('/vendor/addresses/user/:userId', authenticate, authorize('vendor'), getUserAddresses);
+vendorOrderRouter.post('/vendor/addresses', authenticate, authorize('vendor'), createUserAddress);
+vendorOrderRouter.put('/vendor/addresses/:id', authenticate, authorize('vendor'), updateUserAddress);
+vendorOrderRouter.delete('/vendor/addresses/:id', authenticate, authorize('vendor'), deleteUserAddress);
 
 export default vendorOrderRouter;
 

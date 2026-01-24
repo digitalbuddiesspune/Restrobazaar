@@ -1,5 +1,8 @@
 import Order from '../../models/users/order.js';
 import VendorProduct from '../../models/vendor/vendorProductSchema.js';
+import Vendor from '../../models/admin/vendor.js';
+import Address from '../../models/users/address.js';
+import Coupon from '../../models/vendor/coupon.js';
 
 // @desc    Get orders for a vendor (orders containing vendor's products)
 // @route   GET /api/v1/vendor/orders
@@ -17,7 +20,46 @@ export const getVendorOrders = async (req, res) => {
       endDate,
     } = req.query;
 
-    // Get all vendor products for this vendor to extract productIds
+    // Get vendor's service cities for display purposes
+    const vendor = await Vendor.findById(vendorId).select('serviceCities').populate('serviceCities', 'name displayName');
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found',
+      });
+    }
+
+    const vendorServiceCityIds = vendor.serviceCities.map(city => 
+      city._id ? city._id.toString() : city.toString()
+    );
+
+    if (vendorServiceCityIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          pages: 0,
+        },
+      });
+    }
+
+    // Create a map of service city IDs to city data for display
+    const serviceCityMap = {};
+    vendor.serviceCities.forEach((city) => {
+      if (city && city._id) {
+        const cityIdStr = city._id.toString();
+        serviceCityMap[cityIdStr] = {
+          cityId: cityIdStr,
+          cityName: city.displayName || city.name || 'N/A',
+          cityData: city
+        };
+      }
+    });
+
+    // Get vendor products for filtering order items
     const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
     const vendorProductIds = vendorProducts.map((vp) => vp.productId);
 
@@ -34,9 +76,11 @@ export const getVendorOrders = async (req, res) => {
       });
     }
 
-    // Build query for orders that contain vendor's products
+    // Build query using the new vendorId and vendorServiceCityId fields
+    // This is much more efficient than the previous approach
     const query = {
-      'items.productId': { $in: vendorProductIds },
+      vendorId: vendorId,
+      vendorServiceCityId: { $in: vendorServiceCityIds },
     };
 
     // Add filters
@@ -71,18 +115,17 @@ export const getVendorOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
-      .populate('userId', 'name email phone');
-
-    // Get total count
-    const total = await Order.countDocuments(query);
+      .populate('userId', 'name email phone')
+      .populate('vendorServiceCityId', 'name displayName');
 
     // Filter order items to show only vendor's products
     const filteredOrders = orders.map((order) => {
-      const vendorOrderItems = order.items.filter((item) =>
-        vendorProductIds.some(
-          (vpId) => vpId.toString() === item.productId.toString()
-        )
-      );
+      const vendorOrderItems = order.items.filter((item) => {
+        const productIdStr = item.productId.toString();
+        return vendorProductIds.some(
+          (vpId) => vpId.toString() === productIdStr
+        );
+      });
 
       // Calculate vendor's portion of the order
       const vendorOrderTotal = vendorOrderItems.reduce(
@@ -90,13 +133,43 @@ export const getVendorOrders = async (req, res) => {
         0
       );
 
+      const orderObj = order.toObject();
+      
+      // Get city info from the populated vendorServiceCityId
+      const orderCityInfo = order.vendorServiceCityId ? {
+        cityId: order.vendorServiceCityId._id?.toString() || order.vendorServiceCityId.toString(),
+        cityName: order.vendorServiceCityId.displayName || order.vendorServiceCityId.name || 'N/A',
+        cityData: order.vendorServiceCityId
+      } : { cityName: 'N/A' };
+      
+      // Format order with all required fields for records view
       return {
-        ...order.toObject(),
+        ...orderObj,
         items: vendorOrderItems,
         vendorOrderTotal,
         totalItems: vendorOrderItems.length,
+        // Add formatted fields for records view
+        order_id: orderObj._id.toString(),
+        user_id: orderObj.userId?._id?.toString() || orderObj.userId?.toString() || '',
+        Customer_Name: orderObj.deliveryAddress?.name || orderObj.userId?.name || 'N/A',
+        Phone: orderObj.deliveryAddress?.phone || orderObj.userId?.phone || 'N/A',
+        order_date_and_time: orderObj.createdAt || new Date(),
+        sub_total: orderObj.billingDetails?.cartTotal || 0,
+        Total_Tax: orderObj.billingDetails?.gstAmount || 0,
+        Net_total: orderObj.billingDetails?.totalAmount || 0,
+        Coupon_amount: orderObj.couponAmount || 0,
+        Order_status: orderObj.orderStatus || 'pending',
+        Payment_mode: orderObj.paymentMethod || 'N/A',
+        Payment_status: orderObj.paymentStatus || 'pending',
+        delivery_date: orderObj.deliveryDate || null,
+        Email: orderObj.userId?.email || 'N/A',
+        // Show vendor's service city instead of customer's delivery address city
+        City: orderCityInfo.cityName || 'N/A',
       };
     });
+
+    // Get total count using the same query
+    const total = await Order.countDocuments(query);
 
     res.status(200).json({
       success: true,
@@ -229,6 +302,68 @@ export const updateVendorOrderStatus = async (req, res) => {
         success: false,
         message: 'Forbidden - This order does not contain your products',
       });
+    }
+
+    // Prevent status changes if order is already delivered or cancelled
+    if (order.orderStatus === 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot change status of a delivered order',
+      });
+    }
+
+    if (order.orderStatus === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot change status of a cancelled order',
+      });
+    }
+
+    // Store previous status for stock management
+    const previousStatus = order.orderStatus;
+
+    // Handle stock reduction/restoration based on status change
+    if (orderStatus === 'confirmed' && previousStatus !== 'confirmed') {
+      // Reduce stock when order is confirmed
+      for (const item of order.items) {
+        // Find the vendor product for this item
+        // Match by productId (global Product ID), vendorId, and cityId (from order or vendorServiceCityId)
+        const vendorProduct = await VendorProduct.findOne({
+          productId: item.productId,
+          vendorId: order.vendorId || vendorId,
+          cityId: order.vendorServiceCityId || order.cityId,
+        });
+
+        if (vendorProduct) {
+          // Check if sufficient stock is available
+          if (vendorProduct.availableStock < item.quantity) {
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient stock for ${item.productName}. Available: ${vendorProduct.availableStock}, Required: ${item.quantity}`,
+            });
+          }
+
+          // Reduce stock
+          vendorProduct.availableStock -= item.quantity;
+          await vendorProduct.save();
+        }
+      }
+    } else if (orderStatus === 'cancelled' && previousStatus === 'confirmed') {
+      // Restore stock when order is cancelled (only if it was previously confirmed)
+      for (const item of order.items) {
+        // Find the vendor product for this item
+        const vendorProduct = await VendorProduct.findOne({
+          productId: item.productId,
+          vendorId: order.vendorId || vendorId,
+          cityId: order.vendorServiceCityId || order.cityId,
+        });
+
+        if (vendorProduct) {
+          // Restore stock
+          vendorProduct.availableStock += item.quantity;
+          await vendorProduct.save();
+        }
+      }
     }
 
     // Update order status
@@ -375,42 +510,70 @@ export const updateVendorOrderItems = async (req, res) => {
       }
     }
 
-    // Prepare updated items
+    // Fetch VendorProduct records to get GST percentages
+    const productIds = items.map(item => item.productId?.toString() || item.productId);
+    const vendorProductsForGst = await VendorProduct.find({
+      productId: { $in: productIds },
+      vendorId: vendorId,
+    }).select('productId gst');
+
+    // Create a map of productId to GST percentage
+    const productGstMap = {};
+    vendorProductsForGst.forEach((vp) => {
+      const pid = vp.productId?.toString() || vp.productId.toString();
+      productGstMap[pid] = vp.gst || 0;
+    });
+
+    // Prepare updated items with GST calculation per product
     const updatedItems = items.map((item) => {
       const productId = item.productId?.toString() || item.productId;
       const price = item.price || vendorProductPrices[productId] || 0;
       const quantity = parseInt(item.quantity) || 1;
+      const itemTotal = price * quantity;
+      
+      // Get GST percentage for this product (default to 0 if not found)
+      const gstPercentage = productGstMap[productId] || 0;
+      
+      // Calculate GST amount for this item
+      const gstAmount = (itemTotal * gstPercentage) / 100;
+      
       return {
         productId: item.productId,
         productName: item.productName || 'Product',
         productImage: item.productImage || '',
         quantity: quantity,
         price: price,
-        total: price * quantity,
+        total: itemTotal,
+        gstPercentage: gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
       };
     });
 
     // Update order items
     order.items = updatedItems;
 
+    // Calculate total GST from all items
+    const totalGstAmount = updatedItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+
     // Update billing details if provided, otherwise recalculate
     if (billingDetails) {
+      // Recalculate GST from items even if billingDetails is provided
+      const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
       order.billingDetails = {
-        cartTotal: billingDetails.cartTotal || 0,
-        gstAmount: billingDetails.gstAmount || 0,
-        shippingCharges: 0, // Free shipping
-        totalAmount: billingDetails.totalAmount || 0,
+        cartTotal: cartTotal,
+        gstAmount: totalGstAmount, // Use calculated GST from items
+        shippingCharges: billingDetails.shippingCharges || 0,
+        totalAmount: cartTotal + totalGstAmount + (billingDetails.shippingCharges || 0),
       };
     } else {
       // Recalculate billing details
       const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
-      const gstAmount = cartTotal * 0.18; // 18% GST
       const shippingCharges = 0; // Free shipping
       order.billingDetails = {
         cartTotal: cartTotal,
-        gstAmount: gstAmount,
+        gstAmount: totalGstAmount, // GST calculated per product
         shippingCharges: shippingCharges,
-        totalAmount: cartTotal + gstAmount + shippingCharges,
+        totalAmount: cartTotal + totalGstAmount + shippingCharges,
       };
     }
 
@@ -441,11 +604,20 @@ export const getVendorOrderStats = async (req, res) => {
   try {
     const vendorId = req.user.userId;
 
-    // Get vendor's product IDs
-    const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
-    const vendorProductIds = vendorProducts.map((vp) => vp.productId);
+    // Get vendor's service cities
+    const vendor = await Vendor.findById(vendorId).select('serviceCities');
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found',
+      });
+    }
 
-    if (vendorProductIds.length === 0) {
+    const vendorServiceCityIds = vendor.serviceCities.map(city => 
+      city._id ? city._id.toString() : city.toString()
+    );
+
+    if (vendorServiceCityIds.length === 0) {
       return res.status(200).json({
         success: true,
         data: {
@@ -461,9 +633,14 @@ export const getVendorOrderStats = async (req, res) => {
       });
     }
 
-    // Build base query
+    // Get vendor products for calculating revenue
+    const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
+    const vendorProductIds = vendorProducts.map((vp) => vp.productId);
+
+    // Build base query using the new vendorId and vendorServiceCityId fields
     const baseQuery = {
-      'items.productId': { $in: vendorProductIds },
+      vendorId: vendorId,
+      vendorServiceCityId: { $in: vendorServiceCityIds },
     };
 
     // Get counts for each status
@@ -489,10 +666,11 @@ export const getVendorOrderStats = async (req, res) => {
     const deliveredOrdersList = await Order.find({
       ...baseQuery,
       orderStatus: 'delivered',
-    });
+    }).select('items');
 
     let totalRevenue = 0;
     deliveredOrdersList.forEach((order) => {
+      // Filter items to only include vendor's products
       const vendorItems = order.items.filter((item) =>
         vendorProductIds.some(
           (vpId) => vpId.toString() === item.productId.toString()
@@ -524,3 +702,247 @@ export const getVendorOrderStats = async (req, res) => {
   }
 };
 
+// @desc    Create order for a user (vendor creating order on behalf of user)
+// @route   POST /api/v1/vendor/orders/create-for-user
+// @access  Vendor
+export const createOrderForUser = async (req, res) => {
+  try {
+    const vendorId = req.user.userId; // Vendor creating the order
+    const { 
+      userId, // User for whom the order is being created
+      addressId, 
+      paymentMethod = 'cod', 
+      cartItems, 
+      totalAmount, 
+      gstAmount, 
+      shippingCharges, 
+      cartTotal,
+      couponCode 
+    } = req.body;
+
+    // Validate required fields
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User ID is required' 
+      });
+    }
+
+    if (!addressId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Delivery address is required' 
+      });
+    }
+
+    if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cart items are required' 
+      });
+    }
+
+    if (!totalAmount || totalAmount <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Total amount is required and must be greater than 0' 
+      });
+    }
+
+    // Validate payment method
+    if (!['cod', 'online'].includes(paymentMethod)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Valid payment method is required' 
+      });
+    }
+
+    // Fetch the delivery address and verify it belongs to the user
+    const address = await Address.findOne({ _id: addressId, userId });
+    if (!address) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Address not found or does not belong to the specified user' 
+      });
+    }
+
+    // Fetch VendorProduct records to get GST percentages
+    const productIds = cartItems.map(item => item.productId);
+    const vendorProductsForGst = await VendorProduct.find({
+      productId: { $in: productIds },
+      vendorId: vendorId,
+    }).select('productId gst');
+
+    // Create a map of productId to GST percentage
+    const productGstMap = {};
+    vendorProductsForGst.forEach((vp) => {
+      const pid = vp.productId?.toString() || vp.productId.toString();
+      productGstMap[pid] = vp.gst || 0;
+    });
+
+    // Prepare order items with GST calculation per product
+    // Note: item.productId should be the global Product ID (not VendorProduct ID)
+    const orderItems = cartItems.map((item) => {
+      const productId = item.productId;
+      const productIdStr = productId.toString();
+      const quantity = item.quantity;
+      const price = item.price;
+      const itemTotal = price * quantity;
+      
+      // Get GST percentage for this product (default to 0 if not found)
+      const gstPercentage = productGstMap[productIdStr] || 0;
+      
+      // Calculate GST amount for this item
+      const gstAmount = (itemTotal * gstPercentage) / 100;
+      
+      return {
+        productId: productId, // Use productId (global Product ID) - required by Order model
+        productName: item.name || item.productName || 'Product',
+        productImage: item.image || item.productImage || '',
+        quantity: quantity,
+        price: price,
+        total: itemTotal,
+        gstPercentage: gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
+      };
+    });
+
+    // Get vendor's service cities
+    const vendor = await Vendor.findById(vendorId).populate('serviceCities', 'name displayName');
+    if (!vendor) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Vendor not found' 
+      });
+    }
+
+    // Determine vendorServiceCityId from address city
+    let vendorServiceCityId = null;
+    const deliveryCityName = address.city.toLowerCase();
+    
+    // Find matching service city
+    const matchingServiceCity = vendor.serviceCities.find(city => {
+      const cityName = city.name?.toLowerCase() || '';
+      const cityDisplayName = city.displayName?.toLowerCase() || '';
+      return cityName === deliveryCityName || cityDisplayName === deliveryCityName;
+    });
+
+    if (matchingServiceCity) {
+      vendorServiceCityId = matchingServiceCity._id || matchingServiceCity;
+    } else if (vendor.serviceCities.length > 0) {
+      // Use first service city as fallback
+      vendorServiceCityId = vendor.serviceCities[0]._id || vendor.serviceCities[0];
+    }
+
+    // Handle coupon if provided
+    let couponAmount = 0;
+    let appliedCouponId = null;
+    let appliedCouponCode = null;
+
+    if (couponCode) {
+      const coupon = await Coupon.findOne({
+        code: couponCode.toUpperCase(),
+        vendorId: vendorId,
+        isActive: true,
+        startDate: { $lte: new Date() },
+        endDate: { $gte: new Date() },
+      });
+
+      if (coupon) {
+        appliedCouponId = coupon._id;
+        appliedCouponCode = coupon.code;
+
+        // Calculate coupon discount
+        if (coupon.discountType === 'percentage') {
+          couponAmount = (cartTotal * coupon.discountValue) / 100;
+          if (coupon.maxDiscount && couponAmount > coupon.maxDiscount) {
+            couponAmount = coupon.maxDiscount;
+          }
+        } else if (coupon.discountType === 'fixed') {
+          couponAmount = coupon.discountValue;
+          if (couponAmount > cartTotal) {
+            couponAmount = cartTotal;
+          }
+        }
+      }
+    }
+
+    // Prepare delivery address
+    const deliveryAddress = {
+      name: address.name,
+      phone: address.phone,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 || '',
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      landmark: address.landmark || '',
+    };
+
+    // Calculate total GST from all order items
+    const totalGstAmount = orderItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+    
+    // Recalculate totals based on per-product GST
+    const calculatedCartTotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+    const calculatedTotalAmount = calculatedCartTotal + totalGstAmount + (shippingCharges || 0);
+    
+    // Prepare billing details (amounts)
+    const billingDetails = {
+      cartTotal: calculatedCartTotal,
+      gstAmount: totalGstAmount, // Use calculated GST from items
+      shippingCharges: shippingCharges || 0,
+      totalAmount: calculatedTotalAmount,
+    };    // Payment status
+    const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'pending';
+
+    // Generate unique order number
+    const generateOrderNumber = () => {
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 10000);
+      return `ORD-${timestamp}-${random}`;
+    };
+
+    let orderNumber;
+    let isUnique = false;
+    while (!isUnique) {
+      orderNumber = generateOrderNumber();
+      const existingOrder = await Order.findOne({ orderNumber });
+      if (!existingOrder) {
+        isUnique = true;
+      }
+    }
+
+    // Create order
+    const order = await Order.create({
+      userId,
+      orderNumber,
+      items: orderItems,
+      deliveryAddress,
+      billingDetails,
+      paymentMethod,
+      paymentStatus,
+      orderStatus: 'pending',
+      vendorId: vendorId,
+      vendorServiceCityId: vendorServiceCityId || undefined,
+      couponAmount: couponAmount,
+      couponCode: appliedCouponCode || undefined,
+      couponId: appliedCouponId || undefined,
+    });
+
+    // Populate order with user details
+    await order.populate('userId', 'name email phone');
+
+    res.status(201).json({
+      success: true,
+      message: 'Order created successfully',
+      data: order,
+    });
+  } catch (error) {
+    console.error('Error creating order for user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating order',
+      error: error.message,
+    });
+  }
+};

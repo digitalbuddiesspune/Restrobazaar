@@ -23,7 +23,22 @@ export const authenticate = async (req, res, next) => {
         .json({ success: false, message: "Unauthorized - No token provided" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      if (jwtError.name === "JsonWebTokenError") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized - Invalid token" });
+      }
+      if (jwtError.name === "TokenExpiredError") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized - Token expired" });
+      }
+      throw jwtError;
+    }
 
     // Check if token is for super admin, vendor (has 'id' field with role), or regular user (has 'userId' field)
     let user = null;
@@ -32,6 +47,7 @@ export const authenticate = async (req, res, next) => {
     if (decoded.id) {
       // Check if it's a vendor token (has role field)
       if (decoded.role === "vendor") {
+        console.log("Vendor token detected:", { id: decoded.id, role: decoded.role });
         // Vendor token
         const vendor = await Vendor.findById(decoded.id);
         if (!vendor) {
@@ -55,6 +71,7 @@ export const authenticate = async (req, res, next) => {
           role: "vendor",
         };
         userRole = "vendor";
+        console.log("Vendor authenticated:", { userId: vendor._id, role: userRole });
       } else {
         // Super admin token
         const superAdmin = await SuperAdmin.findById(decoded.id);
@@ -84,11 +101,26 @@ export const authenticate = async (req, res, next) => {
           .json({ success: false, message: "Unauthorized - User not found" });
       }
       user = foundUser;
-      userRole = foundUser.role;
+      // Default to "user" role if not set in the user model
+      userRole = foundUser.role || "user";
     } else {
       return res
         .status(401)
         .json({ success: false, message: "Unauthorized - Invalid token payload" });
+    }
+
+    // Ensure role is set correctly
+    if (!userRole) {
+      console.error("Authentication error: userRole is not set", { 
+        decoded, 
+        user, 
+        hasId: !!decoded.id, 
+        hasUserId: !!decoded.userId,
+        decodedRole: decoded.role 
+      });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized - Invalid token format. Token payload: " + JSON.stringify(decoded) });
     }
 
     req.user = {
@@ -97,22 +129,15 @@ export const authenticate = async (req, res, next) => {
       role: userRole,
       city: (user.city !== undefined) ? user.city : null,
     };
+    
+    console.log("Request authenticated:", { userId: req.user.userId, role: req.user.role, email: req.user.email });
 
     next();
   } catch (error) {
-    if (error.name === "JsonWebTokenError") {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized - Invalid token" });
-    }
-    if (error.name === "TokenExpiredError") {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized - Token expired" });
-    }
+    console.error("Authentication middleware error:", error);
     return res
       .status(500)
-      .json({ success: false, message: "Authentication error" });
+      .json({ success: false, message: "Authentication error", error: error.message });
   }
 };
 
@@ -133,7 +158,7 @@ export const authorize = (...roles) => {
         .status(403)
         .json({
           success: false,
-          message: "Forbidden - Insufficient permissions",
+          message: `Forbidden - Insufficient permissions. Required role: ${roles.join(" or ")}, but got: ${req.user.role || "none"}`,
         });
     }
 
@@ -195,7 +220,7 @@ export const optionalAuthenticate = async (req, res, next) => {
           req.user = {
             userId: user._id,
             email: user.email,
-            role: user.role,
+            role: user.role || "user", // Default to "user" role if not set
             city: user.city || null,
           };
         }

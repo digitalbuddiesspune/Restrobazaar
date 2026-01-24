@@ -46,6 +46,7 @@ const router = createBrowserRouter(
       <Route path="terms-of-service" element={<TermsOfService />} />
       <Route path="refund-policy" element={<RefundPolicy />} />
       <Route path="shipping-policy" element={<ShippingPolicy />} />
+      <Route path="sign-in" element={<SignIn />} />
       <Route path="signin" element={<SignIn />} />
       <Route path="signup" element={<SignUp />} />
       <Route path="account" element={<Account />} />
@@ -56,6 +57,7 @@ const router = createBrowserRouter(
       <Route path="super_admin/login" element={<SuperAdminLogin />} />
       <Route path="admin/dashboard" element={<SuperAdminDashboard />} />
       <Route path="vendor/login" element={<VendorLogin />} />
+      <Route path="vendor/admin" element={<VendorAdminDashboard />} />
       <Route path="vendor/dashboard" element={<VendorDashboard />} />
       <Route path="vendor/dashboard/old" element={<VendorAdminDashboard />} />
     </Route>

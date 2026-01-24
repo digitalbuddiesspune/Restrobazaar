@@ -46,6 +46,17 @@ const vendorProductSchema = new mongoose.Schema(
       enum: ["single", "bulk"],
       required: true,
     },
+    defaultPrice: {
+      type: Number,
+      default: 0,
+    },
+    productPurchasedFrom: String,
+    purchasedMode: String,
+    purchasedAmount: String,
+    gst: { type: Number, default: 0 },
+    cgst: { type: Number, default: 0 },
+    sgst: { type: Number, default: 0 },
+    igst: { type: Number, default: 0 },
 
     /* 🔥 PRICING (SINGLE FIELD) */
     pricing: {

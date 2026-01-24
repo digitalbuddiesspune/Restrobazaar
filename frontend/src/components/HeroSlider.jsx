@@ -92,10 +92,10 @@ const HeroSlider = ({ slides = [], mobileSrc }) => {
         </div>
       </div>
 
-      {/* Mobile single image */}
-      <div className="md:hidden block">
+      {/* Mobile single image - Hidden as mobile banners are shown separately */}
+      {/* <div className="md:hidden block">
         <img src={mobileSrc || slides[0]?.desktop} alt="Banner" className="w-full h-auto object-cover block" loading="lazy" />
-      </div>
+      </div> */}
     </section>
   );
 };

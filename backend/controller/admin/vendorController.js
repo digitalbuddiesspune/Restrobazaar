@@ -758,10 +758,21 @@ export const vendorLogin = async (req, res) => {
       }
     );
 
+    // Set JWT in HTTP-only cookie (for better security)
+    const cookieOptions = {
+      httpOnly: true, // Prevents JavaScript access (XSS protection)
+      secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+      path: "/", // Available for all routes
+    };
+
+    res.cookie("token", token, cookieOptions);
+
     res.status(200).json({
       success: true,
       message: "Vendor logged in successfully",
-      token: token,
+      token: token, // Also return in response for backward compatibility
       data: {
         id: vendor._id,
         businessName: vendor.businessName,
@@ -772,6 +783,32 @@ export const vendorLogin = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error logging in",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Vendor logout
+// @route   POST /api/v1/vendor/logout
+// @access  Vendor
+export const vendorLogout = async (req, res) => {
+  try {
+    // Clear the vendor token cookie
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      path: '/',
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Vendor logged out successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error logging out',
       error: error.message,
     });
   }

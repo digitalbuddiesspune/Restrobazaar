@@ -1,5 +1,9 @@
 import Order from '../../models/users/order.js';
 import Address from '../../models/users/address.js';
+import VendorProduct from '../../models/vendor/vendorProductSchema.js';
+import Vendor from '../../models/admin/vendor.js';
+import City from '../../models/admin/city.js';
+import Coupon from '../../models/vendor/coupon.js';
 
 // @desc    Create a new order
 // @route   POST /api/v1/orders
@@ -7,7 +11,7 @@ import Address from '../../models/users/address.js';
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { addressId, paymentMethod, cartItems, totalAmount, gstAmount, shippingCharges, cartTotal, paymentId, transactionId } = req.body;
+    const { addressId, paymentMethod, cartItems, totalAmount, gstAmount, shippingCharges, cartTotal, paymentId, transactionId, couponCode } = req.body;
 
     // Validate required fields
     if (!addressId) {
@@ -32,22 +36,175 @@ export const createOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Address not found' });
     }
 
-    // Prepare order items
-    const orderItems = cartItems.map((item) => ({
-      productId: item._id || item.productId,
-      productName: item.name || item.productName || 'Product',
-      productImage: item.image || item.productImage || '',
-      quantity: item.quantity,
-      price: item.price,
-      total: item.price * item.quantity,
-    }));
+    // Determine vendorId and vendorServiceCityId from cart items first
+    // Get productIds from cart items
+    const productIds = cartItems.map(item => item._id || item.productId);
+    
+    // Look up vendor products for these productIds
+    // Also check if cart items have vendorProductId or vendorId/cityId
+    let vendorId = null;
+    let vendorServiceCityId = null;
+
+    // First, try to get vendor info from cart items if available
+    if (cartItems.length > 0 && (cartItems[0].vendorId || cartItems[0].vendorProductId)) {
+      // If cart items have vendorId, use it
+      if (cartItems[0].vendorId) {
+        vendorId = cartItems[0].vendorId;
+      }
+      
+      // If cart items have cityId, use it
+      if (cartItems[0].cityId) {
+        vendorServiceCityId = cartItems[0].cityId;
+      }
+    }
+
+    // If not found in cart items, look up VendorProduct
+    if (!vendorId || !vendorServiceCityId) {
+      // Find vendor products for the first product (assuming all items are from same vendor/city)
+      const vendorProduct = await VendorProduct.findOne({
+        productId: productIds[0]
+      }).populate('vendorId', 'serviceCities').populate('cityId');
+
+      if (vendorProduct) {
+        vendorId = vendorProduct.vendorId?._id || vendorProduct.vendorId;
+        
+        // Get vendor to check service cities
+        const vendor = await Vendor.findById(vendorId).populate('serviceCities', 'name displayName');
+        
+        if (vendor && vendor.serviceCities && vendor.serviceCities.length > 0) {
+          // Match delivery address city with vendor's service cities
+          const deliveryCityName = address.city.toLowerCase();
+          
+          // Find matching service city
+          const matchingServiceCity = vendor.serviceCities.find(city => {
+            const cityName = city.name?.toLowerCase() || '';
+            const cityDisplayName = city.displayName?.toLowerCase() || '';
+            return cityName === deliveryCityName || cityDisplayName === deliveryCityName;
+          });
+
+          if (matchingServiceCity) {
+            vendorServiceCityId = matchingServiceCity._id || matchingServiceCity;
+          } else {
+            // If no match, use the vendor product's cityId
+            vendorServiceCityId = vendorProduct.cityId?._id || vendorProduct.cityId;
+          }
+        } else {
+          // Fallback to vendor product's cityId
+          vendorServiceCityId = vendorProduct.cityId?._id || vendorProduct.cityId;
+        }
+      }
+    }
+
+    // Fetch VendorProduct records for all items to get GST percentages
+    const vendorProducts = await VendorProduct.find({
+      productId: { $in: productIds },
+      vendorId: vendorId,
+    }).select('productId gst');
+
+    // Create a map of productId to GST percentage
+    const productGstMap = {};
+    vendorProducts.forEach((vp) => {
+      const pid = vp.productId?.toString() || vp.productId.toString();
+      productGstMap[pid] = vp.gst || 0;
+    });
+
+    // Prepare order items with GST calculation per product
+    const orderItems = cartItems.map((item) => {
+      const productId = item._id || item.productId;
+      const productIdStr = productId.toString();
+      const quantity = item.quantity;
+      const price = item.price;
+      const itemTotal = price * quantity;
+      
+      // Get GST percentage for this product (default to 0 if not found)
+      const gstPercentage = productGstMap[productIdStr] || 0;
+      
+      // Calculate GST amount for this item
+      const gstAmount = (itemTotal * gstPercentage) / 100;
+      
+      return {
+        productId: productId,
+        productName: item.name || item.productName || 'Product',
+        productImage: item.image || item.productImage || '',
+        quantity: quantity,
+        price: price,
+        total: itemTotal,
+        gstPercentage: gstPercentage,
+        gstAmount: parseFloat(gstAmount.toFixed(2)),
+      };
+    });
+
+    // Handle coupon if provided
+    let couponAmount = 0;
+    let appliedCouponId = null;
+    let appliedCouponCode = null;
+
+    if (couponCode) {
+      try {
+        const coupon = await Coupon.findOne({ code: couponCode.toUpperCase().trim() });
+        
+        if (coupon) {
+          // Check if coupon belongs to the vendor
+          if (vendorId && coupon.vendorId.toString() !== vendorId.toString()) {
+            return res.status(400).json({
+              success: false,
+              message: 'This coupon is not valid for this vendor',
+            });
+          }
+
+          // Check if user can use this coupon
+          const canUse = coupon.canBeUsedBy(userId);
+          if (!canUse.canUse) {
+            return res.status(400).json({
+              success: false,
+              message: canUse.reason,
+            });
+          }
+
+          // Calculate discount on cart total (before GST and shipping)
+          const discountResult = coupon.calculateDiscount(cartTotal || 0);
+          if (discountResult.reason) {
+            return res.status(400).json({
+              success: false,
+              message: discountResult.reason,
+            });
+          }
+
+          couponAmount = discountResult.discount;
+          appliedCouponId = coupon._id;
+          appliedCouponCode = coupon.code;
+
+          // Update coupon usage
+          coupon.usageCount += 1;
+          coupon.usedBy.push({
+            userId,
+            usedAt: new Date(),
+          });
+          await coupon.save();
+        }
+      } catch (couponError) {
+        console.error('Error applying coupon:', couponError);
+        // Don't fail the order if coupon validation fails, just skip it
+      }
+    }
+
+    // Calculate total GST from all order items
+    const totalGstAmount = orderItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+    
+    // Calculate final amounts with coupon discount
+    // GST calculated per product, shipping calculated on original cart total, then discount applied
+    const finalGstAmount = totalGstAmount; // GST calculated per product (before coupon)
+    const finalShippingCharges = shippingCharges || 0;
+    const totalBeforeCoupon = (cartTotal || 0) + finalGstAmount + finalShippingCharges;
+    const finalTotalAmount = Math.max(0, totalBeforeCoupon - couponAmount);
 
     // Prepare billing details
     const billingDetails = {
       cartTotal: cartTotal || 0,
-      gstAmount: gstAmount || 0,
-      shippingCharges: shippingCharges || 0,
-      totalAmount: totalAmount,
+      gstAmount: finalGstAmount,
+      shippingCharges: finalShippingCharges,
+      totalAmount: finalTotalAmount,
+      couponDiscount: couponAmount, // Store coupon discount separately for reference
     };
 
     // Prepare delivery address
@@ -99,6 +256,11 @@ export const createOrder = async (req, res) => {
       paymentId: paymentId || undefined,
       transactionId: transactionId || undefined,
       orderStatus: 'pending',
+      vendorId: vendorId || undefined,
+      vendorServiceCityId: vendorServiceCityId || undefined,
+      couponAmount: couponAmount,
+      couponCode: appliedCouponCode || undefined,
+      couponId: appliedCouponId || undefined,
     });
 
     // Populate order with user details
@@ -203,6 +365,27 @@ export const cancelOrder = async (req, res) => {
         success: false,
         message: `Order cannot be cancelled. Current status: ${order.orderStatus}`,
       });
+    }
+
+    // Store previous status for stock management
+    const previousStatus = order.orderStatus;
+
+    // Restore stock if order was previously confirmed
+    if (previousStatus === 'confirmed') {
+      for (const item of order.items) {
+        // Find the vendor product for this item
+        const vendorProduct = await VendorProduct.findOne({
+          productId: item.productId,
+          vendorId: order.vendorId,
+          cityId: order.vendorServiceCityId,
+        });
+
+        if (vendorProduct) {
+          // Restore stock
+          vendorProduct.availableStock += item.quantity;
+          await vendorProduct.save();
+        }
+      }
     }
 
     order.orderStatus = 'cancelled';

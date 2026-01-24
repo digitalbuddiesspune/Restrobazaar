@@ -22,9 +22,7 @@ const productSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    productPurchasedFrom: String,
-    purchasedMode: String,
-    purchasedAmount: String,
+  
     shortDescription: String,
 
     category: {
@@ -58,11 +56,7 @@ const productSchema = new mongoose.Schema(
 
     /* TAX */
     hsnCode: String,
-    gst: { type: Number, default: 0 },
-    cgst: { type: Number, default: 0 },
-    sgst: { type: Number, default: 0 },
-    igst: { type: Number, default: 0 },
-
+   
     /* FLAGS */
     isReturnable: {
       type: Boolean,
