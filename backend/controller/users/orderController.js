@@ -1,4 +1,5 @@
 import Order from '../../models/users/order.js';
+import { generateNextInvoiceNumber } from '../../services/invoiceNumberService.js';
 import Address from '../../models/users/address.js';
 import VendorProduct from '../../models/vendor/vendorProductSchema.js';
 import Vendor from '../../models/admin/vendor.js';

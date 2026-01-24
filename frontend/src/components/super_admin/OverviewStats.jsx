@@ -360,11 +360,13 @@ const OverviewStats = ({
                   </td>
                 </tr>
               ) : (
-                pendingOrders.map((order) => (
-                  <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors even:bg-gray-50">
+                pendingOrders.map((order) => {
+                  const orderId = order.orderNumber || order._id || order.order_id;
+                  return (
+                  <tr key={orderId} className="hover:bg-gray-50 transition-colors even:bg-gray-50">
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span className="text-sm font-medium text-gray-900 leading-tight">
-                        {formatOrderId(order.order_id || order._id)}
+                        {formatOrderId(orderId)}
                       </span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
@@ -403,7 +405,8 @@ const OverviewStats = ({
                       </span>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

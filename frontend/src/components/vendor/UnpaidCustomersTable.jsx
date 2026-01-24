@@ -154,8 +154,10 @@ const UnpaidCustomersTable = ({
                   <td className="px-4 py-2 border-r border-gray-200">
                     <div className="text-xs text-gray-900 space-y-1">
                       {customer.orders.map((order, index) => {
-                        const orderId = order._id || order.order_id || order.id || order.orderNumber;
-                        const orderIdFormatted = formatOrderId(orderId);
+                        // Use _id for API calls (MongoDB ObjectId), orderNumber is just for display
+                        const orderId = order._id || order.order_id || order.id;
+                        const displayOrderId = order.orderNumber || order._id || order.order_id || order.id;
+                        const orderIdFormatted = formatOrderId(displayOrderId);
                         const orderAmount = order.billingDetails?.totalAmount || 
                                           order.Net_total || 
                                           order.totalAmount || 

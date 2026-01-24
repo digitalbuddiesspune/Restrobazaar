@@ -77,7 +77,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
       if (data.success) {
         // Format orders to match the required fields
         const formattedOrders = data.data.map((order) => ({
-          order_id: order.order_id || order._id || order.orderNumber || 'N/A',
+          order_id: order.orderNumber || order._id || order.order_id || order.id || 'N/A',
           user_id: order.user_id || order.userId?._id || order.userId || 'N/A',
           Customer_Name: order.Customer_Name || order.deliveryAddress?.name || order.userId?.name || 'N/A',
           Phone: order.Phone || order.deliveryAddress?.phone || order.userId?.phone || 'N/A',
@@ -241,7 +241,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
 
       if (data.success) {
         return data.data.map((order) => ({
-          order_id: order.order_id || order._id || order.orderNumber || 'N/A',
+          order_id: order.orderNumber || order._id || order.order_id || order.id || 'N/A',
           user_id: order.user_id || order.userId?._id || order.userId || 'N/A',
           Customer_Name: order.Customer_Name || order.deliveryAddress?.name || order.userId?.name || 'N/A',
           Phone: order.Phone || order.deliveryAddress?.phone || order.userId?.phone || 'N/A',
@@ -283,7 +283,9 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
       // Format data for Excel
       const excelData = allOrders.map((order) => {
         // Format Order ID: last 6 digits with # prefix
-        const formattedOrderId = formatOrderId(order.order_id);
+        // Use orderNumber first for consistency with other components
+        const orderId = order.orderNumber || order._id || order.order_id || order.id;
+        const formattedOrderId = formatOrderId(orderId);
 
         // Format User ID: last 6 digits
         const userIdStr = order.user_id && order.user_id !== 'N/A'

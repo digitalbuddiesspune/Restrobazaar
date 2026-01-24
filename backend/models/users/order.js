@@ -12,6 +12,21 @@ const orderSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    invoiceNumber: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow null values but ensure uniqueness when present
+      // Format: INV-<FY>-<SERIAL> (e.g., INV-2526-0001)
+      // Max length: 16 characters
+      validate: {
+        validator: function (v) {
+          if (!v) return true; // Allow null/undefined
+          // Format: INV-<FY>-<SERIAL>
+          return /^INV-\d{4}-\d{4}$/.test(v) && v.length <= 16;
+        },
+        message: 'Invoice number must be in format INV-YYYY-XXXX and max 16 characters',
+      },
+    },
     items: [
       {
         productId: {
@@ -161,6 +176,7 @@ const orderSchema = new mongoose.Schema(
 // Index for faster queries
 orderSchema.index({ userId: 1 });
 orderSchema.index({ orderNumber: 1 });
+orderSchema.index({ invoiceNumber: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ vendorId: 1, vendorServiceCityId: 1 });

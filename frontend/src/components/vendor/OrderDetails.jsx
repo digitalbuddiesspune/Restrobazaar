@@ -2,6 +2,7 @@ import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendo
 import { formatOrderId } from '../../utils/orderIdFormatter';
 import { useState, useEffect } from 'react';
 import { generateInvoicePDF } from '../../utils/invoiceGenerator';
+import { invoiceAPI } from '../../utils/api';
 
 const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const { data: orderData, isLoading, isError, error, refetch } = useVendorOrder(orderId);
@@ -17,6 +18,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
   const order = orderData?.data || {};
   const vendorProducts = vendorProductsData?.data || [];
+  const vendor = vendorProfileData?.data || {};
 
   // Helper function: Find vendor product for an item
   const findVendorProductForItem = (item) => {
@@ -1064,12 +1066,40 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
             <button
-              onClick={() => {
+              onClick={async () => {
                 try {
-                  generateInvoicePDF(order, vendor);
+                  if (!order || Object.keys(order).length === 0) {
+                    alert('Order data is not available. Please refresh the page.');
+                    return;
+                  }
+
+                  // If order doesn't have an invoice number, generate one first
+                  let orderWithInvoice = { ...order };
+                  if (!order.invoiceNumber && order._id) {
+                    try {
+                      // Use vendor endpoint for generating invoice numbers
+                      const response = await invoiceAPI.generateInvoiceForVendorOrder(order._id);
+                      if (response.success && response.data.invoiceNumber) {
+                        orderWithInvoice.invoiceNumber = response.data.invoiceNumber;
+                        // Refetch order to get updated data
+                        await refetch();
+                      }
+                    } catch (invoiceError) {
+                      console.warn('Could not generate invoice number, using fallback:', invoiceError);
+                      // Continue with invoice generation using fallback format
+                    }
+                  }
+
+                  generateInvoicePDF(orderWithInvoice, vendor);
                 } catch (error) {
                   console.error('Error generating invoice:', error);
-                  alert('Failed to generate invoice. Please try again.');
+                  console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    order: order,
+                    vendor: vendor
+                  });
+                  alert(`Failed to generate invoice: ${error.message || 'Unknown error'}. Please check the console for details.`);
                 }
               }}
               className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1.5 text-xs"

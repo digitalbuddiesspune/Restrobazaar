@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { formatOrderId } from './orderIdFormatter';
 
 // Convert number to words for invoice amount
 export const numberToWords = (num) => {
@@ -230,13 +231,35 @@ export const generateInvoicePDF = (order, vendor = {}) => {
         : 'UPI / Cash / Bank Transfer';
     
     // Format invoice and order numbers correctly
-    const orderNumber = order.orderNumber || order._id?.toString() || 'N/A';
-    // If orderNumber already starts with 'ORD-', use it as is, otherwise add prefix
-    const formattedOrderNo = orderNumber.startsWith('ORD-') ? orderNumber : `ORD-${orderNumber}`;
-    // Invoice number should be RBZ- prefix with order number (remove ORD- if present)
-    const invoiceNumber = orderNumber.startsWith('ORD-') 
-      ? `RBZ-${orderNumber}` 
-      : `RBZ-${orderNumber}`;
+    // Use GST-compliant invoice number if available, otherwise use formatted order ID
+    let invoiceNumber = null;
+    let formattedOrderNo = null;
+    
+    // Priority: Use invoiceNumber from order (GST-compliant) if available
+    if (order.invoiceNumber) {
+      invoiceNumber = order.invoiceNumber;
+      // For display, we can still show formatted order ID
+      const orderId = order.orderNumber || order._id || order.order_id;
+      formattedOrderNo = formatOrderId(orderId);
+    } else {
+      // Fallback: Use formatted order ID if invoice number not available
+      let orderId = null;
+      if (order.orderNumber) {
+        orderId = String(order.orderNumber);
+      } else if (order._id) {
+        orderId = String(order._id);
+      } else if (order.order_id) {
+        orderId = String(order.order_id);
+      }
+      
+      if (!orderId) {
+        throw new Error('Order ID is missing. Cannot generate invoice.');
+      }
+      
+      formattedOrderNo = formatOrderId(orderId);
+      // Use formatted order ID as invoice number (legacy format)
+      invoiceNumber = `RBZ-${formattedOrderNo}`;
+    }
     
     const invoiceDetails = [
       ['Invoice No:', invoiceNumber],
@@ -624,7 +647,23 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.text('Reverse Charge: No', leftMargin + 3, yPos);
 
     // Save the PDF
-    doc.save(`Invoice-RBZ-${order.orderNumber || order._id}.pdf`);
+    // Use invoice number for filename if available, otherwise use formatted order ID
+    let filename = 'Invoice';
+    if (order.invoiceNumber) {
+      // Use invoice number (e.g., INV-2526-0001)
+      filename = order.invoiceNumber;
+    } else {
+      // Fallback: Use formatted order ID
+      const orderIdForFilename = order.orderNumber || 
+                                (order._id ? String(order._id) : null) || 
+                                (order.order_id ? String(order.order_id) : null) || 
+                                null;
+      if (orderIdForFilename) {
+        const filenameOrderId = formatOrderId(orderIdForFilename).replace('#', '');
+        filename = `Invoice-${filenameOrderId}`;
+      }
+    }
+    doc.save(`${filename}.pdf`);
   } catch (error) {
     console.error('Error generating invoice:', error);
     throw error;

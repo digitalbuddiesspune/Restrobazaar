@@ -838,14 +838,18 @@ const VendorDashboard = () => {
                           </td>
                         </tr>
                       ) : (
-                        pendingOrders.map((order) => (
-                          <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors cursor-pointer even:bg-gray-50" onClick={() => {
-                            setSelectedOrderId(order._id || order.order_id);
-                            setActiveTab('orders');
-                          }}>
+                        pendingOrders.map((order) => {
+                          // Use _id for API calls (MongoDB ObjectId), orderNumber is just for display
+                          const orderId = order._id || order.order_id || order.id;
+                          const displayOrderId = order.orderNumber || order._id || order.order_id;
+                          return (
+                            <tr key={orderId} className="hover:bg-gray-50 transition-colors cursor-pointer even:bg-gray-50" onClick={() => {
+                              setSelectedOrderId(orderId);
+                              setActiveTab('orders');
+                            }}>
                             <td className="px-4 py-2 whitespace-nowrap">
                               <span className="text-sm font-medium text-gray-900 leading-tight">
-                                {formatOrderId(order.order_id || order._id)}
+                                {formatOrderId(displayOrderId)}
                               </span>
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap">
@@ -884,7 +888,8 @@ const VendorDashboard = () => {
                               </span>
                             </td>
                           </tr>
-                        ))
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
