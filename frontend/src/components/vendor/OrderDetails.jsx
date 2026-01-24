@@ -1,4 +1,5 @@
 import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendorProducts, useVendorProfile } from '../../hooks/useVendorQueries';
+import { formatOrderId } from '../../utils/orderIdFormatter';
 import { useState, useEffect } from 'react';
 import { generateInvoicePDF } from '../../utils/invoiceGenerator';
 
@@ -475,13 +476,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
             {/* Left: Order ID */}
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order ID</p>
-              <p className="text-xs font-medium text-gray-900">{(() => {
-                const orderId = order._id || order.orderNumber || 'N/A';
-                if (!orderId || orderId === 'N/A') return 'N/A';
-                const idString = String(orderId);
-                const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
-                return `#${lastSix}`;
-              })()}</p>
+              <p className="text-xs font-medium text-gray-900">
+                {formatOrderId(order.orderNumber || order._id)}
+              </p>
             </div>
 
             {/* Right: Order Status and Payment Status */}
@@ -656,13 +653,9 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 {/* Display Order ID */}
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Display Order ID</p>
-                  <p className="text-xs font-medium text-gray-900">{(() => {
-                    const orderId = order._id || order.orderNumber || 'N/A';
-                    if (!orderId || orderId === 'N/A') return 'N/A';
-                    const idString = String(orderId);
-                    const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
-                    return `#${lastSix}`;
-                  })()}</p>
+                  <p className="text-xs font-medium text-gray-900">
+                    {formatOrderId(order.orderNumber || order._id)}
+                  </p>
                 </div>
 
                 {/* Customer Name */}

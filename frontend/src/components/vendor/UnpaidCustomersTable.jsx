@@ -1,10 +1,12 @@
+import { formatOrderId } from '../../utils/orderIdFormatter';
+
 const UnpaidCustomersTable = ({ 
   orders, 
   isLoading,
   onOrderClick,
   onUpdatePaymentStatus,
 }) => {
-  // Helper function to get last 6 digits of an ID
+  // Helper function to get last 6 digits of an ID (for user ID display)
   const getLastSixDigits = (id) => {
     if (!id) return 'N/A';
     const idString = String(id);
@@ -153,7 +155,7 @@ const UnpaidCustomersTable = ({
                     <div className="text-xs text-gray-900 space-y-1">
                       {customer.orders.map((order, index) => {
                         const orderId = order._id || order.order_id || order.id || order.orderNumber;
-                        const orderIdLastSix = getLastSixDigits(orderId);
+                        const orderIdFormatted = formatOrderId(orderId);
                         const orderAmount = order.billingDetails?.totalAmount || 
                                           order.Net_total || 
                                           order.totalAmount || 
@@ -171,7 +173,7 @@ const UnpaidCustomersTable = ({
                             className="cursor-pointer hover:text-blue-600"
                             onClick={() => onOrderClick && onOrderClick(orderId)}
                           >
-                            Order id - #{orderIdLastSix} / Amt - {formattedAmount} ₹ / Date - {orderDate} ({orderStatus})
+                            Order id - {orderIdFormatted} / Amt - {formattedAmount} ₹ / Date - {orderDate} ({orderStatus})
                           </div>
                         );
                       })}

@@ -216,11 +216,14 @@ export const getVendorOrderById = async (req, res) => {
     }
 
     // Check if order contains vendor's products
-    const hasVendorProducts = order.items.some((item) =>
-      vendorProductIds.some(
-        (vpId) => vpId.toString() === item.productId.toString()
-      )
-    );
+    // Handle both populated and non-populated productId
+    const hasVendorProducts = order.items.some((item) => {
+      const productId = item.productId?._id || item.productId;
+      if (!productId) return false;
+      return vendorProductIds.some(
+        (vpId) => vpId.toString() === productId.toString()
+      );
+    });
 
     if (!hasVendorProducts) {
       return res.status(403).json({
@@ -230,11 +233,14 @@ export const getVendorOrderById = async (req, res) => {
     }
 
     // Filter items to show only vendor's products
-    const vendorOrderItems = order.items.filter((item) =>
-      vendorProductIds.some(
-        (vpId) => vpId.toString() === item.productId.toString()
-      )
-    );
+    // Handle both populated and non-populated productId
+    const vendorOrderItems = order.items.filter((item) => {
+      const productId = item.productId?._id || item.productId;
+      if (!productId) return false;
+      return vendorProductIds.some(
+        (vpId) => vpId.toString() === productId.toString()
+      );
+    });
 
     const vendorOrderTotal = vendorOrderItems.reduce(
       (sum, item) => sum + item.total,
@@ -293,11 +299,14 @@ export const updateVendorOrderStatus = async (req, res) => {
     }
 
     // Check if order contains vendor's products
-    const hasVendorProducts = order.items.some((item) =>
-      vendorProductIds.some(
-        (vpId) => vpId.toString() === item.productId.toString()
-      )
-    );
+    // Handle both populated and non-populated productId
+    const hasVendorProducts = order.items.some((item) => {
+      const productId = item.productId?._id || item.productId;
+      if (!productId) return false;
+      return vendorProductIds.some(
+        (vpId) => vpId.toString() === productId.toString()
+      );
+    });
 
     if (!hasVendorProducts) {
       return res.status(403).json({
@@ -423,11 +432,14 @@ export const updateVendorPaymentStatus = async (req, res) => {
     }
 
     // Check if order contains vendor's products
-    const hasVendorProducts = order.items.some((item) =>
-      vendorProductIds.some(
-        (vpId) => vpId.toString() === item.productId.toString()
-      )
-    );
+    // Handle both populated and non-populated productId
+    const hasVendorProducts = order.items.some((item) => {
+      const productId = item.productId?._id || item.productId;
+      if (!productId) return false;
+      return vendorProductIds.some(
+        (vpId) => vpId.toString() === productId.toString()
+      );
+    });
 
     if (!hasVendorProducts) {
       return res.status(403).json({
@@ -673,11 +685,14 @@ export const getVendorOrderStats = async (req, res) => {
     let totalRevenue = 0;
     deliveredOrdersList.forEach((order) => {
       // Filter items to only include vendor's products
-      const vendorItems = order.items.filter((item) =>
-        vendorProductIds.some(
-          (vpId) => vpId.toString() === item.productId.toString()
-        )
-      );
+      // Handle both populated and non-populated productId
+      const vendorItems = order.items.filter((item) => {
+        const productId = item.productId?._id || item.productId;
+        if (!productId) return false;
+        return vendorProductIds.some(
+          (vpId) => vpId.toString() === productId.toString()
+        );
+      });
       totalRevenue += vendorItems.reduce((sum, item) => sum + item.total, 0);
     });
 

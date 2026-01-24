@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatOrderId } from '../../utils/orderIdFormatter';
 
 const OrdersTable = ({ 
   orders, 
@@ -160,13 +161,7 @@ const OrdersTable = ({
               >
                 <td className="px-4 py-2 whitespace-nowrap">
                   <div className="text-xs font-medium text-gray-900 leading-tight">
-                    {(() => {
-                      const orderId = order._id || order.orderNumber || 'N/A';
-                      if (!orderId || orderId === 'N/A') return 'N/A';
-                      const idString = String(orderId);
-                      const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
-                      return `#${lastSix}`;
-                    })()}
+                    {formatOrderId(order.orderNumber || order._id)}
                   </div>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap">

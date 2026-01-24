@@ -5,6 +5,7 @@ import Modal from '../components/Modal';
 import { useOrders, useCancelOrder } from '../hooks/useApiQueries';
 import Button from '../components/Button';
 import { generateInvoicePDF } from '../utils/invoiceGenerator';
+import { formatOrderId } from '../utils/orderIdFormatter';
 
 const Orders = () => {
   const navigate = useNavigate();
@@ -165,7 +166,7 @@ const Orders = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Order #{order.orderNumber}</span>
+                      <span className="text-sm text-gray-600">Order {formatOrderId(order.orderNumber || order._id)}</span>
                       <Button
                         variant="text"
                         size="sm"
@@ -294,7 +295,7 @@ const Orders = () => {
         {selectedOrder && (
           <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Order #{selectedOrder.orderNumber}
+              Order {formatOrderId(selectedOrder.orderNumber || selectedOrder._id)}
             </h2>
 
             <div className="space-y-6">

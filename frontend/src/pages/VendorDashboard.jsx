@@ -16,6 +16,7 @@ import UserForm from '../components/vendor/UserForm';
 import CreateOrder from '../components/vendor/CreateOrder';
 import UnpaidCustomersTable from '../components/vendor/UnpaidCustomersTable';
 import OrdersGraph from '../components/super_admin/OrdersGraph';
+import { formatOrderId } from '../utils/orderIdFormatter';
 import {
   useMyVendorProducts,
   useGlobalProducts,
@@ -843,12 +844,9 @@ const VendorDashboard = () => {
                             setActiveTab('orders');
                           }}>
                             <td className="px-4 py-2 whitespace-nowrap">
-                              <span className="text-sm font-medium text-gray-900 leading-tight">#{(() => {
-                                const orderId = order.order_id || order._id || 'N/A';
-                                if (!orderId || orderId === 'N/A') return 'N/A';
-                                const idString = String(orderId);
-                                return idString.length > 6 ? idString.slice(-6) : idString;
-                              })()}</span>
+                              <span className="text-sm font-medium text-gray-900 leading-tight">
+                                {formatOrderId(order.order_id || order._id)}
+                              </span>
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap">
                               <span className="text-sm text-gray-500 leading-tight">{(() => {
