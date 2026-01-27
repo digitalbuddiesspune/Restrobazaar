@@ -1224,7 +1224,7 @@ const VendorDashboard = () => {
                         Pending: <span className="font-semibold text-yellow-600">{orderStats.pendingOrders || 0}</span>
                       </div>
                       <div className="text-gray-600">
-                        Completed: <span className="font-semibold text-green-600">{orderStats.completedOrders || 0}</span>
+                        Delivered: <span className="font-semibold text-green-600">{orderStats.deliveredOrders || 0}</span>
                       </div>
                     </div>
                   )}
@@ -1255,6 +1255,7 @@ const VendorDashboard = () => {
                   totalPages={ordersTotalPages}
                   onPageChange={setOrdersPage}
                   onOrderClick={setSelectedOrderId}
+                  allOrders={allOrders}
                 />
               )}
             </div>

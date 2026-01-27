@@ -1,4 +1,4 @@
-import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendorProducts, useVendorProfile } from '../../hooks/useVendorQueries';
+import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendorProducts, useVendorProfile, useVendorOrders } from '../../hooks/useVendorQueries';
 import { formatOrderId } from '../../utils/orderIdFormatter';
 import { useState, useEffect } from 'react';
 import { generateInvoicePDF } from '../../utils/invoiceGenerator';
@@ -8,6 +8,8 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const { data: orderData, isLoading, isError, error, refetch } = useVendorOrder(orderId);
   const { data: vendorProductsData } = useMyVendorProducts({ limit: 1000 }, { enabled: true });
   const { data: vendorProfileData } = useVendorProfile();
+  // Fetch all orders to calculate order count for the user
+  const { data: allOrdersData } = useVendorOrders({ limit: 10000 }, { enabled: !!orderId });
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [paymentStatusValue, setPaymentStatusValue] = useState('unpaid');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -19,6 +21,17 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const order = orderData?.data || {};
   const vendorProducts = vendorProductsData?.data || [];
   const vendor = vendorProfileData?.data || {};
+  const allOrders = allOrdersData?.data || [];
+
+  // Calculate order count for the current user
+  const getUserOrderCount = () => {
+    if (!order.userId) return 0;
+    const userId = order.userId._id?.toString() || order.userId.toString();
+    return allOrders.filter(orderItem => {
+      const orderUserId = orderItem.userId?._id?.toString() || orderItem.userId?.toString();
+      return orderUserId === userId;
+    }).length;
+  };
 
   // Helper function: Find vendor product for an item
   const findVendorProductForItem = (item) => {
@@ -652,6 +665,14 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   </p>
                 </div>
 
+                {/* Order Count */}
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order Count</p>
+                  <p className="text-xs font-medium text-gray-900">
+                    {getUserOrderCount()}
+                  </p>
+                </div>
+
                 {/* Display Order ID */}
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Display Order ID</p>
@@ -713,11 +734,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   </p>
                 </div>
 
-                {/* Delivery Code */}
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Delivery Code</p>
-                  <p className="text-xs font-medium text-gray-900">{order.deliveryCode || order.trackingCode || 'N/A'}</p>
-                </div>
+              
 
                 {/* GST Number */}
                 <div>
