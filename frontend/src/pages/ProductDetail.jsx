@@ -814,7 +814,7 @@ const ProductDetail = () => {
       {/* Flying Animation Component */}
       <FlyingAnimation flyingItems={flyingItems} />
       
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto  px-4 sm:px-6 lg:px-8">
         {/* Back to Products Button */}
         <div className="mb-2">
           <button

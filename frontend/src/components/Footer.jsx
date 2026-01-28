@@ -199,7 +199,7 @@ const Footer = () => {
 
       {/* Add bottom padding on mobile to prevent content from being hidden behind the bottom nav */}
       <footer className="bg-gray-900 text-gray-300 pb-16 md:pb-0">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {/* Company Info */}
           <div className="lg:col-span-1">
@@ -213,7 +213,7 @@ const Footer = () => {
               <img 
                 src="https://res.cloudinary.com/debhhnzgh/image/upload/v1767961742/RestroLogoBluebg_aevte3.png?v=2" 
                 alt="RestroBazaar Logo" 
-                className="h-8 sm:h-10 md:h-12 lg:h-14 xl:h-16 w-auto rounded-lg object-contain max-w-full"
+                className="h-10 md:h-12 lg:h-14 xl:h-16 w-auto rounded-lg object-contain max-w-full"
               />
             </NavLink>
             <p className="text-sm text-gray-400 mb-6 leading-relaxed">
