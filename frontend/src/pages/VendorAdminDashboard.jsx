@@ -263,7 +263,7 @@ const VendorAdminDashboard = () => {
       } else {
         // Validate and convert bulk price slabs
         const validSlabs = productForm.pricing.bulk.filter(
-          (slab) => slab.minQty && slab.maxQty && slab.price
+          (slab) => slab.minQty && slab.price
         );
 
         if (validSlabs.length === 0) {
@@ -274,33 +274,34 @@ const VendorAdminDashboard = () => {
 
         const bulkSlabs = validSlabs.map((slab) => {
           const minQty = parseFloat(slab.minQty);
-          const maxQty = parseFloat(slab.maxQty);
           const price = parseFloat(slab.price);
 
           // Validate values are valid numbers
-          if (isNaN(minQty) || isNaN(maxQty) || isNaN(price)) {
+          if (isNaN(minQty) || isNaN(price)) {
             return null;
           }
 
-          // Validate minQty < maxQty
-          if (minQty >= maxQty) {
+          // Validate minQty is positive
+          if (minQty <= 0 || price < 0) {
             return null;
           }
 
           return {
             minQty: minQty,
-            maxQty: maxQty,
             price: price,
           };
         }).filter((slab) => slab !== null);
 
         if (bulkSlabs.length === 0) {
           setError(
-            "Invalid bulk price slabs: minQty must be less than maxQty for all slabs"
+            "Invalid bulk price slabs: Please provide valid quantity and price"
           );
           setLoading(false);
           return;
         }
+
+        // Sort slabs by minQty in ascending order
+        bulkSlabs.sort((a, b) => a.minQty - b.minQty);
 
         pricingData = {
           bulk: bulkSlabs,
@@ -429,7 +430,7 @@ const VendorAdminDashboard = () => {
         ...productForm.pricing,
         bulk: [
           ...productForm.pricing.bulk,
-          { minQty: "", maxQty: "", price: "" },
+          { minQty: "", price: "" },
         ],
       },
     });
@@ -1420,11 +1421,11 @@ const VendorAdminDashboard = () => {
                     {productForm.pricing.bulk.map((slab, index) => (
                       <div
                         key={index}
-                        className="grid grid-cols-4 gap-2 mb-2 items-end"
+                        className="grid grid-cols-3 gap-2 mb-2 items-end"
                       >
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
-                            Min Qty *
+                            Min Quantity (or more) *
                           </label>
                           <input
                             type="number"
@@ -1439,58 +1440,13 @@ const VendorAdminDashboard = () => {
                                 e.target.value
                               )
                             }
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                              slab.minQty &&
-                              slab.maxQty &&
-                              parseFloat(slab.minQty) >= parseFloat(slab.maxQty)
-                                ? "border-red-300"
-                                : "border-gray-300"
-                            }`}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="e.g., 50"
                           />
-                          {slab.minQty &&
-                            slab.maxQty &&
-                            parseFloat(slab.minQty) >= parseFloat(slab.maxQty) && (
-                              <p className="text-xs text-red-600 mt-1">
-                                Must be less than Max Qty
-                              </p>
-                            )}
                         </div>
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
-                            Max Qty *
-                          </label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            step="1"
-                            value={slab.maxQty}
-                            onChange={(e) =>
-                              updateBulkPriceSlab(
-                                index,
-                                "maxQty",
-                                e.target.value
-                              )
-                            }
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                              slab.minQty &&
-                              slab.maxQty &&
-                              parseFloat(slab.minQty) >= parseFloat(slab.maxQty)
-                                ? "border-red-300"
-                                : "border-gray-300"
-                            }`}
-                          />
-                          {slab.minQty &&
-                            slab.maxQty &&
-                            parseFloat(slab.minQty) >= parseFloat(slab.maxQty) && (
-                              <p className="text-xs text-red-600 mt-1">
-                                Must be greater than Min Qty
-                              </p>
-                            )}
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            Price *
+                            Price per piece *
                           </label>
                           <input
                             type="number"
@@ -1506,6 +1462,7 @@ const VendorAdminDashboard = () => {
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="e.g., 0.99"
                           />
                         </div>
                         <button

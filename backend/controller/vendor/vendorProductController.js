@@ -178,16 +178,16 @@ export const createVendorProduct = async (req, res) => {
 
       // Validate bulk price slabs
       for (const slab of pricing.bulk) {
-        if (!slab.minQty || !slab.maxQty || !slab.price) {
+        if (!slab.minQty || !slab.price) {
           return res.status(400).json({
             success: false,
-            message: "Each bulk price slab must have minQty, maxQty, and price",
+            message: "Each bulk price slab must have minQty and price",
           });
         }
-        if (slab.minQty >= slab.maxQty) {
+        if (slab.minQty <= 0 || slab.price < 0) {
           return res.status(400).json({
             success: false,
-            message: "minQty must be less than maxQty in bulk price slabs",
+            message: "minQty must be greater than 0 and price must be non-negative",
           });
         }
       }
@@ -379,16 +379,16 @@ export const updateVendorProduct = async (req, res) => {
 
         // Validate bulk price slabs
         for (const slab of pricing.bulk) {
-          if (!slab.minQty || !slab.maxQty || !slab.price) {
+          if (!slab.minQty || !slab.price) {
             return res.status(400).json({
               success: false,
-              message: "Each bulk price slab must have minQty, maxQty, and price",
+              message: "Each bulk price slab must have minQty and price",
             });
           }
-          if (slab.minQty >= slab.maxQty) {
+          if (slab.minQty <= 0 || slab.price < 0) {
             return res.status(400).json({
               success: false,
-              message: "minQty must be less than maxQty in bulk price slabs",
+              message: "minQty must be greater than 0 and price must be non-negative",
             });
           }
         }

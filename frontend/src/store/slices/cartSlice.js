@@ -20,6 +20,22 @@ const saveCartToStorage = (cart) => {
   }
 };
 
+// Helper function to find the best matching slab for a quantity
+const findBestMatchingSlab = (bulkSlabs, quantity) => {
+  if (!bulkSlabs || bulkSlabs.length === 0) return null;
+  
+  // Sort slabs by minQty in ascending order
+  const sortedSlabs = [...bulkSlabs].sort((a, b) => a.minQty - b.minQty);
+  
+  // Find all slabs that the quantity qualifies for (quantity >= minQty)
+  const matchingSlabs = sortedSlabs.filter(s => quantity >= s.minQty);
+  
+  if (matchingSlabs.length === 0) return null;
+  
+  // Return the slab with the highest minQty (best price tier)
+  return matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
+};
+
 // Helper function to calculate selectedPrice based on quantity and pricing data
 const calculateSelectedPrice = (priceType, pricing, quantity) => {
   if (priceType === 'single' && pricing?.single?.price) {
@@ -29,25 +45,13 @@ const calculateSelectedPrice = (priceType, pricing, quantity) => {
       display: `₹${pricing.single.price} per piece`,
     };
   } else if (priceType === 'bulk' && pricing?.bulk?.length > 0) {
-    // Find the appropriate price slab for the quantity
-    const slab = pricing.bulk.find(
-      s => quantity >= s.minQty && quantity <= s.maxQty
-    );
+    const slab = findBestMatchingSlab(pricing.bulk, quantity);
     if (slab) {
       return {
         type: 'bulk',
         price: slab.price,
-        display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
+        display: `₹${slab.price} per piece (${slab.minQty}+ pieces)`,
         slab: slab,
-      };
-    } else {
-      // If quantity exceeds all slabs, use the last (highest) slab
-      const lastSlab = pricing.bulk[pricing.bulk.length - 1];
-      return {
-        type: 'bulk',
-        price: lastSlab.price,
-        display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
-        slab: lastSlab,
       };
     }
   }

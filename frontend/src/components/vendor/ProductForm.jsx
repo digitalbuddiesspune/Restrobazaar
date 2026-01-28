@@ -69,7 +69,7 @@ const ProductForm = ({
   // Automatically add one slab when bulk pricing is selected
   useEffect(() => {
     if (formData.priceType === 'bulk' && bulkSlabs.length === 0) {
-      setBulkSlabs([{ minQty: '', maxQty: '', price: '' }]);
+      setBulkSlabs([{ minQty: '', price: '' }]);
     }
   }, [formData.priceType]);
 
@@ -86,14 +86,17 @@ const ProductForm = ({
       };
     } else {
       const validSlabs = bulkSlabs.filter(
-        (slab) => slab.minQty && slab.maxQty && slab.price
+        (slab) => slab.minQty && slab.price
       );
-      pricingData = {
-        bulk: validSlabs.map((slab) => ({
+      // Sort slabs by minQty in ascending order
+      const sortedSlabs = validSlabs
+        .map((slab) => ({
           minQty: parseFloat(slab.minQty),
-          maxQty: parseFloat(slab.maxQty),
           price: parseFloat(slab.price),
-        })),
+        }))
+        .sort((a, b) => a.minQty - b.minQty);
+      pricingData = {
+        bulk: sortedSlabs,
       };
     }
 
@@ -122,7 +125,7 @@ const ProductForm = ({
   };
 
   const addBulkSlab = () => {
-    setBulkSlabs([...bulkSlabs, { minQty: '', maxQty: '', price: '' }]);
+    setBulkSlabs([...bulkSlabs, { minQty: '', price: '' }]);
   };
 
   const removeBulkSlab = (index) => {
@@ -231,7 +234,7 @@ const ProductForm = ({
               </button>
             </div>
             {bulkSlabs.map((slab, index) => (
-              <div key={index} className="grid grid-cols-4 gap-2 mb-2">
+              <div key={index} className="grid grid-cols-3 gap-2 mb-2">
                 <input
                   type="number"
                   required
@@ -239,16 +242,7 @@ const ProductForm = ({
                   value={slab.minQty}
                   onChange={(e) => updateBulkSlab(index, 'minQty', e.target.value)}
                   className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Min Qty"
-                />
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={slab.maxQty}
-                  onChange={(e) => updateBulkSlab(index, 'maxQty', e.target.value)}
-                  className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Max Qty"
+                  placeholder="Min Quantity (or more)"
                 />
                 <input
                   type="number"
@@ -258,7 +252,7 @@ const ProductForm = ({
                   value={slab.price}
                   onChange={(e) => updateBulkSlab(index, 'price', e.target.value)}
                   className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Price"
+                  placeholder="Price per piece"
                 />
                 <button
                   type="button"

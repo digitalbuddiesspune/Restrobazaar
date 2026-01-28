@@ -56,25 +56,16 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       // Sort slabs by minQty (ascending) to find the right one
       const sortedSlabs = [...vendorProduct.pricing.bulk].sort((a, b) => a.minQty - b.minQty);
 
-      // Find the slab that matches the quantity
-      for (let i = sortedSlabs.length - 1; i >= 0; i--) {
-        const slab = sortedSlabs[i];
-        if (quantity >= slab.minQty && quantity <= slab.maxQty) {
-          return slab.price;
-        }
+      // Find the slab with the highest minQty that the quantity qualifies for
+      const matchingSlabs = sortedSlabs.filter(s => quantity >= s.minQty);
+      if (matchingSlabs.length > 0) {
+        // Return the slab with the highest minQty (best price tier)
+        const bestSlab = matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
+        return bestSlab.price;
       }
 
-      // If quantity exceeds all slabs, use the highest slab price
-      const highestSlab = sortedSlabs[sortedSlabs.length - 1];
-      if (quantity > highestSlab.maxQty) {
-        return highestSlab.price;
-      }
-
-      // If quantity is below all slabs, use the lowest slab price
-      const lowestSlab = sortedSlabs[0];
-      if (quantity < lowestSlab.minQty) {
-        return lowestSlab.price;
-      }
+      // If quantity doesn't meet any slab, return null
+      return null;
     }
 
     // Fallback: try to get price from existing item or vendor product
@@ -868,13 +859,14 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                               {(() => {
                                 const vendorProduct = item.vendorProduct || findVendorProductForItem(item);
                                 if (vendorProduct?.priceType === 'bulk' && vendorProduct?.pricing?.bulk?.length > 0) {
-                                  const currentSlab = vendorProduct.pricing.bulk.find(
-                                    (slab) => item.quantity >= slab.minQty && item.quantity <= slab.maxQty
-                                  );
-                                  if (currentSlab) {
+                                  // Find the best matching slab
+                                  const sortedSlabs = [...vendorProduct.pricing.bulk].sort((a, b) => a.minQty - b.minQty);
+                                  const matchingSlabs = sortedSlabs.filter(s => item.quantity >= s.minQty);
+                                  if (matchingSlabs.length > 0) {
+                                    const currentSlab = matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
                                     return (
                                       <span className="text-xs text-gray-500">
-                                        Slab: {currentSlab.minQty}-{currentSlab.maxQty}
+                                        Min Qty: {currentSlab.minQty}+
                                       </span>
                                     );
                                   }

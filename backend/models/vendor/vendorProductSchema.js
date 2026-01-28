@@ -7,11 +7,6 @@ const bulkPriceSchema = new mongoose.Schema(
       required: true,
     },
 
-    maxQty: {
-      type: Number,
-      required: true,
-    },
-
     price: {
       type: Number,
       required: true,

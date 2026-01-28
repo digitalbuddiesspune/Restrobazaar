@@ -58,25 +58,18 @@ const Wishlist = () => {
         display: `₹${product.pricing.single.price} per piece`,
       };
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
-      // Find the appropriate price slab for the quantity
-      const slab = product.pricing.bulk.find(
-        s => quantity >= s.minQty && quantity <= s.maxQty
-      );
-      if (slab) {
+      // Sort slabs by minQty and find the best matching slab
+      const sortedSlabs = [...product.pricing.bulk].sort((a, b) => a.minQty - b.minQty);
+      const matchingSlabs = sortedSlabs.filter(s => quantity >= s.minQty);
+      
+      if (matchingSlabs.length > 0) {
+        // Get the slab with the highest minQty (best price tier)
+        const slab = matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
         return {
           type: 'bulk',
           price: slab.price,
-          display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
+          display: `₹${slab.price} per piece (${slab.minQty}+ pieces)`,
           slab: slab,
-        };
-      } else {
-        // If quantity exceeds all slabs, use the last (highest) slab
-        const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
-        return {
-          type: 'bulk',
-          price: lastSlab.price,
-          display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
-          slab: lastSlab,
         };
       }
     }

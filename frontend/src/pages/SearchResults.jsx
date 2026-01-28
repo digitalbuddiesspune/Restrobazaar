@@ -89,14 +89,14 @@ const SearchResults = () => {
               ₹{product.defaultPrice}
             </span>
             <span className="text-sm font-bold text-red-600">
-              ₹{sellingPrice} ({firstSlab.minQty}-{firstSlab.maxQty} pcs)
+              ₹{sellingPrice} ({firstSlab.minQty}+ pcs)
             </span>
           </div>
         );
       }
       return (
         <span className="text-sm font-bold text-red-600">
-          ₹{sellingPrice} ({firstSlab.minQty}-{firstSlab.maxQty} pcs)
+          ₹{sellingPrice} ({firstSlab.minQty}+ pcs)
         </span>
       );
     }
