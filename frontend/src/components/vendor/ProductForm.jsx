@@ -1,32 +1,32 @@
 import { useState, useEffect } from 'react';
 
-const ProductForm = ({ 
-  product, 
-  globalProducts, 
-  cities, 
+const ProductForm = ({
+  product,
+  globalProducts,
+  cities,
   vendorCityId,
-  onSubmit, 
+  onSubmit,
   onCancel,
-  isLoading 
+  isLoading
 }) => {
   const [formData, setFormData] = useState({
     productId: product?.productId?._id || product?.productId || '',
     cityId: product?.cityId?._id || product?.cityId || vendorCityId || '',
     priceType: product?.priceType || 'single',
-    defaultPrice: product?.defaultPrice || 0,
+    defaultPrice: product?.defaultPrice || '',
     productPurchasedFrom: product?.productPurchasedFrom || '',
     purchasedMode: product?.purchasedMode || '',
     purchasedAmount: product?.purchasedAmount || '',
-    gst: product?.gst || 0,
-    cgst: product?.cgst || 0,
-    sgst: product?.sgst || 0,
-    igst: product?.igst || 0,
+    gst: product?.gst || '',
+    cgst: product?.cgst || '',
+    sgst: product?.sgst || '',
+    igst: product?.igst || '',
     pricing: product?.pricing || {
       single: { price: '' },
       bulk: [],
     },
-    availableStock: product?.availableStock || 0,
-    minimumOrderQuantity: product?.minimumOrderQuantity || 1,
+    availableStock: product?.availableStock || '',
+    minimumOrderQuantity: product?.minimumOrderQuantity || '',
     notifyQuantity: product?.notifyQuantity || '',
     status: product?.status !== undefined ? product.status : true,
   });
@@ -40,12 +40,12 @@ const ProductForm = ({
       const gstValue = product.gst || 0;
       const gstNum = parseFloat(gstValue) || 0;
       const calculatedCgstSgst = gstNum > 0 ? (gstNum / 2).toFixed(2) : (product.cgst || 0);
-      
+
       setFormData({
         productId: product.productId?._id || product.productId || '',
         cityId: product.cityId?._id || product.cityId || vendorCityId || '',
         priceType: product.priceType || 'single',
-        defaultPrice: product.defaultPrice || 0,
+        defaultPrice: product.defaultPrice || '',
         productPurchasedFrom: product.productPurchasedFrom || '',
         purchasedMode: product.purchasedMode || '',
         purchasedAmount: product.purchasedAmount || '',
@@ -140,7 +140,7 @@ const ProductForm = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-     
+
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Row 1: Select Product, City, and Price Type */}
@@ -236,19 +236,16 @@ const ProductForm = ({
             {bulkSlabs.map((slab, index) => (
               <div key={index} className="grid grid-cols-3 gap-2 mb-2">
                 <input
-                  type="number"
+                  type="text"
                   required
-                  min="1"
                   value={slab.minQty}
                   onChange={(e) => updateBulkSlab(index, 'minQty', e.target.value)}
                   className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Min Quantity (or more)"
                 />
                 <input
-                  type="number"
+                  type="text"
                   required
-                  min="0"
-                  step="0.01"
                   value={slab.price}
                   onChange={(e) => updateBulkSlab(index, 'price', e.target.value)}
                   className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -274,10 +271,8 @@ const ProductForm = ({
                 Price *
               </label>
               <input
-                type="number"
+                type="text"
                 required
-                min="0"
-                step="0.01"
                 value={formData.pricing.single.price}
                 onChange={(e) =>
                   setFormData({
@@ -297,8 +292,7 @@ const ProductForm = ({
                 Available Stock
               </label>
               <input
-                type="number"
-                min="0"
+                type="text"
                 value={formData.availableStock}
                 onChange={(e) =>
                   setFormData({ ...formData, availableStock: e.target.value })
@@ -311,8 +305,7 @@ const ProductForm = ({
                 Min Order Qty
               </label>
               <input
-                type="number"
-                min="1"
+                type="text"
                 value={formData.minimumOrderQuantity}
                 onChange={(e) =>
                   setFormData({
@@ -328,8 +321,7 @@ const ProductForm = ({
                 Low Stock Alert
               </label>
               <input
-                type="number"
-                min="0"
+                type="text"
                 value={formData.notifyQuantity}
                 onChange={(e) =>
                   setFormData({ ...formData, notifyQuantity: e.target.value })
@@ -346,8 +338,7 @@ const ProductForm = ({
                 Available Stock
               </label>
               <input
-                type="number"
-                min="0"
+                type="text"
                 value={formData.availableStock}
                 onChange={(e) =>
                   setFormData({ ...formData, availableStock: e.target.value })
@@ -360,8 +351,8 @@ const ProductForm = ({
                 Min Order Qty
               </label>
               <input
-                type="number"
-                min="1"
+                type="text"
+
                 value={formData.minimumOrderQuantity}
                 onChange={(e) =>
                   setFormData({
@@ -377,8 +368,7 @@ const ProductForm = ({
                 Low Stock Alert
               </label>
               <input
-                type="number"
-                min="0"
+                type="text"
                 value={formData.notifyQuantity}
                 onChange={(e) =>
                   setFormData({ ...formData, notifyQuantity: e.target.value })
@@ -421,9 +411,7 @@ const ProductForm = ({
                 MRP (Marked Price)
               </label>
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
                 value={formData.defaultPrice}
                 onChange={(e) =>
                   setFormData({ ...formData, defaultPrice: e.target.value })
@@ -486,16 +474,14 @@ const ProductForm = ({
                 GST (%)
               </label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 value={formData.gst}
                 onChange={(e) => {
                   const gstValue = e.target.value;
                   const gstNum = parseFloat(gstValue) || 0;
                   const cgstSgstValue = gstNum > 0 ? (gstNum / 2).toFixed(2) : '';
-                  setFormData({ 
-                    ...formData, 
+                  setFormData({
+                    ...formData,
                     gst: gstValue,
                     cgst: cgstSgstValue,
                     sgst: cgstSgstValue
@@ -510,9 +496,7 @@ const ProductForm = ({
                 CGST (%)
               </label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 value={formData.cgst}
                 onChange={(e) =>
                   setFormData({ ...formData, cgst: e.target.value })
@@ -526,9 +510,7 @@ const ProductForm = ({
                 SGST (%)
               </label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 value={formData.sgst}
                 onChange={(e) =>
                   setFormData({ ...formData, sgst: e.target.value })
@@ -542,9 +524,7 @@ const ProductForm = ({
                 IGST (%)
               </label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 value={formData.igst}
                 onChange={(e) =>
                   setFormData({ ...formData, igst: e.target.value })
@@ -573,8 +553,8 @@ const ProductForm = ({
             {isLoading
               ? 'Saving...'
               : product
-              ? 'Update Product'
-              : 'Add Product'}
+                ? 'Update Product'
+                : 'Add Product'}
           </button>
         </div>
       </form>
