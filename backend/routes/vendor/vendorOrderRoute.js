@@ -8,7 +8,6 @@ import {
   updateVendorOrderItems,
   getVendorOrderStats,
   createOrderForUser,
-  generateInvoiceForVendorOrder,
 } from '../../controller/vendor/vendorOrderController.js';
 import { getVendorUsers } from '../../controller/vendor/vendorUserController.js';
 import {
@@ -26,7 +25,6 @@ vendorOrderRouter.get('/vendor/orders/:id', authenticate, authorize('vendor'), g
 vendorOrderRouter.patch('/vendor/orders/:id/status', authenticate, authorize('vendor'), updateVendorOrderStatus);
 vendorOrderRouter.patch('/vendor/orders/:id/payment-status', authenticate, authorize('vendor'), updateVendorPaymentStatus);
 vendorOrderRouter.patch('/vendor/orders/:id/items', authenticate, authorize('vendor'), updateVendorOrderItems);
-vendorOrderRouter.post('/vendor/orders/:id/generate-invoice', authenticate, authorize('vendor'), generateInvoiceForVendorOrder);
 
 // Vendor user routes - For creating orders on behalf of users
 vendorOrderRouter.get('/vendor/users', authenticate, authorize('vendor'), getVendorUsers);

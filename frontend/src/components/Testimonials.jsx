@@ -6,7 +6,6 @@ import { useTestimonials } from "../hooks/useApiQueries";
 
 const Testimonials = () => {
   // Use TanStack Query for caching and data fetching
-  // Testimonials are cached for 30 minutes and won't refetch on every page visit
   const {
     data: testimonialsData,
     isLoading: loading,
@@ -18,8 +17,8 @@ const Testimonials = () => {
       limit: 100, // Fetch up to 100 testimonials
     },
     {
-      staleTime: 30 * 60 * 1000, // 30 minutes - testimonials don't change often (same as Categories)
-      gcTime: 60 * 60 * 1000, // 1 hour - keep in cache for 1 hour (same as Categories)
+      staleTime: 10 * 60 * 1000, // 10 minutes - testimonials don't change often
+      gcTime: 30 * 60 * 1000, // 30 minutes cache
       refetchOnWindowFocus: false, // Don't refetch on window focus
       refetchOnMount: false, // Use cached data if available
     }

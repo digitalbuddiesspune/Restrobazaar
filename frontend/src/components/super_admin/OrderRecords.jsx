@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { formatOrderId } from '../../utils/orderIdFormatter';
 
 const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => {
   const [orders, setOrders] = useState([]);
@@ -77,7 +76,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
       if (data.success) {
         // Format orders to match the required fields
         const formattedOrders = data.data.map((order) => ({
-          order_id: order.orderNumber || order._id || order.order_id || order.id || 'N/A',
+          order_id: order.order_id || order._id || order.orderNumber || 'N/A',
           user_id: order.user_id || order.userId?._id || order.userId || 'N/A',
           Customer_Name: order.Customer_Name || order.deliveryAddress?.name || order.userId?.name || 'N/A',
           Phone: order.Phone || order.deliveryAddress?.phone || order.userId?.phone || 'N/A',
@@ -145,11 +144,11 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
     return `₹${parseFloat(amount || 0).toFixed(2)}`;
   };
 
-  // Helper function to get last 6 digits of user ID (without # prefix)
-  const getLast6Digits = (id) => {
+  const getLast6Digits = (id, withPrefix = false) => {
     if (!id || id === 'N/A') return 'N/A';
     const idString = typeof id === 'object' ? id.toString() : String(id);
-    return idString.length > 6 ? idString.slice(-6) : idString;
+    const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+    return withPrefix ? `#${lastSix}` : lastSix;
   };
 
   const getStatusColor = (status) => {
@@ -241,7 +240,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
 
       if (data.success) {
         return data.data.map((order) => ({
-          order_id: order.orderNumber || order._id || order.order_id || order.id || 'N/A',
+          order_id: order.order_id || order._id || order.orderNumber || 'N/A',
           user_id: order.user_id || order.userId?._id || order.userId || 'N/A',
           Customer_Name: order.Customer_Name || order.deliveryAddress?.name || order.userId?.name || 'N/A',
           Phone: order.Phone || order.deliveryAddress?.phone || order.userId?.phone || 'N/A',
@@ -283,9 +282,14 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
       // Format data for Excel
       const excelData = allOrders.map((order) => {
         // Format Order ID: last 6 digits with # prefix
-        // Use orderNumber first for consistency with other components
-        const orderId = order.orderNumber || order._id || order.order_id || order.id;
-        const formattedOrderId = formatOrderId(orderId);
+        const orderIdStr = order.order_id && order.order_id !== 'N/A' 
+          ? String(order.order_id) 
+          : 'N/A';
+        const formattedOrderId = orderIdStr !== 'N/A' && orderIdStr.length > 6
+          ? `#${orderIdStr.slice(-6)}`
+          : orderIdStr !== 'N/A'
+          ? `#${orderIdStr}`
+          : 'N/A';
 
         // Format User ID: last 6 digits
         const userIdStr = order.user_id && order.user_id !== 'N/A'
@@ -570,7 +574,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
                 orders.map((order, index) => (
                   <tr key={index} className="hover:bg-gray-50 even:bg-gray-50">
                     <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900 leading-tight">
-                      {formatOrderId(order.order_id)}
+                      {getLast6Digits(order.order_id, true)}
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {getLast6Digits(order.user_id)}

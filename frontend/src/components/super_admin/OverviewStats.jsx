@@ -1,5 +1,4 @@
 import OrdersGraph from "./OrdersGraph";
-import { formatOrderId } from '../../utils/orderIdFormatter';
 
 const OverviewStats = ({
   stats,
@@ -360,14 +359,15 @@ const OverviewStats = ({
                   </td>
                 </tr>
               ) : (
-                pendingOrders.map((order) => {
-                  const orderId = order.orderNumber || order._id || order.order_id;
-                  return (
-                  <tr key={orderId} className="hover:bg-gray-50 transition-colors even:bg-gray-50">
+                pendingOrders.map((order) => (
+                  <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors even:bg-gray-50">
                     <td className="px-4 py-2 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900 leading-tight">
-                        {formatOrderId(orderId)}
-                      </span>
+                      <span className="text-sm font-medium text-gray-900 leading-tight">#{(() => {
+                        const orderId = order.order_id || order._id || 'N/A';
+                        if (!orderId || orderId === 'N/A') return 'N/A';
+                        const idString = String(orderId);
+                        return idString.length > 6 ? idString.slice(-6) : idString;
+                      })()}</span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span className="text-sm text-gray-500 leading-tight">{(() => {
@@ -405,8 +405,7 @@ const OverviewStats = ({
                       </span>
                     </td>
                   </tr>
-                  );
-                })
+                ))
               )}
             </tbody>
           </table>

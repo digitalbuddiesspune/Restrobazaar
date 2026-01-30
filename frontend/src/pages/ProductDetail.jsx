@@ -125,11 +125,21 @@ const ProductDetail = () => {
         price: product.pricing.single.price,
       };
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
-      const slab = findBestMatchingSlab(product.pricing.bulk, quantity);
+      // Find the appropriate price slab for the quantity
+      const slab = product.pricing.bulk.find(
+        s => quantity >= s.minQty && quantity <= s.maxQty
+      );
       if (slab) {
         selectedPrice = {
           type: 'bulk',
           price: slab.price,
+        };
+      } else {
+        // If quantity exceeds all slabs, use the last (highest) slab
+        const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+        selectedPrice = {
+          type: 'bulk',
+          price: lastSlab.price,
         };
       }
     }
@@ -235,22 +245,6 @@ const ProductDetail = () => {
     return ['https://via.placeholder.com/600x600?text=Product+Image'];
   };
 
-  // Helper function to find the best matching slab for a quantity
-  function findBestMatchingSlab(bulkSlabs, quantity) {
-    if (!bulkSlabs || bulkSlabs.length === 0) return null;
-
-    // Sort slabs by minQty in ascending order
-    const sortedSlabs = [...bulkSlabs].sort((a, b) => a.minQty - b.minQty);
-
-    // Find all slabs that the quantity qualifies for (quantity >= minQty)
-    const matchingSlabs = sortedSlabs.filter((s) => quantity >= s.minQty);
-
-    if (matchingSlabs.length === 0) return null;
-
-    // Return the slab with the highest minQty (best price tier)
-    return matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
-  }
-
   const getProductPrice = () => {
     if (!product) return null;
 
@@ -276,11 +270,16 @@ const ProductDetail = () => {
     if (product.priceType === 'single' && product.pricing?.single?.price) {
       return product.pricing.single.price * qty;
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
-      const matchingSlab = findBestMatchingSlab(product.pricing.bulk, qty);
-      if (matchingSlab) {
-        return matchingSlab.price * qty;
+      // Find the appropriate price slab for the quantity
+      const slab = product.pricing.bulk.find(
+        s => qty >= s.minQty && qty <= s.maxQty
+      );
+      if (slab) {
+        return slab.price * qty;
       }
-      return null;
+      // If quantity exceeds all slabs, use the last (highest) slab
+      const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+      return lastSlab.price * qty;
     }
     return null;
   };
@@ -366,13 +365,25 @@ const ProductDetail = () => {
           display: `₹${product.pricing.single.price} per piece`,
         };
       } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
-        const slab = findBestMatchingSlab(product.pricing.bulk, quantity);
+        // Find the appropriate price slab for the quantity
+        const slab = product.pricing.bulk.find(
+          s => quantity >= s.minQty && quantity <= s.maxQty
+        );
         if (slab) {
           selectedPrice = {
             type: 'bulk',
             price: slab.price,
-            display: `₹${slab.price} per piece (${slab.minQty}+ pieces)`,
+            display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
             slab: slab,
+          };
+        } else {
+          // If quantity exceeds all slabs, use the last (highest) slab
+          const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+          selectedPrice = {
+            type: 'bulk',
+            price: lastSlab.price,
+            display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
+            slab: lastSlab,
           };
         }
       }
@@ -563,13 +574,25 @@ const ProductDetail = () => {
         display: `₹${product.pricing.single.price} per piece`,
       };
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
-      const slab = findBestMatchingSlab(product.pricing.bulk, quantity);
+      // Find the appropriate price slab for the quantity
+      const slab = product.pricing.bulk.find(
+        s => quantity >= s.minQty && quantity <= s.maxQty
+      );
       if (slab) {
         return {
           type: 'bulk',
           price: slab.price,
-          display: `₹${slab.price} per piece (${slab.minQty}+ pieces)`,
+          display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
           slab: slab,
+        };
+      } else {
+        // If quantity exceeds all slabs, use the last (highest) slab
+        const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
+        return {
+          type: 'bulk',
+          price: lastSlab.price,
+          display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
+          slab: lastSlab,
         };
       }
     }
@@ -814,7 +837,7 @@ const ProductDetail = () => {
       {/* Flying Animation Component */}
       <FlyingAnimation flyingItems={flyingItems} />
       
-      <div className="container mx-auto  px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back to Products Button */}
         <div className="mb-2">
           <button
@@ -942,38 +965,17 @@ const ProductDetail = () => {
               {/* Price Display */}
               {priceInfo?.type === 'single' ? (
                 <div className="flex items-baseline gap-2 mb-2">
-                  {product.defaultPrice && product.defaultPrice > priceInfo.price ? (
-                    <>
-                      <span className="text-xl font-normal text-gray-400 line-through">
-                        ₹{product.defaultPrice}
-                      </span>
-                      <span className="text-3xl font-bold text-black">
-                        ₹{priceInfo.price}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-3xl font-bold text-black">
-                      ₹{priceInfo.price}
-                    </span>
-                  )}
+                  <span className="text-3xl font-bold text-black">
+                    ₹{priceInfo.price}
+                  </span>
                   <span className="text-gray-500 text-sm">per piece</span>
                 </div>
               ) : priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 ? (
                 <div className="mb-2">
-                  {product.defaultPrice && product.defaultPrice > priceInfo.slabs[priceInfo.slabs.length - 1].price ? (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xl font-normal text-gray-400 line-through">
-                        ₹{product.defaultPrice}
-                      </span>
-                      <span className="text-3xl font-bold text-black">
-                        ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-3xl font-bold text-black">
-                      ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
-                    </span>
-                  )}
+                  <span className="text-3xl font-bold text-black">
+                    ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
+                  </span>
+                
                 </div>
               ) : (
                 <div className="mb-2">
@@ -993,20 +995,9 @@ const ProductDetail = () => {
                 <span className="text-xs text-gray-600 block mb-1">Price</span>
                 {priceInfo?.type === 'single' ? (
                   <div className="flex items-baseline gap-2">
-                    {product.defaultPrice && product.defaultPrice > priceInfo.price ? (
-                      <>
-                        <span className="text-base font-normal text-gray-400 line-through">
-                          ₹{product.defaultPrice}
-                        </span>
-                        <span className="text-xl font-bold text-red-600">
-                          ₹{priceInfo.price}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-xl font-bold text-red-600">
-                        ₹{priceInfo.price}
-                      </span>
-                    )}
+                    <span className="text-xl font-bold text-red-600">
+                      ₹{priceInfo.price}
+                    </span>
                     <span className="text-gray-500 text-xs">per piece</span>
                   </div>
                 ) : priceInfo?.type === 'bulk' ? (
@@ -1019,7 +1010,7 @@ const ProductDetail = () => {
                           className="flex justify-between items-center text-xs bg-white p-2 rounded"
                         >
                           <span className="text-gray-700">
-                          Buy {slab.minQty} Pieces or more at 
+                          Buy {slab.minQty} - {slab.maxQty} Pieces 
                           </span>
                           <span className="font-semibold text-gray-900">₹{slab.price}/piece</span>
                         </div>
@@ -1482,5 +1473,6 @@ const ProductDetail = () => {
     </div>
   );
 };
+
 export default ProductDetail;
 

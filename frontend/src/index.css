@@ -16,8 +16,7 @@
   html {
     width: 100%;
     max-width: 100%;
-    overflow-y: scroll;
-    /* Hide scrollbar on mobile */
+    /* Hide scrollbar */
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
@@ -30,71 +29,13 @@
     width: 100%;
     max-width: 100%;
     font-family: 'Inter', sans-serif;
-    overflow-y: scroll;
-    /* Hide scrollbar on mobile */
+    /* Hide scrollbar */
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
   
   body::-webkit-scrollbar {
     display: none;
-  }
-  
-  /* Show scrollbar only on desktop (md breakpoint and above) */
-  @media (min-width: 768px) {
-    html {
-      /* Modern scrollbar for Firefox */
-      scrollbar-width: thin;
-      scrollbar-color: #94a3b8 #f1f5f9;
-    }
-    
-    /* Modern scrollbar for Webkit browsers (Chrome, Safari, Edge) */
-    html::-webkit-scrollbar {
-      display: block;
-      width: 12px;
-    }
-    
-    html::-webkit-scrollbar-track {
-      background: #f1f5f9;
-      border-radius: 10px;
-    }
-    
-    html::-webkit-scrollbar-thumb {
-      background: #94a3b8;
-      border-radius: 10px;
-      border: 2px solid #f1f5f9;
-    }
-    
-    html::-webkit-scrollbar-thumb:hover {
-      background: #64748b;
-    }
-    
-    body {
-      /* Modern scrollbar for Firefox */
-      scrollbar-width: thin;
-      scrollbar-color: #94a3b8 #f1f5f9;
-    }
-    
-    /* Modern scrollbar for Webkit browsers (Chrome, Safari, Edge) */
-    body::-webkit-scrollbar {
-      display: block;
-      width: 12px;
-    }
-    
-    body::-webkit-scrollbar-track {
-      background: #f1f5f9;
-      border-radius: 10px;
-    }
-    
-    body::-webkit-scrollbar-thumb {
-      background: #94a3b8;
-      border-radius: 10px;
-      border: 2px solid #f1f5f9;
-    }
-    
-    body::-webkit-scrollbar-thumb:hover {
-      background: #64748b;
-    }
   }
   
   #root {

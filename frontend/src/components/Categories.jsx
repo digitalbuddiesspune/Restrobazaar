@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useCategories } from '../hooks/useApiQueries';
 
 export const categoryCards = [
   {
@@ -89,28 +88,39 @@ export const titleToSlug = (title) => {
 };
 
 const Categories = () => {
-  // Use TanStack Query to fetch categories with caching
-  // Categories are cached for 30 minutes and won't refetch on every page visit
-  const { data: categoriesResponse, isLoading: loading, error: categoriesError } = useCategories(
-    {},
-    {
-      staleTime: 30 * 60 * 1000, // 30 minutes - categories don't change often
-      gcTime: 60 * 60 * 1000, // 1 hour - keep in cache for 1 hour
-    }
-  );
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Process categories - filter active and sort by priority
-  const categories = useMemo(() => {
-    if (!categoriesResponse?.success || !categoriesResponse?.data) return [];
-    return categoriesResponse.data
-      .filter(cat => cat.isActive !== false)
-      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
-  }, [categoriesResponse]);
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
-  // Extract error message
-  const error = categoriesError 
-    ? (categoriesError.response?.data?.message || 'Error loading categories. Please try again later.')
-    : null;
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(`${baseUrl}/categories`);
+        const data = await response.json();
+        
+        if (data.success) {
+          // Filter only active categories and sort by priority
+          const activeCategories = data.data
+            .filter(cat => cat.isActive !== false)
+            .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+          setCategories(activeCategories);
+        } else {
+          setError(data.message || 'Failed to fetch categories');
+        }
+      } catch (err) {
+        setError('Error loading categories. Please try again later.');
+        console.error('Error fetching categories:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [baseUrl]);
 
   return (
     <section className="bg-gray-50 py-8 md:py-12 lg:py-16">

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "236399242481",
+    "project_id": "restrobazaar-31b38",
+    "storage_bucket": "restrobazaar-31b38.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:236399242481:android:d44e57d365e2d4c8df4d50",
+        "android_client_info": {
+          "package_name": "com.akenterprises.restrobazaar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJOT-Xie_j5xsi8JczrQBhxIQ27VyK-Yg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

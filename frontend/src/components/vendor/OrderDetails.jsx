@@ -1,15 +1,11 @@
-import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendorProducts, useVendorProfile, useVendorOrders } from '../../hooks/useVendorQueries';
-import { formatOrderId } from '../../utils/orderIdFormatter';
+import { useVendorOrder, useUpdatePaymentStatus, useUpdateOrderItems, useMyVendorProducts, useVendorProfile } from '../../hooks/useVendorQueries';
 import { useState, useEffect } from 'react';
 import { generateInvoicePDF } from '../../utils/invoiceGenerator';
-import { invoiceAPI } from '../../utils/api';
 
 const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const { data: orderData, isLoading, isError, error, refetch } = useVendorOrder(orderId);
   const { data: vendorProductsData } = useMyVendorProducts({ limit: 1000 }, { enabled: true });
   const { data: vendorProfileData } = useVendorProfile();
-  // Fetch all orders to calculate order count for the user
-  const { data: allOrdersData } = useVendorOrders({ limit: 10000 }, { enabled: !!orderId });
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [paymentStatusValue, setPaymentStatusValue] = useState('unpaid');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -20,18 +16,6 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
   const order = orderData?.data || {};
   const vendorProducts = vendorProductsData?.data || [];
-  const vendor = vendorProfileData?.data || {};
-  const allOrders = allOrdersData?.data || [];
-
-  // Calculate order count for the current user
-  const getUserOrderCount = () => {
-    if (!order.userId) return 0;
-    const userId = order.userId._id?.toString() || order.userId.toString();
-    return allOrders.filter(orderItem => {
-      const orderUserId = orderItem.userId?._id?.toString() || orderItem.userId?.toString();
-      return orderUserId === userId;
-    }).length;
-  };
 
   // Helper function: Find vendor product for an item
   const findVendorProductForItem = (item) => {
@@ -56,16 +40,25 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       // Sort slabs by minQty (ascending) to find the right one
       const sortedSlabs = [...vendorProduct.pricing.bulk].sort((a, b) => a.minQty - b.minQty);
 
-      // Find the slab with the highest minQty that the quantity qualifies for
-      const matchingSlabs = sortedSlabs.filter(s => quantity >= s.minQty);
-      if (matchingSlabs.length > 0) {
-        // Return the slab with the highest minQty (best price tier)
-        const bestSlab = matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
-        return bestSlab.price;
+      // Find the slab that matches the quantity
+      for (let i = sortedSlabs.length - 1; i >= 0; i--) {
+        const slab = sortedSlabs[i];
+        if (quantity >= slab.minQty && quantity <= slab.maxQty) {
+          return slab.price;
+        }
       }
 
-      // If quantity doesn't meet any slab, return null
-      return null;
+      // If quantity exceeds all slabs, use the highest slab price
+      const highestSlab = sortedSlabs[sortedSlabs.length - 1];
+      if (quantity > highestSlab.maxQty) {
+        return highestSlab.price;
+      }
+
+      // If quantity is below all slabs, use the lowest slab price
+      const lowestSlab = sortedSlabs[0];
+      if (quantity < lowestSlab.minQty) {
+        return lowestSlab.price;
+      }
     }
 
     // Fallback: try to get price from existing item or vendor product
@@ -482,9 +475,13 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
             {/* Left: Order ID */}
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order ID</p>
-              <p className="text-xs font-medium text-gray-900">
-                {formatOrderId(order.orderNumber || order._id)}
-              </p>
+              <p className="text-xs font-medium text-gray-900">{(() => {
+                const orderId = order._id || order.orderNumber || 'N/A';
+                if (!orderId || orderId === 'N/A') return 'N/A';
+                const idString = String(orderId);
+                const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+                return `#${lastSix}`;
+              })()}</p>
             </div>
 
             {/* Right: Order Status and Payment Status */}
@@ -656,20 +653,16 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   </p>
                 </div>
 
-                {/* Order Count */}
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Order Count</p>
-                  <p className="text-xs font-medium text-gray-900">
-                    {getUserOrderCount()}
-                  </p>
-                </div>
-
                 {/* Display Order ID */}
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Display Order ID</p>
-                  <p className="text-xs font-medium text-gray-900">
-                    {formatOrderId(order.orderNumber || order._id)}
-                  </p>
+                  <p className="text-xs font-medium text-gray-900">{(() => {
+                    const orderId = order._id || order.orderNumber || 'N/A';
+                    if (!orderId || orderId === 'N/A') return 'N/A';
+                    const idString = String(orderId);
+                    const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
+                    return `#${lastSix}`;
+                  })()}</p>
                 </div>
 
                 {/* Customer Name */}
@@ -725,7 +718,11 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   </p>
                 </div>
 
-              
+                {/* Delivery Code */}
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Delivery Code</p>
+                  <p className="text-xs font-medium text-gray-900">{order.deliveryCode || order.trackingCode || 'N/A'}</p>
+                </div>
 
                 {/* GST Number */}
                 <div>
@@ -859,14 +856,13 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                               {(() => {
                                 const vendorProduct = item.vendorProduct || findVendorProductForItem(item);
                                 if (vendorProduct?.priceType === 'bulk' && vendorProduct?.pricing?.bulk?.length > 0) {
-                                  // Find the best matching slab
-                                  const sortedSlabs = [...vendorProduct.pricing.bulk].sort((a, b) => a.minQty - b.minQty);
-                                  const matchingSlabs = sortedSlabs.filter(s => item.quantity >= s.minQty);
-                                  if (matchingSlabs.length > 0) {
-                                    const currentSlab = matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
+                                  const currentSlab = vendorProduct.pricing.bulk.find(
+                                    (slab) => item.quantity >= slab.minQty && item.quantity <= slab.maxQty
+                                  );
+                                  if (currentSlab) {
                                     return (
                                       <span className="text-xs text-gray-500">
-                                        Min Qty: {currentSlab.minQty}+
+                                        Slab: {currentSlab.minQty}-{currentSlab.maxQty}
                                       </span>
                                     );
                                   }
@@ -1075,40 +1071,12 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
             <button
-              onClick={async () => {
+              onClick={() => {
                 try {
-                  if (!order || Object.keys(order).length === 0) {
-                    alert('Order data is not available. Please refresh the page.');
-                    return;
-                  }
-
-                  // If order doesn't have an invoice number, generate one first
-                  let orderWithInvoice = { ...order };
-                  if (!order.invoiceNumber && order._id) {
-                    try {
-                      // Use vendor endpoint for generating invoice numbers
-                      const response = await invoiceAPI.generateInvoiceForVendorOrder(order._id);
-                      if (response.success && response.data.invoiceNumber) {
-                        orderWithInvoice.invoiceNumber = response.data.invoiceNumber;
-                        // Refetch order to get updated data
-                        await refetch();
-                      }
-                    } catch (invoiceError) {
-                      console.warn('Could not generate invoice number, using fallback:', invoiceError);
-                      // Continue with invoice generation using fallback format
-                    }
-                  }
-
-                  await generateInvoicePDF(orderWithInvoice, vendor);
+                  generateInvoicePDF(order, vendor);
                 } catch (error) {
                   console.error('Error generating invoice:', error);
-                  console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack,
-                    order: order,
-                    vendor: vendor
-                  });
-                  alert(`Failed to generate invoice: ${error.message || 'Unknown error'}. Please check the console for details.`);
+                  alert('Failed to generate invoice. Please try again.');
                 }
               }}
               className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1.5 text-xs"

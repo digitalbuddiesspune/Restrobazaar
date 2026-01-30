@@ -1,10 +1,13 @@
 import Order from '../../models/users/order.js';
-import { generateNextInvoiceNumber } from '../../services/invoiceNumberService.js';
 import Address from '../../models/users/address.js';
 import VendorProduct from '../../models/vendor/vendorProductSchema.js';
 import Vendor from '../../models/admin/vendor.js';
 import City from '../../models/admin/city.js';
 import Coupon from '../../models/vendor/coupon.js';
+import {
+  sendNotificationToUser,
+  sendNotificationToVendor,
+} from '../../services/notificationService.js';
 
 // @desc    Create a new order
 // @route   POST /api/v1/orders
@@ -267,6 +270,34 @@ export const createOrder = async (req, res) => {
     // Populate order with user details
     await order.populate('userId', 'name email phone');
 
+    sendNotificationToUser({
+      userId,
+      title: 'Order placed',
+      body: `Order #${order.orderNumber} has been placed successfully.`,
+      data: {
+        type: 'order_placed',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (order placed):', error)
+    );
+
+    if (order.vendorId) {
+      sendNotificationToVendor({
+        vendorId: order.vendorId,
+        title: 'New order received',
+        body: `Order #${order.orderNumber} has been placed.`,
+        data: {
+          type: 'order_received',
+          orderId: order._id?.toString(),
+          orderNumber: order.orderNumber,
+        },
+      }).catch((error) =>
+        console.error('FCM vendor notification error (order placed):', error)
+      );
+    }
+
     res.status(201).json({
       success: true,
       message: 'Order placed successfully',
@@ -301,8 +332,7 @@ export const getUserOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('userId', 'name email phone')
-      .populate('items.productId', 'hsnCode productName');
+      .populate('userId', 'name email phone');
 
     const total = await Order.countDocuments(query);
 
@@ -332,9 +362,7 @@ export const getUserOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const order = await Order.findOne({ _id: req.params.id, userId })
-      .populate('userId', 'name email phone')
-      .populate('items.productId', 'hsnCode productName');
+    const order = await Order.findOne({ _id: req.params.id, userId }).populate('userId', 'name email phone');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -399,6 +427,34 @@ export const cancelOrder = async (req, res) => {
 
     await order.save();
 
+    sendNotificationToUser({
+      userId,
+      title: 'Order cancelled',
+      body: `Order #${order.orderNumber} has been cancelled.`,
+      data: {
+        type: 'order_cancelled',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (order cancelled):', error)
+    );
+
+    if (order.vendorId) {
+      sendNotificationToVendor({
+        vendorId: order.vendorId,
+        title: 'Order cancelled',
+        body: `Order #${order.orderNumber} has been cancelled by the customer.`,
+        data: {
+          type: 'order_cancelled',
+          orderId: order._id?.toString(),
+          orderNumber: order.orderNumber,
+        },
+      }).catch((error) =>
+        console.error('FCM vendor notification error (order cancelled):', error)
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: 'Order cancelled successfully',
@@ -413,4 +469,3 @@ export const cancelOrder = async (req, res) => {
     });
   }
 };
-

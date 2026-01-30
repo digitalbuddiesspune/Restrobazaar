@@ -65,42 +65,12 @@ const SearchResults = () => {
 
   const getProductPrice = (product) => {
     if (product.priceType === 'single' && product.pricing?.single?.price) {
-      const sellingPrice = product.pricing.single.price;
-      if (product.defaultPrice && product.defaultPrice > sellingPrice) {
-        return (
-          <div className="flex items-baseline gap-2">
-            <span className="text-xs font-normal text-gray-400 line-through">
-              ₹{product.defaultPrice}
-            </span>
-            <span className="text-sm font-bold text-red-600">
-              ₹{sellingPrice}
-            </span>
-          </div>
-        );
-      }
-      return <span className="text-sm font-bold text-red-600">₹{sellingPrice}</span>;
+      return `₹${product.pricing.single.price}`;
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
       const firstSlab = product.pricing.bulk[0];
-      const sellingPrice = firstSlab.price;
-      if (product.defaultPrice && product.defaultPrice > sellingPrice) {
-        return (
-          <div className="flex items-baseline gap-2">
-            <span className="text-xs font-normal text-gray-400 line-through">
-              ₹{product.defaultPrice}
-            </span>
-            <span className="text-sm font-bold text-red-600">
-              ₹{sellingPrice} ({firstSlab.minQty}+ pcs)
-            </span>
-          </div>
-        );
-      }
-      return (
-        <span className="text-sm font-bold text-red-600">
-          ₹{sellingPrice} ({firstSlab.minQty}+ pcs)
-        </span>
-      );
+      return `₹${firstSlab.price} (${firstSlab.minQty}-${firstSlab.maxQty} pcs)`;
     }
-    return <span className="text-sm font-bold text-gray-600">Price on request</span>;
+    return 'Price on request';
   };
 
   const getProductImage = (product) => {

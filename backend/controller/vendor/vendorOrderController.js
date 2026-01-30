@@ -1,10 +1,12 @@
-import mongoose from 'mongoose';
 import Order from '../../models/users/order.js';
 import VendorProduct from '../../models/vendor/vendorProductSchema.js';
 import Vendor from '../../models/admin/vendor.js';
 import Address from '../../models/users/address.js';
 import Coupon from '../../models/vendor/coupon.js';
-import { generateNextInvoiceNumber } from '../../services/invoiceNumberService.js';
+import {
+  sendNotificationToUser,
+  sendNotificationToVendor,
+} from '../../services/notificationService.js';
 
 // @desc    Get orders for a vendor (orders containing vendor's products)
 // @route   GET /api/v1/vendor/orders
@@ -201,22 +203,12 @@ export const getVendorOrderById = async (req, res) => {
     const vendorId = req.user.userId;
     const orderId = req.params.id;
 
-    // Validate orderId is a valid MongoDB ObjectId
-    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid order ID format',
-      });
-    }
-
     // Get vendor's product IDs
     const vendorProducts = await VendorProduct.find({ vendorId }).select('productId');
     const vendorProductIds = vendorProducts.map((vp) => vp.productId);
 
-    // Find order with populated productId to get HSN codes
-    const order = await Order.findById(orderId)
-      .populate('userId', 'name email phone')
-      .populate('items.productId', 'hsnCode productName');
+    // Find order
+    const order = await Order.findById(orderId).populate('userId', 'name email phone');
 
     if (!order) {
       return res.status(404).json({
@@ -226,14 +218,11 @@ export const getVendorOrderById = async (req, res) => {
     }
 
     // Check if order contains vendor's products
-    // Handle both populated and non-populated productId
-    const hasVendorProducts = order.items.some((item) => {
-      const productId = item.productId?._id || item.productId;
-      if (!productId) return false;
-      return vendorProductIds.some(
-        (vpId) => vpId.toString() === productId.toString()
-      );
-    });
+    const hasVendorProducts = order.items.some((item) =>
+      vendorProductIds.some(
+        (vpId) => vpId.toString() === item.productId.toString()
+      )
+    );
 
     if (!hasVendorProducts) {
       return res.status(403).json({
@@ -243,14 +232,11 @@ export const getVendorOrderById = async (req, res) => {
     }
 
     // Filter items to show only vendor's products
-    // Handle both populated and non-populated productId
-    const vendorOrderItems = order.items.filter((item) => {
-      const productId = item.productId?._id || item.productId;
-      if (!productId) return false;
-      return vendorProductIds.some(
-        (vpId) => vpId.toString() === productId.toString()
-      );
-    });
+    const vendorOrderItems = order.items.filter((item) =>
+      vendorProductIds.some(
+        (vpId) => vpId.toString() === item.productId.toString()
+      )
+    );
 
     const vendorOrderTotal = vendorOrderItems.reduce(
       (sum, item) => sum + item.total,
@@ -309,14 +295,11 @@ export const updateVendorOrderStatus = async (req, res) => {
     }
 
     // Check if order contains vendor's products
-    // Handle both populated and non-populated productId
-    const hasVendorProducts = order.items.some((item) => {
-      const productId = item.productId?._id || item.productId;
-      if (!productId) return false;
-      return vendorProductIds.some(
-        (vpId) => vpId.toString() === productId.toString()
-      );
-    });
+    const hasVendorProducts = order.items.some((item) =>
+      vendorProductIds.some(
+        (vpId) => vpId.toString() === item.productId.toString()
+      )
+    );
 
     if (!hasVendorProducts) {
       return res.status(403).json({
@@ -394,6 +377,20 @@ export const updateVendorOrderStatus = async (req, res) => {
     // Populate before sending response
     await order.populate('userId', 'name email phone');
 
+    sendNotificationToUser({
+      userId: order.userId?._id || order.userId,
+      title: 'Order status updated',
+      body: `Order #${order.orderNumber} is now ${order.orderStatus}.`,
+      data: {
+        type: 'order_status_updated',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+        status: order.orderStatus,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (status update):', error)
+    );
+
     res.status(200).json({
       success: true,
       message: 'Order status updated successfully',
@@ -442,14 +439,11 @@ export const updateVendorPaymentStatus = async (req, res) => {
     }
 
     // Check if order contains vendor's products
-    // Handle both populated and non-populated productId
-    const hasVendorProducts = order.items.some((item) => {
-      const productId = item.productId?._id || item.productId;
-      if (!productId) return false;
-      return vendorProductIds.some(
-        (vpId) => vpId.toString() === productId.toString()
-      );
-    });
+    const hasVendorProducts = order.items.some((item) =>
+      vendorProductIds.some(
+        (vpId) => vpId.toString() === item.productId.toString()
+      )
+    );
 
     if (!hasVendorProducts) {
       return res.status(403).json({
@@ -464,6 +458,20 @@ export const updateVendorPaymentStatus = async (req, res) => {
 
     // Populate before sending response
     await order.populate('userId', 'name email phone');
+
+    sendNotificationToUser({
+      userId: order.userId?._id || order.userId,
+      title: 'Payment status updated',
+      body: `Payment for order #${order.orderNumber} is ${order.paymentStatus}.`,
+      data: {
+        type: 'payment_status_updated',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+        status: order.paymentStatus,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (payment update):', error)
+    );
 
     res.status(200).json({
       success: true,
@@ -695,14 +703,11 @@ export const getVendorOrderStats = async (req, res) => {
     let totalRevenue = 0;
     deliveredOrdersList.forEach((order) => {
       // Filter items to only include vendor's products
-      // Handle both populated and non-populated productId
-      const vendorItems = order.items.filter((item) => {
-        const productId = item.productId?._id || item.productId;
-        if (!productId) return false;
-        return vendorProductIds.some(
-          (vpId) => vpId.toString() === productId.toString()
-        );
-      });
+      const vendorItems = order.items.filter((item) =>
+        vendorProductIds.some(
+          (vpId) => vpId.toString() === item.productId.toString()
+        )
+      );
       totalRevenue += vendorItems.reduce((sum, item) => sum + item.total, 0);
     });
 
@@ -939,23 +944,10 @@ export const createOrderForUser = async (req, res) => {
       }
     }
 
-    // Generate GST-compliant invoice number
-    // Note: Invoice number is generated when order is created
-    // It will never change once assigned (GST compliance requirement)
-    let invoiceNumber = null;
-    try {
-      invoiceNumber = await generateNextInvoiceNumber();
-    } catch (error) {
-      console.error('Error generating invoice number:', error);
-      // Don't fail order creation if invoice number generation fails
-      // Invoice number can be generated later if needed
-    }
-
     // Create order
     const order = await Order.create({
       userId,
       orderNumber,
-      invoiceNumber: invoiceNumber || undefined,
       items: orderItems,
       deliveryAddress,
       billingDetails,
@@ -972,6 +964,32 @@ export const createOrderForUser = async (req, res) => {
     // Populate order with user details
     await order.populate('userId', 'name email phone');
 
+    sendNotificationToUser({
+      userId,
+      title: 'Order placed',
+      body: `Order #${order.orderNumber} has been placed for you.`,
+      data: {
+        type: 'order_placed',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+      },
+    }).catch((error) =>
+      console.error('FCM user notification error (vendor order create):', error)
+    );
+
+    sendNotificationToVendor({
+      vendorId,
+      title: 'Order created',
+      body: `Order #${order.orderNumber} has been created for a customer.`,
+      data: {
+        type: 'order_created',
+        orderId: order._id?.toString(),
+        orderNumber: order.orderNumber,
+      },
+    }).catch((error) =>
+      console.error('FCM vendor notification error (vendor order create):', error)
+    );
+
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
@@ -982,68 +1000,6 @@ export const createOrderForUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error creating order',
-      error: error.message,
-    });
-  }
-};
-
-// @desc    Generate invoice number for a vendor's order
-// @route   POST /api/v1/vendor/orders/:id/generate-invoice
-// @access  Vendor
-export const generateInvoiceForVendorOrder = async (req, res) => {
-  try {
-    const vendorId = req.user.userId;
-    const orderId = req.params.id;
-
-    // Find order and verify it belongs to this vendor
-    const order = await Order.findById(orderId);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
-    }
-
-    // Verify order belongs to this vendor
-    if (order.vendorId?.toString() !== vendorId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have permission to generate invoice for this order',
-      });
-    }
-
-    // Check if order already has an invoice number
-    if (order.invoiceNumber) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order already has an invoice number. Invoice numbers cannot be changed once assigned.',
-        data: {
-          invoiceNumber: order.invoiceNumber,
-        },
-      });
-    }
-
-    // Generate invoice number
-    const invoiceNumber = await generateNextInvoiceNumber();
-
-    // Update order with invoice number
-    order.invoiceNumber = invoiceNumber;
-    await order.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Invoice number generated and assigned to order',
-      data: {
-        orderId: order._id,
-        invoiceNumber,
-      },
-    });
-  } catch (error) {
-    console.error('Error generating invoice for vendor order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate invoice number for order',
       error: error.message,
     });
   }

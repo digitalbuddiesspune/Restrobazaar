@@ -244,11 +244,6 @@ const Header = () => {
     }
   }, [isAccountDropdownOpen, isCityDropdownOpen])
 
-  // Close menu when route changes (e.g., when clicking bottom navbar items)
-  useEffect(() => {
-    closeMenu();
-  }, [location.pathname]);
-
   // Check scroll position for categories on mount and when categories change
   useEffect(() => {
     const scrollElement = categoriesScrollRef.current;
@@ -743,18 +738,44 @@ const Header = () => {
               >
                 Contact
               </NavLink>
-              
-              <NavLink
-                to="/orders"
-                onClick={closeMenu}
-                className={({ isActive }) =>
-                  `px-4 py-3 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium ${
-                    isActive ? 'text-red-600 bg-red-50' : ''
-                  }`
-                }
-              >
-                Orders
-              </NavLink>
+
+              {/* Account Dropdown - Mobile */}
+              <div className="border-b border-gray-200 pb-2 mb-2">
+                <div className="px-4 py-2 text-sm font-semibold text-gray-500 uppercase">
+                  Account
+                </div>
+                {userAuthenticated ? (
+                  <>
+                    <button
+                      onClick={() => handleAccountOptionClick('/account')}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium"
+                    >
+                      Account
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleAccountOptionClick('/signin')}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium"
+                    >
+                      Login
+                    </button>
+                    <button
+                      onClick={() => handleAccountOptionClick('/signup')}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors font-medium"
+                    >
+                      Register
+                    </button>
+                  </>
+                )}
+              </div>
             </nav>
 
             {/* Categories - Inside Mobile Menu */}

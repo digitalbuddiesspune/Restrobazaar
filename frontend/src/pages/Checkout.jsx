@@ -8,7 +8,6 @@ import { calculateShippingCharges } from '../utils/shipping';
 import Modal from '../components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '../components/Button';
-import { formatOrderId } from '../utils/orderIdFormatter';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -318,20 +317,20 @@ const Checkout = () => {
       const selectedAddressData = addresses.find(addr => addr._id === selectedAddress);
       
       // UPI Payment URL format (standard UPI protocol):
-      // upi://pay?pa=<upi_id>&pn=<merchant_name>&am=<amount>&cu=INR&tn=<transaction_note>
-      const upiId = import.meta.env.VITE_UPI_ID || 'yourname@paytm'; // Your direct UPI ID
+      // upi://pay?pa=<merchant_vpa>&pn=<merchant_name>&am=<amount>&cu=INR&tn=<transaction_note>
+      const merchantVPA = import.meta.env.VITE_RAZORPAY_MERCHANT_VPA || 'restrobazaar@razorpay';
       const merchantName = 'RestroBazaar';
       const transactionNote = `Order ${tempOrderId} - RestroBazaar`;
       
       // Create UPI payment URL
-      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
+      const upiUrl = `upi://pay?pa=${merchantVPA}&pn=${encodeURIComponent(merchantName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
       
       const qrData = {
         success: true,
         upiUrl: upiUrl,
         amount: totalAmount,
         orderId: tempOrderId,
-        merchantVPA: upiId, // Keep for display purposes
+        merchantVPA: merchantVPA,
       };
       
       setQrCodeData(qrData);
@@ -541,7 +540,7 @@ const Checkout = () => {
                                   <div className="flex justify-between">
                                     <span className="text-gray-600">UPI ID:</span>
                                     <span className="font-mono text-gray-900 text-sm">
-                                      {import.meta.env.VITE_UPI_ID || 'yourname@paytm'}
+                                      {import.meta.env.VITE_RAZORPAY_MERCHANT_VPA || 'restrobazaar@razorpay'}
                                     </span>
                                   </div>
                                 </>
@@ -1075,7 +1074,7 @@ const Checkout = () => {
               <div className="space-y-1 mt-3">
                 <p className="text-xs text-gray-600">
                   <span className="font-semibold">Order Number:</span>{' '}
-                  <span className="text-red-600 font-mono">{formatOrderId(orderData.orderNumber || orderData._id)}</span>
+                  <span className="text-red-600 font-mono">{orderData.orderNumber}</span>
                 </p>
                 <p className="text-xs text-gray-600">
                   <span className="font-semibold">Total Amount:</span>{' '}

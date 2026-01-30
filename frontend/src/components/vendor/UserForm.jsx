@@ -354,7 +354,7 @@ const UserForm = ({ onSuccess, onCancel }) => {
               type="text"
               required
               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="Enter user Full Name"
+              placeholder="John Doe"
               value={formData.name}
               onChange={handleChange}
             />
