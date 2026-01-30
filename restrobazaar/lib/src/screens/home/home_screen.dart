@@ -690,11 +690,11 @@ class _IndustriesSectionState extends State<_IndustriesSection>
               scrollDirection: Axis.horizontal,
               itemCount: marqueeItems.length,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final industry = marqueeItems[index];
                 return SizedBox(
-                  width: 220,
+                  width: 150,
                   child: Column(
                     children: [
                       Expanded(
