@@ -9,6 +9,7 @@ import '../../controllers/catalog_providers.dart';
 import '../../controllers/wishlist_controller.dart';
 import '../../core/formatters.dart';
 import '../../models/product.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   const ProductDetailScreen({super.key, required this.productId});
@@ -55,11 +56,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     if (product.priceType != 'bulk' || product.pricing.bulk.isEmpty) {
       return null;
     }
+    PriceSlab? best;
     for (final slab in product.pricing.bulk) {
-      final max = slab.maxQty ?? 1000000000;
-      if (qty >= slab.minQty && qty <= max) return slab;
+      final max = slab.maxQty;
+      if (qty >= slab.minQty && (max == null || qty <= max)) {
+        if (best == null || slab.minQty > best.minQty) {
+          best = slab;
+        }
+      }
     }
-    return product.pricing.bulk.last;
+    if (best != null) return best;
+    return product.pricing.bulk
+        .reduce((a, b) => a.minQty <= b.minQty ? a : b);
   }
 
   double? _unitPrice(VendorProductModel product, int qty) {
@@ -120,6 +128,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
     setState(() => _addingToCart = true);
     try {
+      final cartState = ref.read(cartControllerProvider);
+      final alreadyInCart = cartState.items.any(
+        (item) => item.vendorProductId == product.id,
+      );
       await ref.read(cartControllerProvider.notifier).addToCart(
             product,
             quantity: _quantity,
@@ -127,7 +139,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Added to cart')),
+        SnackBar(
+          content: Text(
+            alreadyInCart
+                ? 'Product already in cart. Quantity updated.'
+                : 'Added to cart',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _addingToCart = false);
@@ -218,6 +236,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         elevation: 0,
         foregroundColor: Colors.grey.shade900,
         title: const Text('Product details'),
+        bottom: const CategoriesNavBar(),
         actions: [
           IconButton(
             onPressed: () => context.go('/cart'),
@@ -243,6 +262,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               : (product.pricing.bulk.isNotEmpty
                   ? product.pricing.bulk.last.price
                   : null);
+          final originalPrice = product.originalPrice;
+          final showStrike =
+              originalPrice != null &&
+              headerPrice != null &&
+              originalPrice > headerPrice;
+          String slabLabel(PriceSlab slab) {
+            if (slab.maxQty == null) {
+              return 'Buy ${slab.minQty}+ Pieces';
+            }
+            return 'Buy ${slab.minQty} - ${slab.maxQty} Pieces';
+          }
           final sizeParts = <String>[
             if (product.product?.size?.height?.isNotEmpty == true)
               'Height: ${product.product!.size!.height}',
@@ -339,11 +369,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   shape: const CircleBorder(),
-                                  padding: const EdgeInsets.all(10),
+                                  padding: const EdgeInsets.all(6),
                                   side: BorderSide(color: Colors.grey.shade200),
                                   elevation: 3,
                                   shadowColor: Colors.black12,
                                 ),
+                                iconSize: 18,
                                 icon: const Icon(
                                   Icons.ios_share_outlined,
                                   color: Color(0xFF4b5563),
@@ -357,12 +388,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                 style: IconButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   shape: const CircleBorder(),
-                                  padding: const EdgeInsets.all(10),
+                                  padding: const EdgeInsets.all(6),
                                   side:
                                       BorderSide(color: Colors.grey.shade200),
                                   elevation: 3,
                                   shadowColor: Colors.black12,
                                 ),
+                                iconSize: 18,
                                 icon: _wishlistLoading
                                     ? const SizedBox(
                                         height: 16,
@@ -484,6 +516,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               color: Color(0xFF111827),
                             ),
                           ),
+                          if (showStrike) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              formatCurrency(originalPrice!),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF9ca3af),
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                          ],
                           if (product.priceType == 'single')
                             const Padding(
                               padding: EdgeInsets.only(left: 8),
@@ -561,6 +604,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                 color: Color(0xFFdc2626),
                               ),
                             ),
+                            if (showStrike) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                formatCurrency(originalPrice!),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF9ca3af),
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ],
                             const SizedBox(width: 8),
                             const Text(
                               'per piece',
@@ -601,7 +655,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Buy ${slab.minQty}-${slab.maxQty ?? '∞'} pieces',
+                                      slabLabel(slab),
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: Color(0xFF4b5563),

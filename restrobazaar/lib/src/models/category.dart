@@ -4,6 +4,7 @@ class CategoryModel {
     required this.name,
     required this.slug,
     this.image,
+    this.description,
     this.subCategories = const [],
   });
 
@@ -11,6 +12,7 @@ class CategoryModel {
   final String name;
   final String slug;
   final String? image;
+  final String? description;
   final List<String> subCategories;
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class CategoryModel {
       slug: (json['slug'] ?? _slugify(json['name']?.toString() ?? ''))
           .toString(),
       image: json['image']?.toString(),
+      description: json['description']?.toString(),
       subCategories: rawSubs is List
           ? rawSubs.map((e) => e.toString()).toList()
           : const [],
@@ -33,6 +36,7 @@ class CategoryModel {
       'name': name,
       'slug': slug,
       'image': image,
+      'description': description,
       'subcategories': subCategories,
     };
   }

@@ -38,7 +38,9 @@ final cityControllerProvider = StateNotifierProvider<CityController, CityState>(
 );
 
 class CityController extends StateNotifier<CityState> {
-  CityController(this._ref) : super(const CityState());
+  CityController(this._ref) : super(const CityState()) {
+    Future.microtask(loadCities);
+  }
 
   final Ref _ref;
 
@@ -46,6 +48,7 @@ class CityController extends StateNotifier<CityState> {
   LocalStorage get _storage => _ref.read(localStorageProvider);
 
   Future<void> loadCities() async {
+    await _storage.init();
     state = state.copyWith(loading: true);
     try {
       final cities = await _repository.getServiceableCities();

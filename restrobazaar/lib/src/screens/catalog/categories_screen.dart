@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../controllers/catalog_providers.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
@@ -13,7 +14,10 @@ class CategoriesScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Categories')),
+      appBar: AppBar(
+        title: const Text('Categories'),
+        bottom: const CategoriesNavBar(),
+      ),
       body: categoriesAsync.when(
         data: (categories) => GridView.builder(
           padding: const EdgeInsets.all(16),

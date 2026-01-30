@@ -32,4 +32,17 @@ class OrderRepository {
     }
     return [];
   }
+
+  Future<OrderModel?> cancelOrder(String id) async {
+    final response = await _client.requestJson(
+      '/orders/$id/cancel',
+      method: 'PUT',
+    );
+
+    if (response['success'] == true &&
+        response['data'] is Map<String, dynamic>) {
+      return OrderModel.fromJson(response['data'] as Map<String, dynamic>);
+    }
+    return null;
+  }
 }

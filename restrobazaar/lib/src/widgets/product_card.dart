@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../controllers/cart_controller.dart';
 import '../controllers/wishlist_controller.dart';
 import '../core/formatters.dart';
+import '../models/cart_item.dart';
 import '../models/product.dart';
 
 class ProductCard extends ConsumerWidget {
@@ -22,15 +23,54 @@ class ProductCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    PriceSlab? slabForQuantity(VendorProductModel product, int qty) {
+      if (product.priceType != 'bulk' || product.pricing.bulk.isEmpty) {
+        return null;
+      }
+      PriceSlab? best;
+      for (final slab in product.pricing.bulk) {
+        final max = slab.maxQty;
+        if (qty >= slab.minQty && (max == null || qty <= max)) {
+          if (best == null || slab.minQty > best.minQty) {
+            best = slab;
+          }
+        }
+      }
+      if (best != null) return best;
+      return product.pricing.bulk
+          .reduce((a, b) => a.minQty <= b.minQty ? a : b);
+    }
+
+    final cartState = ref.watch(cartControllerProvider);
     final wishlistState = ref.watch(wishlistControllerProvider);
     final inWishlist = wishlistState.contains(product.id);
     final price = product.displayPrice ?? 0;
+    final originalPrice = product.originalPrice;
+    final hasDiscount =
+        originalPrice != null && originalPrice > price && price > 0;
+    final discountPercent = hasDiscount
+        ? (((originalPrice - price) / originalPrice) * 100).round()
+        : 0;
     final imageUrl = product.product?.images.isNotEmpty == true
         ? product.product!.images.first
         : 'https://via.placeholder.com/300x300?text=Product';
-    final vendorName = product.vendor?.businessName ?? 'Vendor';
     final productName = product.product?.productName ?? 'Product';
     final displayName = _truncateWithEllipsis(productName, 28);
+    final minQty = (product.minimumOrderQuantity ?? 1) > 0
+        ? product.minimumOrderQuantity ?? 1
+        : 1;
+    CartItem? cartItem;
+    for (final item in cartState.items) {
+      if (item.vendorProductId == product.id) {
+        cartItem = item;
+        break;
+      }
+    }
+    int? maxValidQty;
+    if (product.availableStock != null) {
+      maxValidQty = (product.availableStock! ~/ minQty) * minQty;
+      if (maxValidQty == 0) maxValidQty = minQty;
+    }
 
     return InkWell(
       onTap: onTap,
@@ -72,6 +112,30 @@ class ProductCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                if (hasDiscount && discountPercent > 0)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFfee2e2),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFfecaca)),
+                      ),
+                      child: Text(
+                        '$discountPercent% OFF',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFdc2626),
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 8,
                   right: 8,
@@ -125,65 +189,162 @@ class ProductCard extends ConsumerWidget {
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    vendorName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF6b7280),
-                      fontSize: 12,
-                    ),
-                  ),
                   const SizedBox(height: 8),
-                  Text(
-                    price > 0 ? formatCurrency(price) : 'Price on request',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontSize: 15,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        price > 0 ? formatCurrency(price) : 'Price on request',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 15,
+                        ),
+                      ),
+                      if (hasDiscount) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          formatCurrency(originalPrice),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF9ca3af),
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await ref
-                            .read(cartControllerProvider.notifier)
-                            .addToCart(
-                              product,
-                              quantity: product.minimumOrderQuantity ?? 1,
-                            );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Added to cart'),
-                              duration: Duration(seconds: 1),
+                    height: 34,
+                    child: cartItem == null
+                        ? OutlinedButton.icon(
+                            onPressed: () async {
+                              final alreadyInCart = cartItem != null;
+                              await ref
+                                  .read(cartControllerProvider.notifier)
+                                  .addToCart(
+                                    product,
+                                    quantity: minQty,
+                                    selectedSlab: slabForQuantity(
+                                      product,
+                                      minQty,
+                                    ),
+                                  );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      alreadyInCart
+                                          ? 'Added $minQty more item(s)'
+                                          : 'Added to cart',
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.add_shopping_cart_outlined,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Add to cart',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              minimumSize: const Size.fromHeight(34),
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              foregroundColor: Colors.grey.shade900,
+                            ),
+                          )
+                        : () {
+                            final item = cartItem!;
+                            return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                _QtyButton(
+                                  icon: Icons.remove,
+                                  onTap: item.quantity <= minQty
+                                      ? null
+                                      : () => ref
+                                          .read(
+                                            cartControllerProvider.notifier,
+                                          )
+                                          .updateQuantity(
+                                            item.id,
+                                            item.quantity - minQty,
+                                          ),
+                                ),
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      '${item.quantity}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                _QtyButton(
+                                  icon: Icons.add,
+                                  onTap: maxValidQty != null &&
+                                          item.quantity >= maxValidQty
+                                      ? null
+                                      : () => ref
+                                          .read(
+                                            cartControllerProvider.notifier,
+                                          )
+                                          .updateQuantity(
+                                            item.id,
+                                            item.quantity + minQty,
+                                          ),
+                                ),
+                              ],
                             ),
                           );
-                        }
-                      },
-                      icon: const Icon(Icons.add_shopping_cart_outlined, size: 18),
-              label: const Text(
-                'Add to cart',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        foregroundColor: Colors.grey.shade900,
-                      ),
-                    ),
+                          }(),
                   ),
-        ],
+                ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _QtyButton extends StatelessWidget {
+  const _QtyButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: double.infinity,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: onTap == null ? Colors.grey.shade200 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, size: 16, color: Colors.black87),
       ),
     );
   }

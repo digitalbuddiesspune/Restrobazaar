@@ -41,15 +41,23 @@ class CartItem {
   final int? availableStock;
   final String? unit;
 
-  double get lineTotal => price * quantity;
+  double get lineTotal => unitPriceForQuantity(quantity) * quantity;
 
   double unitPriceForQuantity(int qty) {
     if (priceType == 'bulk' && pricing?.bulk.isNotEmpty == true) {
+      PriceSlab? best;
       for (final slab in pricing!.bulk) {
-        final max = slab.maxQty ?? 1000000000;
-        if (qty >= slab.minQty && qty <= max) return slab.price;
+        final max = slab.maxQty;
+        if (qty >= slab.minQty && (max == null || qty <= max)) {
+          if (best == null || slab.minQty > best.minQty) {
+            best = slab;
+          }
+        }
       }
-      return pricing!.bulk.last.price;
+      if (best != null) return best.price;
+      final fallback = pricing!.bulk
+          .reduce((a, b) => a.minQty <= b.minQty ? a : b);
+      return fallback.price;
     }
     return price;
   }
@@ -172,7 +180,7 @@ class CartItem {
       'cityId': cityId,
       'cityName': cityName,
       'priceType': priceType,
-      'price': price,
+      'price': unitPriceForQuantity(quantity),
       'quantity': quantity,
       'selectedSlab': selectedSlab?.toJson(),
       'pricing': pricing?.toJson(),

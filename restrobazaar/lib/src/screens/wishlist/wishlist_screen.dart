@@ -8,6 +8,7 @@ import '../../controllers/wishlist_controller.dart';
 import '../../core/formatters.dart';
 import '../../models/product.dart';
 import '../../repositories/repository_providers.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class WishlistScreen extends ConsumerStatefulWidget {
   const WishlistScreen({super.key});
@@ -330,15 +331,23 @@ class _WishlistScreenState extends ConsumerState<WishlistScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      body: SafeArea(
-        child: wishlistState.loading && items.isEmpty
-            ? _buildLoading()
-            : (wishlistState.error != null && items.isEmpty)
-            ? _buildError(wishlistState.error!)
-            : items.isEmpty
-            ? _buildEmpty()
-            : _buildGrid(items, error: wishlistState.error),
+      appBar: AppBar(
+        title: const Text('Wishlist'),
+        bottom: const CategoriesNavBar(),
+        actions: [
+          IconButton(
+            onPressed: () => context.go('/cart'),
+            icon: const Icon(Icons.shopping_cart_outlined),
+          ),
+        ],
       ),
+      body: wishlistState.loading && items.isEmpty
+          ? _buildLoading()
+          : (wishlistState.error != null && items.isEmpty)
+          ? _buildError(wishlistState.error!)
+          : items.isEmpty
+          ? _buildEmpty()
+          : _buildGrid(items, error: wishlistState.error),
     );
   }
 }

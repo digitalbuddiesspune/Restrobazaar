@@ -280,7 +280,9 @@ class VendorProductModel {
       return pricing.singlePrice;
     }
     if (priceType == 'bulk' && pricing.bulk.isNotEmpty) {
-      return pricing.bulk.first.price;
+      final best = pricing.bulk
+          .reduce((a, b) => a.minQty >= b.minQty ? a : b);
+      return best.price;
     }
     return null;
   }

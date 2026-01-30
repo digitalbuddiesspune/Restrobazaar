@@ -51,40 +51,64 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/account',
             builder: (context, state) => const AccountScreen(),
           ),
+          GoRoute(
+            path: '/categories',
+            builder: (context, state) => const CategoriesScreen(),
+          ),
+          GoRoute(
+            path: '/category/:slug',
+            builder: (context, state) {
+              final slug = state.pathParameters['slug'] ?? '';
+              return CategoryScreen(slug: slug);
+            },
+          ),
+          GoRoute(
+            path: '/product/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id'] ?? '';
+              return ProductDetailScreen(productId: id);
+            },
+          ),
+          GoRoute(
+            path: '/search',
+            builder: (context, state) {
+              final query = state.uri.queryParameters['q'];
+              return SearchScreen(initialQuery: query);
+            },
+          ),
+          GoRoute(
+            path: '/checkout',
+            builder: (context, state) => const CheckoutScreen(),
+          ),
+          GoRoute(
+            path: '/orders',
+            builder: (context, state) => const OrdersScreen(),
+          ),
+          GoRoute(
+            path: '/about',
+            builder: (context, state) => const AboutScreen(),
+          ),
+          GoRoute(
+            path: '/contact',
+            builder: (context, state) => const ContactScreen(),
+          ),
+          GoRoute(
+            path: '/privacy-policy',
+            builder: (context, state) => const PrivacyPolicyScreen(),
+          ),
+          GoRoute(
+            path: '/terms-of-service',
+            builder: (context, state) => const TermsScreen(),
+          ),
+          GoRoute(
+            path: '/refund-policy',
+            builder: (context, state) => const RefundPolicyScreen(),
+          ),
+          GoRoute(
+            path: '/shipping-policy',
+            builder: (context, state) => const ShippingPolicyScreen(),
+          ),
         ],
-      ),
-      GoRoute(
-        path: '/categories',
-        builder: (context, state) => const CategoriesScreen(),
-      ),
-      GoRoute(
-        path: '/category/:slug',
-        builder: (context, state) {
-          final slug = state.pathParameters['slug'] ?? '';
-          return CategoryScreen(slug: slug);
-        },
-      ),
-      GoRoute(
-        path: '/product/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          return ProductDetailScreen(productId: id);
-        },
-      ),
-      GoRoute(
-        path: '/search',
-        builder: (context, state) {
-          final query = state.uri.queryParameters['q'];
-          return SearchScreen(initialQuery: query);
-        },
-      ),
-      GoRoute(
-        path: '/checkout',
-        builder: (context, state) => const CheckoutScreen(),
-      ),
-      GoRoute(
-        path: '/orders',
-        builder: (context, state) => const OrdersScreen(),
       ),
       GoRoute(
         path: '/signin',
@@ -93,27 +117,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignUpScreen(),
-      ),
-      GoRoute(path: '/about', builder: (context, state) => const AboutScreen()),
-      GoRoute(
-        path: '/contact',
-        builder: (context, state) => const ContactScreen(),
-      ),
-      GoRoute(
-        path: '/privacy-policy',
-        builder: (context, state) => const PrivacyPolicyScreen(),
-      ),
-      GoRoute(
-        path: '/terms-of-service',
-        builder: (context, state) => const TermsScreen(),
-      ),
-      GoRoute(
-        path: '/refund-policy',
-        builder: (context, state) => const RefundPolicyScreen(),
-      ),
-      GoRoute(
-        path: '/shipping-policy',
-        builder: (context, state) => const ShippingPolicyScreen(),
       ),
       GoRoute(
         path: '/vendor/login',

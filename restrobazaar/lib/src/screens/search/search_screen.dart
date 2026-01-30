@@ -6,6 +6,7 @@ import '../../controllers/catalog_providers.dart';
 import '../../controllers/city_controller.dart';
 import '../../models/product.dart';
 import '../../widgets/product_card.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key, this.initialQuery});
@@ -49,6 +50,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           },
           decoration: const InputDecoration(hintText: 'Search for products...'),
         ),
+        bottom: const CategoriesNavBar(),
         actions: [
           IconButton(
             onPressed: () => context.go('/cart'),
@@ -74,7 +76,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               final itemWidth =
                   (totalWidth - (spacing * (crossAxisCount - 1))) /
                       crossAxisCount;
-              final itemHeight = itemWidth + 170;
+              final itemHeight = itemWidth + 145;
 
               return GridView.builder(
                 padding: const EdgeInsets.all(16),

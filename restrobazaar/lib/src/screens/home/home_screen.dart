@@ -9,7 +9,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../controllers/catalog_providers.dart';
 import '../../controllers/city_controller.dart';
+import '../../controllers/testimonial_providers.dart';
 import '../../models/category.dart';
+import '../../models/testimonial.dart';
+import '../../widgets/categories_nav_bar.dart';
 import '../../widgets/restrobazaar_logo.dart';
 import '../../widgets/city_selector_sheet.dart';
 
@@ -57,6 +60,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final categoriesAsync = ref.watch(categoriesProvider);
     final cityState = ref.watch(cityControllerProvider);
+    final testimonialsAsync = ref.watch(testimonialsProvider);
 
     if (!_didPromptCity &&
         cityState.selected == null &&
@@ -75,6 +79,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const RestroBazaarLogo(height: 32),
+        bottom: const CategoriesNavBar(),
         actions: [
           IconButton(
             onPressed: () => context.push('/search'),
@@ -110,7 +115,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const _QualitySection(),
             const _IndustriesSection(),
             const _CustomPrintingSection(),
-            const _TestimonialsSection(),
+            _TestimonialsSection(testimonialsAsync: testimonialsAsync),
             const _FaqSection(),
           ],
         ),
@@ -199,11 +204,11 @@ class _HeroCarouselState extends State<_HeroCarousel> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: SizedBox(
-          height: 260,
+          height: 210,
           child: Stack(
             children: [
               CarouselSlider(
@@ -228,34 +233,35 @@ class _HeroCarouselState extends State<_HeroCarousel> {
                   },
                 ),
               ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 14,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_heroCarouselImages.length, (index) {
-                    final isActive = index == _activeIndex;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      height: 6,
-                      width: isActive ? 18 : 6,
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_heroCarouselImages.length, (index) {
+                      final isActive = index == _activeIndex;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        height: 6,
+                        width: isActive ? 18 : 6,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
                 ),
               ),
             ],
@@ -275,7 +281,7 @@ class _CategoriesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.grey.shade50,
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -684,7 +690,7 @@ class _IndustriesSectionState extends State<_IndustriesSection>
               scrollDirection: Axis.horizontal,
               itemCount: marqueeItems.length,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              separatorBuilder: (_, __) => const SizedBox(width: 18),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
                 final industry = marqueeItems[index];
                 return SizedBox(
@@ -933,7 +939,9 @@ class _CustomPrintingSection extends StatelessWidget {
 }
 
 class _TestimonialsSection extends StatelessWidget {
-  const _TestimonialsSection();
+  const _TestimonialsSection({required this.testimonialsAsync});
+
+  final AsyncValue<List<TestimonialModel>> testimonialsAsync;
 
   @override
   Widget build(BuildContext context) {
@@ -977,117 +985,142 @@ class _TestimonialsSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          CarouselSlider(
-            options: CarouselOptions(
-              height: 330,
-              autoPlay: true,
-              viewportFraction: 0.9,
-              enlargeCenterPage: true,
+          testimonialsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
             ),
-            items: _testimonials.map((testimonial) {
-              return Builder(
-                builder: (context) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFfee2e2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: SvgPicture.string(
-                            _quoteIconSvg,
-                            width: 32,
-                            height: 32,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFFe11d48),
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _RatingStars(rating: testimonial.rating),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: Text(
-                            '"${testimonial.text}"',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Colors.grey.shade800,
-                                  height: 1.5,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Divider(color: Colors.grey.shade200),
-                        const SizedBox(height: 12),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color(0xFFfee2e2),
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Color(0xFFe11d48),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    testimonial.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  Text(
-                                    testimonial.role,
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                  Text(
-                                    testimonial.location,
-                                    style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
+            error: (error, _) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Failed to load testimonials. Please try again later.',
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+            ),
+            data: (testimonials) {
+              if (testimonials.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'No testimonials available at the moment.',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                );
+              }
+              return CarouselSlider(
+                options: CarouselOptions(
+                  height: 330,
+                  autoPlay: testimonials.length > 1,
+                  viewportFraction: 0.9,
+                  enlargeCenterPage: true,
+                ),
+                items: testimonials.map((testimonial) {
+                  return Builder(
+                    builder: (context) {
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFfee2e2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: SvgPicture.string(
+                                _quoteIconSvg,
+                                width: 32,
+                                height: 32,
+                                colorFilter: const ColorFilter.mode(
+                                  Color(0xFFe11d48),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _RatingStars(rating: testimonial.rating),
+                            const SizedBox(height: 12),
+                            Expanded(
+                              child: Text(
+                                '"${testimonial.review}"',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Colors.grey.shade800,
+                                      height: 1.5,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Divider(color: Colors.grey.shade200),
+                            const SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFFfee2e2),
+                                  ),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Color(0xFFe11d48),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        testimonial.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        testimonial.role,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      Text(
+                                        testimonial.location,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade500,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   );
-                },
+                }).toList(),
               );
-            }).toList(),
+            },
           ),
         ],
       ),
@@ -1306,23 +1339,6 @@ class _CustomPrintingFeature {
   final String iconSvg;
 }
 
-class _Testimonial {
-  const _Testimonial({
-    required this.name,
-    required this.role,
-    required this.location,
-    required this.image,
-    required this.rating,
-    required this.text,
-  });
-
-  final String name;
-  final String role;
-  final String location;
-  final String image;
-  final int rating;
-  final String text;
-}
 
 class _FaqItem {
   const _FaqItem({required this.question, required this.answer});
@@ -1451,68 +1467,6 @@ const List<_CustomPrintingFeature> _customPrintingFeatures = [
   ),
 ];
 
-const List<_Testimonial> _testimonials = [
-  _Testimonial(
-    name: 'Rajesh Kumar',
-    role: 'Restaurant Owner',
-    location: 'Mumbai, Maharashtra',
-    image:
-        'https://ui-avatars.com/api/?name=Rajesh+Kumar&background=ef4444&color=fff&size=128',
-    rating: 5,
-    text:
-        'RestroBazaar has been a game-changer for my restaurant. The quality of products is exceptional and delivery is always on time. Highly recommended!',
-  ),
-  _Testimonial(
-    name: 'Priya Sharma',
-    role: 'Catering Manager',
-    location: 'Delhi, NCR',
-    image:
-        'https://ui-avatars.com/api/?name=Priya+Sharma&background=ef4444&color=fff&size=128',
-    rating: 5,
-    text:
-        'The variety of products available is amazing. From containers to custom printing, everything we need is in one place with top-notch customer service!',
-  ),
-  _Testimonial(
-    name: 'Amit Patel',
-    role: 'Cafe Owner',
-    location: 'Ahmedabad, Gujarat',
-    image:
-        'https://ui-avatars.com/api/?name=Amit+Patel&background=ef4444&color=fff&size=128',
-    rating: 5,
-    text:
-        'Best supplier we\'ve worked with! The prices are competitive and quality never disappoints. Our customers absolutely love the eco-friendly packaging options.',
-  ),
-  _Testimonial(
-    name: 'Kavita Reddy',
-    role: 'Hotel Manager',
-    location: 'Bangalore, Karnataka',
-    image:
-        'https://ui-avatars.com/api/?name=Kavita+Reddy&background=ef4444&color=fff&size=128',
-    rating: 5,
-    text:
-        'RestroBazaar understands the needs of the hospitality industry perfectly. Their products are reliable and the bulk ordering process is completely seamless.',
-  ),
-  _Testimonial(
-    name: 'Vikram Singh',
-    role: 'Food Truck Owner',
-    location: 'Pune, Maharashtra',
-    image:
-        'https://ui-avatars.com/api/?name=Vikram+Singh&background=ef4444&color=fff&size=128',
-    rating: 5,
-    text:
-        'As a food truck owner, I need quality supplies at affordable prices. RestroBazaar delivers exactly that and the custom printing feature is a great bonus!',
-  ),
-  _Testimonial(
-    name: 'Anjali Desai',
-    role: 'Event Caterer',
-    location: 'Surat, Gujarat',
-    image:
-        'https://ui-avatars.com/api/?name=Anjali+Desai&background=ef4444&color=fff&size=128',
-    rating: 5,
-    text:
-        'The packaging solutions are perfect for our events with professional appearance and great quality. RestroBazaar has become our trusted go-to supplier!',
-  ),
-];
 
 const List<_FaqItem> _faqItems = [
   _FaqItem(

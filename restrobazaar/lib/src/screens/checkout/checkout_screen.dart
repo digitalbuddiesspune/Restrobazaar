@@ -13,6 +13,7 @@ import '../../models/address.dart';
 import '../../models/cart_item.dart';
 import '../../models/coupon.dart';
 import '../../repositories/repository_providers.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -25,7 +26,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _paymentMethod = 'cod';
   static const _merchantVpa = '9545235223@kotak';
   static const _merchantName = 'RestroBazaar';
-  bool _showPaymentSection = false;
+  bool _showPaymentSection = true;
   final TextEditingController _couponController = TextEditingController();
   List<CouponModel> _availableCoupons = [];
   bool _showCoupons = false;
@@ -200,7 +201,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     if (!authState.isAuthenticated) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Checkout')),
+        appBar: AppBar(
+          title: const Text('Checkout'),
+          bottom: const CategoriesNavBar(),
+        ),
         body: Container(
           width: double.infinity,
           color: Colors.grey.shade50,
@@ -269,7 +273,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         _paymentMethod == 'online' ? _buildUpiData(totalAmount) : null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Checkout')),
+      appBar: AppBar(
+        title: const Text('Checkout'),
+        bottom: const CategoriesNavBar(),
+      ),
       body: Container(
         color: Colors.grey.shade50,
         child: ListView(
@@ -320,11 +327,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               placingOrder: checkoutState.placingOrder,
               errorMessage: checkoutState.error,
               onPrimaryAction: () async {
-                if (!_showPaymentSection) {
-                  _continueToPayment();
-                  return;
-                }
-
                 final order = await checkoutNotifier.placeOrder(
                   cartItems: cartState.items,
                   cartTotal: cartState.subtotal,
@@ -338,14 +340,42 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 if (order != null) {
                   await ref.read(cartControllerProvider.notifier).clear();
                   if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Order placed!')),
+                  final action = await showDialog<String>(
+                    context: context,
+                    builder: (dialogContext) {
+                      return AlertDialog(
+                        title: const Text('Order confirmed'),
+                        content: const Text(
+                          'Your order has been placed successfully.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop('home'),
+                            child: const Text('Continue Shopping'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop('orders'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFdc2626),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('View Orders'),
+                          ),
+                        ],
+                      );
+                    },
                   );
-                  context.go('/orders');
+                  if (!mounted) return;
+                  if (action == 'home') {
+                    context.go('/home');
+                  } else {
+                    context.go('/orders');
+                  }
                 }
               },
-              primaryDisabled:
-                  !_showPaymentSection && checkoutState.selectedAddressId == null,
+              primaryDisabled: checkoutState.selectedAddressId == null,
             ),
           ],
         ),
@@ -564,18 +594,23 @@ class _ProgressSteps extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const _StepCircle(label: '1', title: 'MY BAG', active: true),
-          const _StepLine(active: true),
-          const _StepCircle(label: '2', title: 'ADDRESS', active: true),
-          _StepLine(active: showPayment),
-          _StepCircle(label: '3', title: 'PAYMENT', active: showPayment),
-        ],
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            const _StepCircle(label: '1', title: 'MY BAG', active: true),
+            const SizedBox(width: 8),
+            const Expanded(child: _StepLine(active: true)),
+            const SizedBox(width: 8),
+            const _StepCircle(label: '2', title: 'ADDRESS', active: true),
+            const SizedBox(width: 8),
+            Expanded(child: _StepLine(active: showPayment)),
+            const SizedBox(width: 8),
+            _StepCircle(label: '3', title: 'PAYMENT', active: showPayment),
+          ],
+        ),
       ),
     );
   }
@@ -630,9 +665,7 @@ class _StepLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40,
       height: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 6),
       color: active ? const Color(0xFFdc2626) : Colors.grey.shade300,
     );
   }
@@ -710,6 +743,21 @@ class _AddressCard extends StatelessWidget {
             Column(
               children: checkoutState.addresses.map<Widget>((address) {
                 final selected = checkoutState.selectedAddressId == address.id;
+                final lineParts = [
+                  address.addressLine1,
+                  address.addressLine2 ?? '',
+                ]
+                    .where((part) => part.trim().isNotEmpty)
+                    .toList();
+                final addressLine = lineParts.join(', ');
+                final cityParts = [
+                  address.city ?? '',
+                  address.state ?? '',
+                ]
+                    .where((part) => part.trim().isNotEmpty)
+                    .toList();
+                final cityLine = cityParts.join(', ');
+                final pincode = address.pincode?.trim() ?? '';
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(12),
@@ -738,15 +786,21 @@ class _AddressCard extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  address.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
+                                Expanded(
+                                  child: Text(
+                                    address.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Text(
                                   address.addressType,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontSize: 11,
                                     color: Color(0xFF6b7280),
@@ -755,18 +809,22 @@ class _AddressCard extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              '${address.addressLine1}, ${address.addressLine2}',
-                              style: const TextStyle(
-                                color: Color(0xFF4b5563),
+                            if (addressLine.isNotEmpty)
+                              Text(
+                                addressLine,
+                                style: const TextStyle(
+                                  color: Color(0xFF4b5563),
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${address.city}, ${address.state} ${address.pincode}',
-                              style: const TextStyle(
-                                color: Color(0xFF4b5563),
+                            if (cityLine.isNotEmpty || pincode.isNotEmpty)
+                              Text(
+                                [cityLine, pincode]
+                                    .where((part) => part.trim().isNotEmpty)
+                                    .join(' '),
+                                style: const TextStyle(
+                                  color: Color(0xFF4b5563),
+                                ),
                               ),
-                            ),
                             if (address.phone != null &&
                                 address.phone!.isNotEmpty)
                               Padding(

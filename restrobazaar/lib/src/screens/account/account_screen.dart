@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../models/user.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
@@ -31,7 +32,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
     if (authState.loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('My Account')),
+        appBar: AppBar(
+          title: const Text('My Account'),
+          bottom: const CategoriesNavBar(),
+        ),
         backgroundColor: Colors.grey.shade50,
         body: const _LoadingAccount(),
       );
@@ -39,7 +43,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
     if (!authState.isAuthenticated || user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('My Account')),
+        appBar: AppBar(
+          title: const Text('My Account'),
+          bottom: const CategoriesNavBar(),
+        ),
         backgroundColor: Colors.grey.shade50,
         body: _AuthPrompt(
           onSignin: () => context.push('/signin'),
@@ -48,87 +55,97 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Account')),
-      backgroundColor: Colors.grey.shade50,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: Column(
-          children: [
-            _HeaderCard(
-              user: user,
-              onLogout: () async {
-                await ref.read(authControllerProvider.notifier).logout();
-                if (context.mounted) context.go('/signin');
-              },
-            ),
-            const SizedBox(height: 12),
-            _SectionCard(
-              title: 'Personal Information',
-              children: [
-                _InfoTile(
-                  icon: Icons.person,
-                  label: 'Full Name',
-                  value: user.name,
-                ),
-                _InfoTile(
-                  icon: Icons.email_outlined,
-                  label: 'Email Address',
-                  value: user.email ?? 'Add your email',
-                ),
-                _InfoTile(
-                  icon: Icons.phone_outlined,
-                  label: 'Phone Number',
-                  value: user.phone?.isNotEmpty == true
-                      ? user.phone!
-                      : 'Add phone number',
-                ),
-                if (user.city?.isNotEmpty == true)
+    return WillPopScope(
+      onWillPop: () async {
+        if (context.canPop()) return true;
+        context.go('/home');
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('My Account'),
+          bottom: const CategoriesNavBar(),
+        ),
+        backgroundColor: Colors.grey.shade50,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            children: [
+              _HeaderCard(
+                user: user,
+                onLogout: () async {
+                  await ref.read(authControllerProvider.notifier).logout();
+                  if (context.mounted) context.go('/signin');
+                },
+              ),
+              const SizedBox(height: 12),
+              _SectionCard(
+                title: 'Personal Information',
+                children: [
                   _InfoTile(
-                    icon: Icons.location_on_outlined,
-                    label: 'City',
-                    value: user.city!,
+                    icon: Icons.person,
+                    label: 'Full Name',
+                    value: user.name,
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _SectionCard(
-              title: 'Account Details',
-              children: [
-                _InfoTile(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Account Created',
-                  value: _formatDate(user.createdAt),
-                ),
-                _InfoTile(
-                  icon: Icons.badge_outlined,
-                  label: 'User ID',
-                  value: user.id,
-                  isMono: true,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _QuickActionsCard(
-              actions: [
-                _ActionButton(
-                  icon: Icons.receipt_long_outlined,
-                  label: 'View Orders',
-                  onTap: () => context.go('/orders'),
-                ),
-                _ActionButton(
-                  icon: Icons.shopping_cart_outlined,
-                  label: 'View Cart',
-                  onTap: () => context.go('/cart'),
-                ),
-                _ActionButton(
-                  icon: Icons.favorite_border,
-                  label: 'Wishlist',
-                  onTap: () => context.go('/wishlist'),
-                ),
-              ],
-            ),
-          ],
+                  _InfoTile(
+                    icon: Icons.email_outlined,
+                    label: 'Email Address',
+                    value: user.email ?? 'Add your email',
+                  ),
+                  _InfoTile(
+                    icon: Icons.phone_outlined,
+                    label: 'Phone Number',
+                    value: user.phone?.isNotEmpty == true
+                        ? user.phone!
+                        : 'Add phone number',
+                  ),
+                  if (user.city?.isNotEmpty == true)
+                    _InfoTile(
+                      icon: Icons.location_on_outlined,
+                      label: 'City',
+                      value: user.city!,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _SectionCard(
+                title: 'Account Details',
+                children: [
+                  _InfoTile(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'Account Created',
+                    value: _formatDate(user.createdAt),
+                  ),
+                  _InfoTile(
+                    icon: Icons.badge_outlined,
+                    label: 'User ID',
+                    value: user.id,
+                    isMono: true,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _QuickActionsCard(
+                actions: [
+                  _ActionButton(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'View Orders',
+                    onTap: () => context.go('/orders'),
+                  ),
+                  _ActionButton(
+                    icon: Icons.shopping_cart_outlined,
+                    label: 'View Cart',
+                    onTap: () => context.go('/cart'),
+                  ),
+                  _ActionButton(
+                    icon: Icons.favorite_border,
+                    label: 'Wishlist',
+                    onTap: () => context.go('/wishlist'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

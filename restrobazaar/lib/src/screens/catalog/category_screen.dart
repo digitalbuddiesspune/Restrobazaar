@@ -6,6 +6,7 @@ import '../../controllers/catalog_providers.dart';
 import '../../controllers/city_controller.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/city_selector_sheet.dart';
+import '../../widgets/categories_nav_bar.dart';
 import '../../models/category.dart';
 import '../../models/product.dart';
 
@@ -30,6 +31,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titleCase(widget.slug.replaceAll('-', ' '))),
+        bottom: const CategoriesNavBar(),
         actions: [
           IconButton(
             onPressed: () => context.push('/search'),
@@ -107,8 +109,9 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _CategoryHeaderCard(
-                        category: category,
+                      _CategoryHeaderCard(category: category),
+                      const SizedBox(height: 12),
+                      _SubcategoryNavBar(
                         subcategories: category.subCategories,
                         selected: _selectedSubCategory,
                         onSelect: (value) {
@@ -142,34 +145,13 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
 }
 
 class _CategoryHeaderCard extends StatelessWidget {
-  const _CategoryHeaderCard({
-    required this.category,
-    required this.subcategories,
-    required this.selected,
-    required this.onSelect,
-  });
+  const _CategoryHeaderCard({required this.category});
 
   final CategoryModel category;
-  final List<String> subcategories;
-  final String selected;
-  final void Function(String value) onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final chips = <Widget>[
-      _SubcategoryChip(
-        label: 'All',
-        selected: selected == 'all',
-        onTap: () => onSelect('all'),
-      ),
-      ...subcategories.map(
-        (sub) => _SubcategoryChip(
-          label: sub,
-          selected: selected == sub,
-          onTap: () => onSelect(sub),
-        ),
-      ),
-    ];
+    final description = category.description?.trim();
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -228,7 +210,9 @@ class _CategoryHeaderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Browse curated products in ${_titleCase(category.name)}.',
+                      description?.isNotEmpty == true
+                          ? description!
+                          : 'Browse curated products in ${_titleCase(category.name)}.',
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 13,
@@ -239,9 +223,61 @@ class _CategoryHeaderCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Divider(height: 1, color: Colors.grey.shade300),
-          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubcategoryNavBar extends StatelessWidget {
+  const _SubcategoryNavBar({
+    required this.subcategories,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final List<String> subcategories;
+  final String selected;
+  final void Function(String value) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    if (subcategories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final chips = <Widget>[
+      _SubcategoryChip(
+        label: 'All',
+        selected: selected == 'all',
+        onTap: () => onSelect('all'),
+      ),
+      ...subcategories.map(
+        (sub) => _SubcategoryChip(
+          label: sub,
+          selected: selected == sub,
+          onTap: () => onSelect(sub),
+        ),
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           const Text(
             'Filter by Subcategory:',
             style: TextStyle(
@@ -250,7 +286,7 @@ class _CategoryHeaderCard extends StatelessWidget {
               color: Color(0xFF374151),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           SizedBox(
             height: 34,
             child: ListView.separated(
@@ -328,7 +364,7 @@ class _ProductGrid extends StatelessWidget {
         final totalWidth = constraints.maxWidth;
         final itemWidth =
             (totalWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
-        final itemHeight = itemWidth + 170;
+        final itemHeight = itemWidth + 120;
 
         return GridView.builder(
           shrinkWrap: true,

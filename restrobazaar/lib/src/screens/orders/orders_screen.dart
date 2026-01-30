@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +9,15 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../controllers/order_providers.dart';
 import '../../core/formatters.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';
+import '../../repositories/repository_providers.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
@@ -24,6 +29,7 @@ class OrdersScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Orders'),
+        bottom: const CategoriesNavBar(),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -66,7 +72,7 @@ class OrdersScreen extends ConsumerWidget {
               ...orders.map(
                 (order) => _OrderCard(
                   order: order,
-                  onViewDetails: () => _showOrderDetails(context, order),
+                  onViewDetails: () => _showOrderDetails(context, ref, order),
                   onDownloadInvoice: () => _downloadInvoice(context, order),
                 ),
               ),
@@ -578,8 +584,10 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-void _showOrderDetails(BuildContext context, OrderModel order) {
+void _showOrderDetails(BuildContext context, WidgetRef ref, OrderModel order) {
   final statusStyle = _statusStyleFor(order.status);
+  final canCancel = !['cancelled', 'delivered']
+      .contains(order.status.toLowerCase());
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -683,6 +691,76 @@ void _showOrderDetails(BuildContext context, OrderModel order) {
                   value: _paymentLabel(order.paymentMethod),
                 ),
                 const SizedBox(height: 16),
+                if (canCancel) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: sheetContext,
+                          builder: (dialogContext) {
+                            return AlertDialog(
+                              title: const Text('Cancel order?'),
+                              content: const Text(
+                                'Are you sure you want to cancel this order?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(dialogContext).pop(false),
+                                  child: const Text('No'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () =>
+                                      Navigator.of(dialogContext).pop(true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFdc2626),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Yes, cancel'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                        if (confirm != true) return;
+                        final messenger = ScaffoldMessenger.of(sheetContext);
+                        try {
+                          final repo = ref.read(orderRepositoryProvider);
+                          await repo.cancelOrder(order.id);
+                          if (!sheetContext.mounted) return;
+                          ref.invalidate(ordersProvider);
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Order cancelled successfully'),
+                            ),
+                          );
+                          Navigator.of(sheetContext).pop();
+                        } catch (e) {
+                          if (!sheetContext.mounted) return;
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to cancel order: $e'),
+                            ),
+                          );
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFdc2626),
+                        side: const BorderSide(color: Color(0xFFdc2626)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel Order',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -714,7 +792,9 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     final bytes = await _buildInvoicePdf(order);
-    final dir = await getApplicationDocumentsDirectory();
+    final dir =
+        await getExternalStorageDirectory() ??
+        await getApplicationDocumentsDirectory();
     final filename = 'Invoice-${_shortOrderId(order.id)}.pdf';
     final file = File('${dir.path}/$filename');
     await file.writeAsBytes(bytes, flush: true);
@@ -724,6 +804,10 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
         duration: const Duration(seconds: 4),
       ),
     );
+    final uri = Uri.file(file.path);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   } catch (e) {
     messenger.showSnackBar(
       SnackBar(
@@ -746,6 +830,10 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   final paymentStatus =
       order.paymentStatus?.isNotEmpty == true ? _titleCase(order.paymentStatus!) : 'Pending';
   final orderNumber = order.id.isNotEmpty ? order.id : 'N/A';
+  final paymentMethod = order.paymentMethod?.toLowerCase() ?? '';
+  final showQr = paymentMethod == 'online' || paymentMethod == 'upi';
+  final upiUrl = _buildUpiUrl(totalAmount, orderNumber);
+  final qrBytes = showQr ? await _buildQrBytes(upiUrl) : null;
 
   final pdf = pw.Document();
   pdf.addPage(
@@ -956,6 +1044,33 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
         pw.SizedBox(height: 6),
         pw.Text('Payment Method: ${_paymentLabel(order.paymentMethod)}'),
         pw.Text('Payment Status: $paymentStatus'),
+        if (showQr && qrBytes != null) ...[
+          pw.SizedBox(height: 12),
+          pw.Text(
+            'Scan to pay (UPI):',
+            style: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Center(
+            child: pw.Container(
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300, width: 0.6),
+              ),
+              child: pw.Image(
+                pw.MemoryImage(qrBytes),
+                width: 120,
+                height: 120,
+              ),
+            ),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text('UPI ID: 9545235223@kotak'),
+          pw.Text('Amount: ${_rs(totalAmount)}'),
+        ],
         pw.SizedBox(height: 24),
         pw.Divider(color: PdfColors.grey400, thickness: 0.6),
         pw.SizedBox(height: 10),
@@ -1101,6 +1216,27 @@ String _paymentLabel(String? method) {
     default:
       return value.isNotEmpty ? _titleCase(value) : 'Not specified';
   }
+}
+
+String _buildUpiUrl(double amount, String orderNumber) {
+  const vpa = '9545235223@kotak';
+  const merchant = 'RestroBazaar';
+  final note = 'Order $orderNumber - $merchant';
+  return 'upi://pay?pa=$vpa&pn=${Uri.encodeComponent(merchant)}&am=${amount.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent(note)}';
+}
+
+Future<Uint8List?> _buildQrBytes(String data) async {
+  final painter = QrPainter(
+    data: data,
+    version: QrVersions.auto,
+    gapless: false,
+  );
+  final byteData = await painter.toImageData(
+    200,
+    format: ui.ImageByteFormat.png,
+  );
+  if (byteData == null) return null;
+  return byteData.buffer.asUint8List();
 }
 
 String _shortOrderId(String id) {

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 const _logoAsset = 'assets/images/restrobazaar_logo.png';
 const _logoUrl =
-    'https://res.cloudinary.com/debhhnzgh/image/upload/v1767436047/IMG_20260103_151920_nujfb4.png';
+    'https://res.cloudinary.com/debhhnzgh/image/upload/v1767956041/RestroLogo_vmcnsl.png?v=2';
 
 class RestroBazaarLogo extends StatelessWidget {
   const RestroBazaarLogo({super.key, this.height = 28});

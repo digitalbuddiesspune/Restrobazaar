@@ -7,6 +7,7 @@ import '../../controllers/cart_controller.dart';
 import '../../controllers/city_controller.dart';
 import '../../core/formatters.dart';
 import '../../core/shipping.dart';
+import '../../widgets/categories_nav_bar.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -20,7 +21,10 @@ class CartScreen extends ConsumerWidget {
 
     if (cartState.items.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Cart')),
+        appBar: AppBar(
+          title: const Text('Cart'),
+          bottom: const CategoriesNavBar(),
+        ),
         body: Container(
           width: double.infinity,
           color: Colors.grey.shade50,
@@ -100,7 +104,10 @@ class CartScreen extends ConsumerWidget {
     final itemCount = cartState.totalItems;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cart')),
+      appBar: AppBar(
+        title: const Text('Cart'),
+        bottom: const CategoriesNavBar(),
+      ),
       body: Container(
         color: Colors.grey.shade50,
         child: ListView(

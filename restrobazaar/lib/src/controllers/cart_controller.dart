@@ -16,7 +16,7 @@ class CartState {
   double get subtotal =>
       items.fold(0, (sum, item) => sum + (item.unitPriceForQuantity(item.quantity) * item.quantity));
 
-  int get totalItems => items.fold(0, (count, item) => count + item.quantity);
+  int get totalItems => items.length;
 
   CartState copyWith({List<CartItem>? items}) {
     return CartState(items: items ?? this.items);
@@ -38,11 +38,18 @@ class CartController extends StateNotifier<CartState> {
 
   PriceSlab? _slabForQuantity(PricingModel? pricing, int qty) {
     if (pricing == null || pricing.bulk.isEmpty) return null;
+    PriceSlab? best;
     for (final slab in pricing.bulk) {
-      final max = slab.maxQty ?? 1000000000;
-      if (qty >= slab.minQty && qty <= max) return slab;
+      final max = slab.maxQty;
+      if (qty >= slab.minQty && (max == null || qty <= max)) {
+        if (best == null || slab.minQty > best.minQty) {
+          best = slab;
+        }
+      }
     }
-    return pricing.bulk.last;
+    if (best != null) return best;
+    return pricing.bulk
+        .reduce((a, b) => a.minQty <= b.minQty ? a : b);
   }
 
   Future<void> loadCart() async {
