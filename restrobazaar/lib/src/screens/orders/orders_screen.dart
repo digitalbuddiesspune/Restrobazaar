@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../controllers/order_providers.dart';
 import '../../core/formatters.dart';
@@ -790,29 +790,59 @@ void _showOrderDetails(BuildContext context, WidgetRef ref, OrderModel order) {
 
 Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
   final messenger = ScaffoldMessenger.of(context);
+  final rootNavigator = Navigator.of(context, rootNavigator: true);
+  final startedAt = DateTime.now();
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      return AlertDialog(
+        content: Row(
+          children: const [
+            SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text('Downloading invoice...')),
+          ],
+        ),
+      );
+    },
+  );
   try {
     final bytes = await _buildInvoicePdf(order);
-    final dir =
-        await getExternalStorageDirectory() ??
-        await getApplicationDocumentsDirectory();
+    final Directory dir;
+    if (Platform.isAndroid) {
+      dir =
+          await getExternalStorageDirectory() ??
+          await getApplicationDocumentsDirectory();
+    } else {
+      dir = await getApplicationDocumentsDirectory();
+    }
     final filename = 'Invoice-${_shortOrderId(order.id)}.pdf';
     final file = File('${dir.path}/$filename');
     await file.writeAsBytes(bytes, flush: true);
+    final elapsed = DateTime.now().difference(startedAt);
+    const minDialogDuration = Duration(seconds: 2);
+    if (elapsed < minDialogDuration) {
+      await Future.delayed(minDialogDuration - elapsed);
+    }
+    if (rootNavigator.canPop()) rootNavigator.pop();
+    final result = await OpenFilex.open(file.path);
+    if (result.type == ResultType.done) return;
     messenger.showSnackBar(
-      SnackBar(
-        content: Text('Invoice saved to ${file.path}'),
-        duration: const Duration(seconds: 4),
+      const SnackBar(
+        content: Text('Invoice downloaded. Unable to open automatically.'),
       ),
     );
-    final uri = Uri.file(file.path);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
   } catch (e) {
+    if (rootNavigator.canPop()) {
+      rootNavigator.pop();
+    }
     messenger.showSnackBar(
-      SnackBar(
-        content: Text('Failed to download invoice: $e'),
-      ),
+      SnackBar(content: Text('Failed to download invoice: $e')),
     );
   }
 }
