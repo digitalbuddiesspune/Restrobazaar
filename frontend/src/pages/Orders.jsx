@@ -143,21 +143,52 @@ const Orders = () => {
                 className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
               >
                 {/* Order Header */}
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="px-3 sm:px-4 py-3 bg-gray-50 border-b border-gray-200">
+                  {/* Mobile: Two fields per row */}
+                  <div className="sm:hidden space-y-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-xs text-gray-600">Order Placed</span>
+                        <p className="text-xs font-medium text-gray-900 mt-0.5">{formatDate(order.createdAt)}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-600">Ship to</span>
+                        <p className="text-xs font-medium text-gray-900 truncate mt-0.5">
+                          {order.deliveryAddress?.name || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-xs text-gray-600">Total</span>
+                        <p className="text-xs font-medium text-gray-900 mt-0.5">
+                          ₹{order.billingDetails?.totalAmount?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-600">Order #</span>
+                        <p className="text-xs font-medium text-gray-900 truncate mt-0.5">
+                          {formatOrderId(order.orderNumber || order._id)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Desktop: Original layout */}
+                  <div className="hidden sm:flex sm:items-center sm:justify-between gap-2">
+                    <div className="flex sm:items-center gap-2 sm:gap-4">
                       <div>
                         <span className="text-sm text-gray-600">Order Placed</span>
                         <p className="text-sm font-medium text-gray-900">{formatDate(order.createdAt)}</p>
                       </div>
-                      <div className="hidden sm:block text-gray-300">|</div>
+                      <div className="text-gray-300">|</div>
                       <div>
                         <span className="text-sm text-gray-600">Total</span>
                         <p className="text-sm font-medium text-gray-900">
                           ₹{order.billingDetails?.totalAmount?.toFixed(2) || '0.00'}
                         </p>
                       </div>
-                      <div className="hidden sm:block text-gray-300">|</div>
+                      <div className="text-gray-300">|</div>
                       <div>
                         <span className="text-sm text-gray-600">Ship to</span>
                         <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
@@ -179,11 +210,11 @@ const Orders = () => {
                 </div>
 
                 {/* Order Content */}
-                <div className="p-4">
+                <div className="p-3 sm:p-4">
                   {/* Status Badge */}
-                  <div className="mb-4">
+                  <div className="mb-3 sm:mb-4">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium border ${getStatusColor(
+                      className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs sm:text-sm font-medium border ${getStatusColor(
                         order.orderStatus
                       )}`}
                     >
@@ -192,24 +223,24 @@ const Orders = () => {
                   </div>
 
                   {/* Order Items */}
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {order.items.map((item, index) => (
-                      <div key={index} className="flex gap-4">
+                      <div key={index} className="flex gap-2 sm:gap-4">
                         {/* Product Image */}
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           {item.productImage ? (
                             <img
                               src={item.productImage}
                               alt={item.productName}
-                              className="w-20 h-20 sm:w-24 sm:h-24 object-contain p-1 bg-white rounded border border-gray-200"
+                              className="w-16 h-16 sm:w-24 sm:h-24 object-contain p-1 bg-white rounded border border-gray-200"
                               onError={(e) => {
                                 e.target.src = 'https://via.placeholder.com/96?text=No+Image';
                               }}
                             />
                           ) : (
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded border border-gray-200 flex items-center justify-center">
+                            <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white rounded border border-gray-200 flex items-center justify-center">
                               <svg
-                                className="w-8 h-8 text-gray-400"
+                                className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -227,13 +258,13 @@ const Orders = () => {
 
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1 line-clamp-2">
+                          <h3 className="text-xs sm:text-base font-medium text-gray-900 mb-0.5 sm:mb-1 line-clamp-2">
                             {item.productName}
                           </h3>
-                          <p className="text-xs sm:text-sm text-gray-600 mb-1">
-                            Quantity: {item.quantity}
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">
+                            Qty: {item.quantity}
                           </p>
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-xs sm:text-sm font-semibold text-gray-900">
                             ₹{item.total.toFixed(2)}
                           </p>
                         </div>
@@ -242,17 +273,55 @@ const Orders = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-2">
-                    {order.orderStatus === 'delivered' && (
-                      <Button variant="secondary" size="md">
-                        Buy Again
-                      </Button>
-                    )}
-                    {order.orderStatus !== 'delivered' && order.orderStatus !== 'cancelled' && (
-                      <>
-                        <Button variant="secondary" size="md">
-                          Track Package
+                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+                    {/* Mobile: Two buttons per row */}
+                    <div className="sm:hidden grid grid-cols-2 gap-2">
+                      {order.orderStatus === 'delivered' && (
+                        <Button variant="secondary" size="sm" className="text-xs">
+                          Buy Again
                         </Button>
+                      )}
+                      {order.orderStatus !== 'delivered' && order.orderStatus !== 'cancelled' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleCancelOrder(order._id)}
+                          disabled={cancellingOrder === order._id}
+                          loading={cancellingOrder === order._id}
+                          className="text-xs"
+                        >
+                          Cancel Order
+                        </Button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleViewOrder(order)}
+                        className="text-xs"
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleDownloadInvoice(order)}
+                        className="flex items-center justify-center gap-1.5 text-xs col-span-2"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download Invoice
+                      </Button>
+                    </div>
+                    
+                    {/* Desktop: Original layout */}
+                    <div className="hidden sm:flex sm:flex-wrap gap-2">
+                      {order.orderStatus === 'delivered' && (
+                        <Button variant="secondary" size="md">
+                          Buy Again
+                        </Button>
+                      )}
+                      {order.orderStatus !== 'delivered' && order.orderStatus !== 'cancelled' && (
                         <Button
                           variant="secondary"
                           size="md"
@@ -262,26 +331,26 @@ const Orders = () => {
                         >
                           Cancel Order
                         </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      onClick={() => handleViewOrder(order)}
-                    >
-                      View Order Details
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      onClick={() => handleDownloadInvoice(order)}
-                      className="flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Download Invoice
-                    </Button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        onClick={() => handleViewOrder(order)}
+                      >
+                        View Order Details
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => handleDownloadInvoice(order)}
+                        className="flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download Invoice
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -293,24 +362,27 @@ const Orders = () => {
       {/* Order Details Modal */}
       <Modal isOpen={showOrderModal} onClose={() => setShowOrderModal(false)}>
         {selectedOrder && (
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Order {formatOrderId(selectedOrder.orderNumber || selectedOrder._id)}
-            </h2>
+          <div className="w-full">
+            {/* Header */}
+            <div className="mb-4 pb-3 border-b border-gray-200">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900">
+                Order {formatOrderId(selectedOrder.orderNumber || selectedOrder._id)}
+              </h2>
+            </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Order Status */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Status</h3>
-                <div className="flex items-center gap-4">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">Order Status</h3>
+                <div className="flex items-center gap-2 flex-wrap">
                   <span
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border ${getStatusColor(
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusColor(
                       selectedOrder.orderStatus
                     )}`}
                   >
                     {getStatusText(selectedOrder.orderStatus)}
                   </span>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-xs text-gray-600">
                     Payment: {selectedOrder.paymentStatus.charAt(0).toUpperCase() +
                       selectedOrder.paymentStatus.slice(1)}
                   </span>
@@ -319,26 +391,26 @@ const Orders = () => {
 
               {/* Order Items */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Items</h3>
-                <div className="space-y-3">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">Order Items</h3>
+                <div className="space-y-2">
                   {selectedOrder.items.map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg"
+                      className="flex items-start gap-2.5 p-2 bg-gray-50 rounded-lg border border-gray-100"
                     >
                       {item.productImage ? (
                         <img
                           src={item.productImage}
                           alt={item.productName}
-                          className="w-16 h-16 object-contain p-1 bg-white rounded"
+                          className="w-12 h-12 sm:w-14 sm:h-14 object-contain p-1 bg-white rounded shrink-0"
                           onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/64?text=No+Image';
+                            e.target.src = 'https://via.placeholder.com/56?text=No+Image';
                           }}
                         />
                       ) : (
-                        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-200 rounded flex items-center justify-center shrink-0">
                           <svg
-                            className="w-8 h-8 text-gray-400"
+                            className="w-6 h-6 text-gray-400"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -352,13 +424,13 @@ const Orders = () => {
                           </svg>
                         </div>
                       )}
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{item.productName}</h4>
-                        <p className="text-sm text-gray-600">
-                          Quantity: {item.quantity} × ₹{item.price.toFixed(2)}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs sm:text-sm font-medium text-gray-900 line-clamp-2 mb-0.5">{item.productName}</h4>
+                        <p className="text-xs text-gray-600">
+                          Qty: {item.quantity} × ₹{item.price.toFixed(2)}
                         </p>
                       </div>
-                      <p className="font-semibold text-gray-900">₹{item.total.toFixed(2)}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-gray-900 shrink-0">₹{item.total.toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
@@ -366,55 +438,42 @@ const Orders = () => {
 
               {/* Delivery Address */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Delivery Address</h3>
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="font-medium text-gray-900">{selectedOrder.deliveryAddress.name}</p>
-                  <p className="text-gray-600">{selectedOrder.deliveryAddress.addressLine1}</p>
-                  {selectedOrder.deliveryAddress.addressLine2 && (
-                    <p className="text-gray-600">{selectedOrder.deliveryAddress.addressLine2}</p>
-                  )}
-                  <p className="text-gray-600">
-                    {selectedOrder.deliveryAddress.city}, {selectedOrder.deliveryAddress.state} -{' '}
-                    {selectedOrder.deliveryAddress.pincode}
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">Delivery Address</h3>
+                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <p className="text-xs sm:text-sm font-medium text-gray-900 mb-1">{selectedOrder.deliveryAddress.name}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {selectedOrder.deliveryAddress.addressLine1}
+                    {selectedOrder.deliveryAddress.addressLine2 && `, ${selectedOrder.deliveryAddress.addressLine2}`}
+                    <br />
+                    {selectedOrder.deliveryAddress.city}, {selectedOrder.deliveryAddress.state} - {selectedOrder.deliveryAddress.pincode}
+                    <br />
+                    Phone: {selectedOrder.deliveryAddress.phone}
                   </p>
-                  <p className="text-gray-600">Phone: {selectedOrder.deliveryAddress.phone}</p>
                 </div>
               </div>
 
-              {/* Billing Details */}
+              {/* Billing Summary */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Billing Details</h3>
-                <div className="space-y-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Cart Total:</span>
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">Billing Summary</h3>
+                <div className="space-y-1.5 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Subtotal:</span>
                     <span className="font-medium">₹{selectedOrder.billingDetails?.cartTotal?.toFixed(2) || '0.00'}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">GST:</span>
-                    <span className="font-medium">₹{selectedOrder.billingDetails?.gstAmount?.toFixed(2) || '0.00'}</span>
-                  </div>
-                  {/* GST Breakdown */}
-                  {selectedOrder.items?.filter(item => item.gstPercentage > 0).length > 0 && (
-                    <div className="pl-2 border-l-2 border-gray-200 space-y-1 mt-1">
-                      {selectedOrder.items
-                        .filter(item => item.gstPercentage > 0)
-                        .map((item, index) => {
-                          const itemGstAmount = item.gstAmount || ((item.total || 0) * (item.gstPercentage || 0) / 100);
-                          return (
-                            <div key={index} className="flex justify-between text-xs text-gray-600">
-                              <span>{item.productName} ({item.gstPercentage}%):</span>
-                              <span>₹{itemGstAmount.toFixed(2)}</span>
-                            </div>
-                          );
-                        })}
+                  {selectedOrder.billingDetails?.gstAmount > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">GST:</span>
+                      <span className="font-medium">₹{selectedOrder.billingDetails?.gstAmount?.toFixed(2) || '0.00'}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Shipping:</span>
-                    <span className="font-medium">₹{selectedOrder.billingDetails?.shippingCharges?.toFixed(2) || '0.00'}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300">
-                    <span>Total Amount:</span>
+                  {selectedOrder.billingDetails?.shippingCharges > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Shipping:</span>
+                      <span className="font-medium">₹{selectedOrder.billingDetails?.shippingCharges?.toFixed(2) || '0.00'}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xs sm:text-sm font-bold pt-1.5 border-t border-gray-200 mt-1.5">
+                    <span>Total:</span>
                     <span className="text-red-600">₹{selectedOrder.billingDetails?.totalAmount?.toFixed(2) || '0.00'}</span>
                   </div>
                 </div>
@@ -422,8 +481,8 @@ const Orders = () => {
 
               {/* Payment Method */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Method</h3>
-                <p className="text-gray-600">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1">Payment Method</h3>
+                <p className="text-xs text-gray-600">
                   {selectedOrder.paymentMethod === 'cod'
                     ? 'Cash on Delivery'
                     : 'UPI Online Payment'}
@@ -431,22 +490,24 @@ const Orders = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            {/* Action Buttons */}
+            <div className="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row gap-2">
               <Button
                 variant="secondary"
-                size="md"
+                size="sm"
                 onClick={() => handleDownloadInvoice(selectedOrder)}
-                className="flex items-center gap-2"
+                className="flex items-center justify-center gap-1.5 text-xs sm:text-sm"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Download Invoice
               </Button>
               <Button
                 variant="primary"
-                size="md"
+                size="sm"
                 onClick={() => setShowOrderModal(false)}
+                className="text-xs sm:text-sm"
               >
                 Close
               </Button>
