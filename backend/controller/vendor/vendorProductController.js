@@ -127,6 +127,7 @@ export const createVendorProduct = async (req, res) => {
       cityId,
       priceType,
       defaultPrice,
+      sequenceNumber,
       productPurchasedFrom,
       purchasedMode,
       purchasedAmount,
@@ -145,10 +146,10 @@ export const createVendorProduct = async (req, res) => {
     const vendorId = req.user?.role === "vendor" ? req.user.userId : bodyVendorId;
 
     // Validate required fields
-    if (!productId || !vendorId || !cityId || !priceType) {
+    if (!productId || !vendorId || !cityId || !priceType || sequenceNumber === undefined) {
       return res.status(400).json({
         success: false,
-        message: "productId, vendorId, cityId, and priceType are required",
+        message: "productId, vendorId, cityId, priceType, and sequenceNumber are required",
       });
     }
 
@@ -230,6 +231,7 @@ export const createVendorProduct = async (req, res) => {
       cityId,
       priceType,
       defaultPrice: defaultPrice !== undefined ? defaultPrice : 0,
+      sequenceNumber,
       productPurchasedFrom,
       purchasedMode,
       purchasedAmount,
@@ -313,6 +315,7 @@ export const updateVendorProduct = async (req, res) => {
     const {
       priceType,
       defaultPrice,
+      sequenceNumber,
       productPurchasedFrom,
       purchasedMode,
       purchasedAmount,
@@ -398,6 +401,7 @@ export const updateVendorProduct = async (req, res) => {
     }
 
     if (defaultPrice !== undefined) updateData.defaultPrice = defaultPrice;
+    if (sequenceNumber !== undefined) updateData.sequenceNumber = sequenceNumber;
     if (productPurchasedFrom !== undefined) updateData.productPurchasedFrom = productPurchasedFrom;
     if (purchasedMode !== undefined) updateData.purchasedMode = purchasedMode;
     if (purchasedAmount !== undefined) updateData.purchasedAmount = purchasedAmount;

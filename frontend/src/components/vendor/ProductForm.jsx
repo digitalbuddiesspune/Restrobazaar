@@ -14,6 +14,7 @@ const ProductForm = ({
     cityId: product?.cityId?._id || product?.cityId || vendorCityId || '',
     priceType: product?.priceType || 'single',
     defaultPrice: product?.defaultPrice || '',
+    sequenceNumber: product?.sequenceNumber || 0,
     productPurchasedFrom: product?.productPurchasedFrom || '',
     purchasedMode: product?.purchasedMode || '',
     purchasedAmount: product?.purchasedAmount || '',
@@ -46,6 +47,7 @@ const ProductForm = ({
         cityId: product.cityId?._id || product.cityId || vendorCityId || '',
         priceType: product.priceType || 'single',
         defaultPrice: product.defaultPrice || '',
+        sequenceNumber: product.sequenceNumber || 0,
         productPurchasedFrom: product.productPurchasedFrom || '',
         purchasedMode: product.purchasedMode || '',
         purchasedAmount: product.purchasedAmount || '',
@@ -105,6 +107,7 @@ const ProductForm = ({
       cityId: formData.cityId,
       priceType: formData.priceType,
       defaultPrice: parseFloat(formData.defaultPrice) || 0,
+      sequenceNumber: parseFloat(formData.sequenceNumber) || 0,
       productPurchasedFrom: formData.productPurchasedFrom || undefined,
       purchasedMode: formData.purchasedMode || undefined,
       purchasedAmount: formData.purchasedAmount || undefined,
@@ -292,11 +295,14 @@ const ProductForm = ({
                 Available Stock
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="1"
                 value={formData.availableStock}
                 onChange={(e) =>
                   setFormData({ ...formData, availableStock: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -305,7 +311,9 @@ const ProductForm = ({
                 Min Order Qty
               </label>
               <input
-                type="text"
+                type="number"
+                min="1"
+                step="1"
                 value={formData.minimumOrderQuantity}
                 onChange={(e) =>
                   setFormData({
@@ -313,6 +321,7 @@ const ProductForm = ({
                     minimumOrderQuantity: e.target.value,
                   })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -321,11 +330,14 @@ const ProductForm = ({
                 Low Stock Alert
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="1"
                 value={formData.notifyQuantity}
                 onChange={(e) =>
                   setFormData({ ...formData, notifyQuantity: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="Optional"
               />
@@ -338,11 +350,14 @@ const ProductForm = ({
                 Available Stock
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="1"
                 value={formData.availableStock}
                 onChange={(e) =>
                   setFormData({ ...formData, availableStock: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -351,8 +366,9 @@ const ProductForm = ({
                 Min Order Qty
               </label>
               <input
-                type="text"
-
+                type="number"
+                min="1"
+                step="1"
                 value={formData.minimumOrderQuantity}
                 onChange={(e) =>
                   setFormData({
@@ -360,6 +376,7 @@ const ProductForm = ({
                     minimumOrderQuantity: e.target.value,
                   })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -368,11 +385,14 @@ const ProductForm = ({
                 Low Stock Alert
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="1"
                 value={formData.notifyQuantity}
                 onChange={(e) =>
                   setFormData({ ...formData, notifyQuantity: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="Optional"
               />
@@ -411,11 +431,32 @@ const ProductForm = ({
                 MRP (Marked Price)
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="0.01"
                 value={formData.defaultPrice}
                 onChange={(e) =>
                   setFormData({ ...formData, defaultPrice: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Sequence Number *
+              </label>
+              <input
+                type="number"
+                required
+                min="0"
+                step="1"
+                value={formData.sequenceNumber}
+                onChange={(e) =>
+                  setFormData({ ...formData, sequenceNumber: e.target.value })
+                }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />
@@ -474,7 +515,9 @@ const ProductForm = ({
                 GST (%)
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="0.01"
                 value={formData.gst}
                 onChange={(e) => {
                   const gstValue = e.target.value;
@@ -487,6 +530,7 @@ const ProductForm = ({
                     sgst: cgstSgstValue
                   });
                 }}
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />
@@ -496,11 +540,14 @@ const ProductForm = ({
                 CGST (%)
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="0.01"
                 value={formData.cgst}
                 onChange={(e) =>
                   setFormData({ ...formData, cgst: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />
@@ -510,11 +557,14 @@ const ProductForm = ({
                 SGST (%)
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="0.01"
                 value={formData.sgst}
                 onChange={(e) =>
                   setFormData({ ...formData, sgst: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />
@@ -524,11 +574,14 @@ const ProductForm = ({
                 IGST (%)
               </label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                step="0.01"
                 value={formData.igst}
                 onChange={(e) =>
                   setFormData({ ...formData, igst: e.target.value })
                 }
+                onWheel={(e) => e.target.blur()}
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />

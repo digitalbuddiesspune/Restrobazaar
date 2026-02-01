@@ -45,6 +45,10 @@ const vendorProductSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    sequenceNumber: {
+      type: Number,
+      required: true,
+    },
     productPurchasedFrom: String,
     purchasedMode: String,
     purchasedAmount: String,
