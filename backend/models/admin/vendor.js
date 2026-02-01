@@ -114,6 +114,7 @@ const vendorSchema = new mongoose.Schema(
       accountNumber: String,
       ifsc: String,
       bankName: String,
+      upiId: String,
     },
 
     /* ============================

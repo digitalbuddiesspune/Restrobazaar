@@ -26,6 +26,7 @@ const SuperAdminDashboard = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState(null);
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [editingVendorId, setEditingVendorId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,6 +168,7 @@ const SuperAdminDashboard = () => {
       accountNumber: "",
       ifsc: "",
       bankName: "",
+      upiId: "",
     },
     isActive: true,
     isApproved: false,
@@ -730,6 +732,66 @@ const SuperAdminDashboard = () => {
     });
   };
 
+  // Handle edit vendor
+  const handleEditVendor = async (vendorId) => {
+    try {
+      const token = getToken();
+      const res = await axios.get(`${baseUrl}/vendors/${vendorId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const vendor = res.data?.data;
+      if (vendor) {
+        // Populate form with vendor data
+        setVendorForm({
+          businessName: vendor.businessName || "",
+          legalName: vendor.legalName || "",
+          email: vendor.email || "",
+          phone: vendor.phone || "",
+          password: "", // Don't populate password for security
+          vendorType: vendor.vendorType || "shop",
+          contactPerson: vendor.contactPerson || {
+            name: "",
+            phone: "",
+            email: "",
+          },
+          address: vendor.address || {
+            line1: "",
+            line2: "",
+            city: "",
+            state: "",
+            pincode: "",
+          },
+          gstNumber: vendor.gstNumber || "",
+          panNumber: vendor.panNumber || "",
+          kycStatus: vendor.kycStatus || "pending",
+          kycDocuments: vendor.kycDocuments || [],
+          serviceCities: vendor.serviceCities?.map((city) => 
+            typeof city === 'object' ? city._id : city
+          ) || [],
+          commissionPercentage: vendor.commissionPercentage || 0,
+          bankDetails: vendor.bankDetails || {
+            accountHolderName: "",
+            accountNumber: "",
+            ifsc: "",
+            bankName: "",
+            upiId: "",
+          },
+          isActive: vendor.isActive !== undefined ? vendor.isActive : true,
+          isApproved: vendor.isApproved !== undefined ? vendor.isApproved : false,
+        });
+        setEditingVendorId(vendorId);
+        setActiveTab("add-vendor");
+        setError("");
+        setSuccess("");
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Failed to load vendor for editing"
+      );
+    }
+  };
+
   // Handle edit category
   const handleEditCategory = (categoryId) => {
     const category = categories.find((cat) => cat._id === categoryId);
@@ -1116,7 +1178,8 @@ const SuperAdminDashboard = () => {
         ...((vendorForm.bankDetails.accountHolderName ||
           vendorForm.bankDetails.accountNumber ||
           vendorForm.bankDetails.ifsc ||
-          vendorForm.bankDetails.bankName) && {
+          vendorForm.bankDetails.bankName ||
+          vendorForm.bankDetails.upiId) && {
           bankDetails: {
             ...(vendorForm.bankDetails.accountHolderName && {
               accountHolderName:
@@ -1131,14 +1194,34 @@ const SuperAdminDashboard = () => {
             ...(vendorForm.bankDetails.bankName && {
               bankName: vendorForm.bankDetails.bankName.trim(),
             }),
+            ...(vendorForm.bankDetails.upiId && {
+              upiId: vendorForm.bankDetails.upiId.trim(),
+            }),
           },
         }),
       };
 
-      await axios.post(`${baseUrl}/vendors`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setSuccess("Vendor created successfully!");
+      // Remove password from formData if editing (don't update password unless provided)
+      if (editingVendorId) {
+        if (!formData.password || formData.password.trim() === "") {
+          delete formData.password;
+        }
+      }
+
+      if (editingVendorId) {
+        // Update existing vendor
+        await axios.put(`${baseUrl}/vendors/${editingVendorId}`, formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuccess("Vendor updated successfully!");
+        setEditingVendorId(null);
+      } else {
+        // Create new vendor
+        await axios.post(`${baseUrl}/vendors`, formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuccess("Vendor created successfully!");
+      }
       setVendorForm({
         businessName: "",
         legalName: "",
@@ -1169,10 +1252,12 @@ const SuperAdminDashboard = () => {
           accountNumber: "",
           ifsc: "",
           bankName: "",
+          upiId: "",
         },
         isActive: true,
         isApproved: false,
       });
+      setEditingVendorId(null);
       fetchStats();
       fetchVendors();
     } catch (err) {
@@ -2261,6 +2346,7 @@ const SuperAdminDashboard = () => {
                 cities={cities}
                 handleVendorSubmit={handleVendorSubmit}
                 loading={loading}
+                editingVendorId={editingVendorId}
               />
             </div>
           )}
@@ -3325,7 +3411,11 @@ const SuperAdminDashboard = () => {
           {/* All Vendors Tab */}
           {activeTab === "vendors" && (
             <div className="space-y-4">
-              <VendorsTable vendors={vendors} handleDelete={handleDelete} />
+              <VendorsTable 
+                vendors={vendors} 
+                handleDelete={handleDelete}
+                handleEdit={handleEditVendor}
+              />
             </div>
           )}
 

@@ -99,6 +99,20 @@ export const userAPI = {
   },
 };
 
+// Vendor API (public endpoints for fetching vendor info)
+export const vendorAPI = {
+  getVendorById: async (vendorId) => {
+    return authenticatedApiRequest(`/vendors/${vendorId}`, {
+      method: 'GET',
+    });
+  },
+  getVendorBankDetails: async (vendorId) => {
+    return apiRequest(`/vendors/${vendorId}/bank-details`, {
+      method: 'GET',
+    });
+  },
+};
+
 // City API
 export const cityAPI = {
   getAllCities: async () => {

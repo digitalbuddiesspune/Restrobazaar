@@ -643,10 +643,10 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
 
     const bankDetails = vendor.bankDetails || {};
     const bankName = bankDetails.bankName || 'Kotak Mahindra Bank';
-    const accountName = bankDetails.accountName || 'AK Enterprises';
+    const accountName = bankDetails.accountHolderName || bankDetails.accountName || vendor.businessName || 'AK Enterprises';
     const bankAccountNo = bankDetails.accountNumber || bankDetails.bankAccountNo || '9545235223';
     const branch = bankDetails.branch || 'Baner';
-    const bankIFSC = bankDetails.ifscCode || bankDetails.bankIFSC || 'KKBK0001767';
+    const bankIFSC = bankDetails.ifsc || bankDetails.ifscCode || bankDetails.bankIFSC || 'KKBK0001767';
     const upiId = bankDetails.upiId || '9545235223@kotak';
 
     // Build UPI payment URL for QR (amount + invoice ref)

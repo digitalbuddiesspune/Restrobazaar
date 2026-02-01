@@ -181,6 +181,18 @@ export const createVendor = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
+    // Process bank details
+    let processedBankDetails = {};
+    if (bankDetails) {
+      processedBankDetails = {
+        accountHolderName: bankDetails.accountHolderName ? bankDetails.accountHolderName.trim() : undefined,
+        accountNumber: bankDetails.accountNumber ? bankDetails.accountNumber.trim() : undefined,
+        ifsc: bankDetails.ifsc ? bankDetails.ifsc.trim() : undefined,
+        bankName: bankDetails.bankName ? bankDetails.bankName.trim() : undefined,
+        upiId: bankDetails.upiId ? bankDetails.upiId.trim() : undefined,
+      };
+    }
+
     // Create vendor
     const vendor = await Vendor.create({
       businessName: businessName.trim(),
@@ -197,7 +209,7 @@ export const createVendor = async (req, res) => {
       kycDocuments: kycDocuments || [],
       serviceCities: serviceCities || [],
       commissionPercentage: commissionPercentage || 0,
-      bankDetails: bankDetails || {},
+      bankDetails: processedBankDetails,
       isActive: isActive !== undefined ? isActive : true,
       isApproved: isApproved !== undefined ? isApproved : false,
     });
@@ -279,7 +291,15 @@ export const updateVendor = async (req, res) => {
     if (kycDocuments !== undefined) updateData.kycDocuments = kycDocuments;
     if (serviceCities !== undefined) updateData.serviceCities = serviceCities;
     if (commissionPercentage !== undefined) updateData.commissionPercentage = commissionPercentage;
-    if (bankDetails !== undefined) updateData.bankDetails = bankDetails;
+    if (bankDetails !== undefined) {
+      updateData.bankDetails = {
+        accountHolderName: bankDetails.accountHolderName ? bankDetails.accountHolderName.trim() : undefined,
+        accountNumber: bankDetails.accountNumber ? bankDetails.accountNumber.trim() : undefined,
+        ifsc: bankDetails.ifsc ? bankDetails.ifsc.trim() : undefined,
+        bankName: bankDetails.bankName ? bankDetails.bankName.trim() : undefined,
+        upiId: bankDetails.upiId ? bankDetails.upiId.trim() : undefined,
+      };
+    }
     if (isActive !== undefined) updateData.isActive = isActive;
     if (isApproved !== undefined) {
       updateData.isApproved = isApproved;
@@ -809,6 +829,42 @@ export const vendorLogout = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error logging out',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get vendor bank details (public endpoint for payment)
+// @route   GET /api/v1/vendors/:id/bank-details
+// @access  Public
+export const getVendorBankDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const vendor = await Vendor.findById(id)
+      .select("businessName bankDetails");
+    
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        businessName: vendor.businessName,
+        bankDetails: {
+          accountHolderName: vendor.bankDetails?.accountHolderName || null,
+          upiId: vendor.bankDetails?.upiId || null,
+        },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching vendor bank details",
       error: error.message,
     });
   }

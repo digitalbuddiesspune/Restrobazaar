@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectCartItems, selectCartTotal, clearCart } from '../store/slices/cartSlice';
-import { addressAPI, orderAPI, userCouponAPI } from '../utils/api';
+import { addressAPI, orderAPI, userCouponAPI, vendorAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import { calculateShippingCharges } from '../utils/shipping';
 import Modal from '../components/Modal';
@@ -34,6 +34,7 @@ const Checkout = () => {
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [showCoupons, setShowCoupons] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
+  const [vendorDetails, setVendorDetails] = useState(null);
   const [addressForm, setAddressForm] = useState({
     name: '',
     phone: '',
@@ -45,6 +46,39 @@ const Checkout = () => {
     landmark: '',
     addressType: 'home', // home, work, other
   });
+
+  // Fetch vendor details
+  const fetchVendorDetails = async () => {
+    try {
+      // Get vendorId from cart items
+      const vendorId = cartItems[0]?.vendorId || null;
+      
+      if (!vendorId) {
+        setVendorDetails(null);
+        return;
+      }
+
+      // Check if all items are from the same vendor
+      const allSameVendor = cartItems.every(item => {
+        const itemVendorId = item.vendorId?.toString() || item.vendorId;
+        return itemVendorId === vendorId?.toString() || itemVendorId === vendorId;
+      });
+
+      if (!allSameVendor) {
+        setVendorDetails(null);
+        return;
+      }
+
+      // Use public endpoint for bank details
+      const response = await vendorAPI.getVendorBankDetails(vendorId);
+      if (response.success) {
+        setVendorDetails(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor details:', error);
+      setVendorDetails(null);
+    }
+  };
 
   // Fetch available coupons
   const fetchAvailableCoupons = async () => {
@@ -317,21 +351,21 @@ const Checkout = () => {
       const tempOrderId = `ORDER_${Date.now()}`;
       const selectedAddressData = addresses.find(addr => addr._id === selectedAddress);
       
-      // UPI Payment URL format (standard UPI protocol):
-      // upi://pay?pa=<upi_id>&pn=<merchant_name>&am=<amount>&cu=INR&tn=<transaction_note>
-      const upiId = import.meta.env.VITE_UPI_ID || 'yourname@paytm'; // Your direct UPI ID
-      const merchantName = 'RestroBazaar';
-      const transactionNote = `Order ${tempOrderId} - RestroBazaar`;
+      // Get vendor UPI ID and account name from vendor details
+      const upiId = vendorDetails?.bankDetails?.upiId || import.meta.env.VITE_UPI_ID || 'yourname@paytm';
+      const accountName = vendorDetails?.bankDetails?.accountHolderName || vendorDetails?.businessName || 'RestroBazaar';
+      const transactionNote = `Order ${tempOrderId} - ${accountName}`;
       
       // Create UPI payment URL
-      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(accountName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
       
       const qrData = {
         success: true,
         upiUrl: upiUrl,
         amount: totalAmount,
         orderId: tempOrderId,
-        merchantVPA: upiId, // Keep for display purposes
+        merchantVPA: upiId,
+        accountName: accountName,
       };
       
       setQrCodeData(qrData);
@@ -339,7 +373,7 @@ const Checkout = () => {
       console.error('Error generating QR code:', err);
       alert('Failed to generate QR code. Please try again.');
     }
-  }, [paymentMethod, selectedAddress, totalAmount, addresses]);
+  }, [paymentMethod, selectedAddress, totalAmount, addresses, vendorDetails]);
 
   // Fetch addresses and coupons on component mount
   useEffect(() => {
@@ -352,12 +386,23 @@ const Checkout = () => {
     // Fetch addresses
     fetchAddresses();
 
-    // Fetch coupons if cart has items
+    // Fetch vendor details and coupons if cart has items
     if (cartItems && cartItems.length > 0) {
+      fetchVendorDetails();
       fetchAvailableCoupons();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
+
+  // Refetch vendor details when cart items change (e.g., city switch)
+  useEffect(() => {
+    if (cartItems && cartItems.length > 0) {
+      fetchVendorDetails();
+    } else {
+      setVendorDetails(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartItems]);
 
   // Regenerate QR code when payment method is online and amount/address changes
   useEffect(() => {
@@ -539,9 +584,15 @@ const Checkout = () => {
                                     <span className="font-mono text-gray-900 text-sm">{qrCodeData.orderId}</span>
                                   </div>
                                   <div className="flex justify-between">
+                                    <span className="text-gray-600">Account Name:</span>
+                                    <span className="font-semibold text-gray-900 text-sm">
+                                      {qrCodeData.accountName || vendorDetails?.bankDetails?.accountHolderName || vendorDetails?.businessName || 'RestroBazaar'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
                                     <span className="text-gray-600">UPI ID:</span>
                                     <span className="font-mono text-gray-900 text-sm">
-                                      {import.meta.env.VITE_UPI_ID || 'yourname@paytm'}
+                                      {qrCodeData.merchantVPA || vendorDetails?.bankDetails?.upiId || import.meta.env.VITE_UPI_ID || 'yourname@paytm'}
                                     </span>
                                   </div>
                                 </>

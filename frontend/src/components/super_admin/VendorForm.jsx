@@ -4,10 +4,13 @@ const VendorForm = ({
   cities,
   handleVendorSubmit,
   loading,
+  editingVendorId,
 }) => {
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <h2 className="text-lg font-bold mb-4">Add New Vendor</h2>
+      <h2 className="text-lg font-bold mb-4">
+        {editingVendorId ? "Edit Vendor" : "Add New Vendor"}
+      </h2>
       <form onSubmit={handleVendorSubmit} className="space-y-3">
         {/* Basic Information */}
         <div className="border-b pb-3">
@@ -122,11 +125,11 @@ const VendorForm = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Password *
+                Password {editingVendorId ? "(leave blank to keep current)" : "*"}
               </label>
               <input
                 type="password"
-                required
+                required={!editingVendorId}
                 value={vendorForm.password}
                 onChange={(e) =>
                   setVendorForm({
@@ -135,6 +138,7 @@ const VendorForm = ({
                   })
                 }
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder={editingVendorId ? "Leave blank to keep current password" : ""}
               />
             </div>
           </div>
@@ -476,6 +480,26 @@ const VendorForm = ({
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                UPI ID
+              </label>
+              <input
+                type="text"
+                value={vendorForm.bankDetails.upiId}
+                onChange={(e) =>
+                  setVendorForm({
+                    ...vendorForm,
+                    bankDetails: {
+                      ...vendorForm.bankDetails,
+                      upiId: e.target.value,
+                    },
+                  })
+                }
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="example@upi"
+              />
+            </div>
           </div>
         </div>
 
@@ -519,7 +543,10 @@ const VendorForm = ({
           disabled={loading}
           className="w-full px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
         >
-          {loading ? "Creating..." : "Create Vendor"}
+          {loading 
+            ? (editingVendorId ? "Updating..." : "Creating...") 
+            : (editingVendorId ? "Update Vendor" : "Create Vendor")
+          }
         </button>
       </form>
     </div>
