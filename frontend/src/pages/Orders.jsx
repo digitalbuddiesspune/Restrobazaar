@@ -7,17 +7,41 @@ import Button from '../components/Button';
 import { generateInvoicePDF } from '../utils/invoiceGenerator';
 import { formatOrderId } from '../utils/orderIdFormatter';
 
+const CITY_ID_KEY = 'selectedCityId';
+
 const Orders = () => {
   const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(null);
+  const [selectedCityId, setSelectedCityId] = useState(null);
 
-  // React Query hooks for orders with caching
-  const { data: ordersResponse, isLoading: loading, error: ordersError } = useOrders({}, {
-    enabled: isAuthenticated(),
-    retry: false,
-  });
+  // Get selected city ID from localStorage
+  useEffect(() => {
+    const updateSelectedCity = () => {
+      const cityId = localStorage.getItem(CITY_ID_KEY);
+      setSelectedCityId(cityId);
+    };
+    
+    // Initial load
+    updateSelectedCity();
+    
+    // Listen for city changes
+    window.addEventListener('cityChange', updateSelectedCity);
+    
+    return () => {
+      window.removeEventListener('cityChange', updateSelectedCity);
+    };
+  }, []);
+
+  // React Query hooks for orders with caching - filter by selected city
+  const { data: ordersResponse, isLoading: loading, error: ordersError } = useOrders(
+    selectedCityId ? { cityId: selectedCityId } : {},
+    {
+      enabled: isAuthenticated(),
+      retry: false,
+    }
+  );
 
   const cancelOrderMutation = useCancelOrder();
 
@@ -88,7 +112,30 @@ const Orders = () => {
 
   const handleDownloadInvoice = async (order) => {
     try {
-      const vendor = order.vendorId || {};
+      // Use vendor from order if populated, otherwise fetch it
+      let vendor = order.vendorId || {};
+      
+      // If vendorId exists but vendor object is incomplete, fetch vendor details
+      if (order.vendorId && (!order.vendorId.bankDetails || !order.vendorId.businessName)) {
+        try {
+          const { vendorAPI } = await import('../utils/api');
+          const vendorId = order.vendorId._id || order.vendorId;
+          const vendorResponse = await vendorAPI.getVendorBankDetails(vendorId);
+          if (vendorResponse.success && vendorResponse.data) {
+            vendor = {
+              ...vendor,
+              ...vendorResponse.data,
+              bankDetails: {
+                ...vendor.bankDetails,
+                ...vendorResponse.data.bankDetails,
+              },
+            };
+          }
+        } catch (err) {
+          console.warn('Could not fetch vendor details for invoice:', err);
+        }
+      }
+      
       await generateInvoicePDF(order, vendor);
     } catch (error) {
       console.error('Error generating invoice:', error);
@@ -96,12 +143,35 @@ const Orders = () => {
     }
   };
 
+  // Get selected city name for display
+  const selectedCityName = localStorage.getItem('selectedCity') || 'All Cities';
+
   return (
     <div className="min-h-screen bg-gray-50 py-4">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Your Orders</h1>
-          <p className="text-sm text-gray-600 mt-1">{orders.length} order{orders.length !== 1 ? 's' : ''} placed</p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Your Orders</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                {orders.length} order{orders.length !== 1 ? 's' : ''} placed
+                {selectedCityId && (
+                  <span className="ml-2 text-gray-500">
+                    in <span className="font-medium text-gray-700">{selectedCityName}</span>
+                  </span>
+                )}
+              </p>
+            </div>
+            {selectedCityId && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-sm font-medium text-blue-800">Filtered by: {selectedCityName}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {loading ? (

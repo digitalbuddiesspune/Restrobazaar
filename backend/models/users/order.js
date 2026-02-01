@@ -99,6 +99,9 @@ const orderSchema = new mongoose.Schema(
       landmark: {
         type: String,
       },
+      gstNumber: {
+        type: String,
+      },
     },
     billingDetails: {
       cartTotal: {

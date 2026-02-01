@@ -510,6 +510,7 @@ export const orderAPI = {
   getUserOrders: async (filters = {}) => {
     const queryParams = new URLSearchParams();
     if (filters.status) queryParams.append('status', filters.status);
+    if (filters.cityId) queryParams.append('cityId', filters.cityId);
     if (filters.page) queryParams.append('page', filters.page);
     if (filters.limit) queryParams.append('limit', filters.limit);
     

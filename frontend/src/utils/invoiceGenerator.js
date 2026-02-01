@@ -108,6 +108,30 @@ export const getStatusText = (status) => {
 // Generate invoice PDF
 export const generateInvoicePDF = async (order, vendor = {}) => {
   try {
+    // Fetch vendor details if vendorId is available but vendor object is incomplete
+    let vendorData = vendor;
+    if (order.vendorId && (!vendor.bankDetails || !vendor.businessName)) {
+      try {
+        const { vendorAPI } = await import('./api');
+        const vendorId = order.vendorId._id || order.vendorId;
+        const vendorResponse = await vendorAPI.getVendorBankDetails(vendorId);
+        if (vendorResponse.success && vendorResponse.data) {
+          // Merge fetched vendor data with existing vendor data
+          vendorData = {
+            ...vendor,
+            ...vendorResponse.data,
+            bankDetails: {
+              ...vendor.bankDetails,
+              ...vendorResponse.data.bankDetails,
+            },
+          };
+        }
+      } catch (err) {
+        console.warn('Could not fetch vendor details for invoice:', err);
+        // Continue with existing vendor data
+      }
+    }
+
     const doc = new jsPDF();
     // Set default font and encoding to avoid text rendering issues
     doc.setFont('helvetica');
@@ -121,21 +145,32 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     const contentWidth = pageWidth - 20;
 
     // Get vendor information
-    const vendorName = vendor.businessName || 'AK Enterprises';
-    const vendorEmail = vendor.email || 'support@restrobazaar.com';
-    const vendorGSTIN = vendor.gstNumber || '27DJSPK2679K1ZB';
-    const vendorState = vendor.address?.state || 'Maharashtra';
-    const vendorStateCode = getStateCode(vendorState) || '27';
+    const vendorName = vendorData.businessName || 'RestroBazaar';
+    const vendorEmail = vendorData.email || '';
+    const vendorGSTIN = vendorData.gstNumber || '';
+    const vendorState = vendorData.address?.state || '';
+    const vendorStateCode = vendorState ? getStateCode(vendorState) : '';
 
     // Get customer information
     const customer = order.deliveryAddress || {};
     const customerName = customer.name || 'Customer Name';
+    const customerPhone = customer.phone || '';
     const customerAddressLine1 = customer.addressLine1 || '';
     const customerAddressLine2 = customer.addressLine2 || '';
     const customerCity = customer.city || '';
     const customerState = customer.state || '';
     const customerPincode = customer.pincode || '';
-    const customerGSTIN = customer.gstNumber || 'URP';
+    // Get GST number from deliveryAddress - prioritize customer entered GST
+    // Check order.deliveryAddress.gstNumber first (from checkout), then fallback
+    const customerGSTIN = (order.deliveryAddress?.gstNumber) || 
+                          (customer.gstNumber) || 
+                          (order.gstNumber) || 
+                          '';
+    
+    // Debug: Log GST number retrieval (remove in production if needed)
+    if (order.deliveryAddress?.gstNumber) {
+      console.log('GST Number found in order.deliveryAddress:', order.deliveryAddress.gstNumber);
+    }
     
     // Build full address string
     const addressParts = [customerAddressLine1];
@@ -202,7 +237,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
 
     // Vendor information
     doc.setFontSize(9);
-    const vendorInfo = `By: ${vendorName} | Email: ${vendorEmail} | GST No: ${vendorGSTIN} | State Code: ${vendorStateCode}`;
+    const vendorInfo = `By: AK Enterprises | Email: ${vendorEmail} | GST No: 27DJSPK2679K1ZB | State Code: ${vendorStateCode}`;
     doc.text(vendorInfo, pageWidth / 2, yPos, { align: 'center' });
     yPos += 5;
 
@@ -345,10 +380,17 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.setFont(undefined, 'normal');
     doc.text(`Customer Name/ Restaurant Name: ${customerName}`, leftMargin + 3, yPos);
     yPos += 4;
+    if (customerPhone) {
+      doc.text(`Phone: ${customerPhone}`, leftMargin + 3, yPos);
+      yPos += 4;
+    }
     doc.text(`Address: ${customerAddress}`, leftMargin + 3, yPos);
     yPos += 4;
-    doc.text(`GST No: ${customerGSTIN}`, leftMargin + 3, yPos);
-    yPos += 6;
+    // Always show GST No - use customer GST if available, otherwise show URP
+    const gstDisplay = customerGSTIN && customerGSTIN.trim() ? customerGSTIN.trim() : 'URP';
+    doc.text(`GST No: ${gstDisplay}`, leftMargin + 3, yPos);
+    yPos += 4;
+    yPos += 2;
 
     // ========== ORDER DETAILS SECTION ==========
     // Header bar
@@ -371,23 +413,25 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.setFillColor(230, 230, 230); // Light gray background
     doc.rect(leftMargin, yPos - 3, contentWidth, headerRowHeight, 'F');
     
-    // Column positions - adjusted to include GST Amount column with proper spacing
+    // Column positions - adjusted to include Rate*Qty and GST Amount columns with proper spacing
     const colSrNoX = leftMargin;
-    const colSrNoWidth = 12;
-    const colDescX = leftMargin + 12;
-    const colDescWidth = 42; // Reduced slightly to make room
-    const colHSNX = leftMargin + 54;
-    const colHSNWidth = 18;
-    const colQtyX = leftMargin + 72;
-    const colQtyWidth = 12;
-    const colRateX = leftMargin + 84;
-    const colRateWidth = 18;
-    const colGSTX = leftMargin + 102;
-    const colGSTWidth = 16; // Increased from 12 to prevent overlap
-    const colGSTAmountX = leftMargin + 118;
-    const colGSTAmountWidth = 24; // Increased from 18 to prevent overlap
+    const colSrNoWidth = 10;
+    const colDescX = leftMargin + 10;
+    const colDescWidth = 38; // Reduced to make room for new column
+    const colHSNX = leftMargin + 48;
+    const colHSNWidth = 16;
+    const colQtyX = leftMargin + 64;
+    const colQtyWidth = 10;
+    const colRateX = leftMargin + 74;
+    const colRateWidth = 16;
+    const colRateQtyX = leftMargin + 90;
+    const colRateQtyWidth = 18; // New column for Rate * Qty
+    const colGSTX = leftMargin + 108;
+    const colGSTWidth = 14;
+    const colGSTAmountX = leftMargin + 122;
+    const colGSTAmountWidth = 20;
     const colAmountX = leftMargin + 142;
-    const colAmountWidth = rightMargin - colAmountX; // Reduced size
+    const colAmountWidth = rightMargin - colAmountX;
     
     // Draw header borders
     doc.setDrawColor(0, 0, 0);
@@ -401,6 +445,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.line(colHSNX, yPos - 3, colHSNX, yPos - 3 + headerRowHeight);
     doc.line(colQtyX, yPos - 3, colQtyX, yPos - 3 + headerRowHeight);
     doc.line(colRateX, yPos - 3, colRateX, yPos - 3 + headerRowHeight);
+    doc.line(colRateQtyX, yPos - 3, colRateQtyX, yPos - 3 + headerRowHeight);
     doc.line(colGSTX, yPos - 3, colGSTX, yPos - 3 + headerRowHeight);
     doc.line(colGSTAmountX, yPos - 3, colGSTAmountX, yPos - 3 + headerRowHeight);
     doc.line(colAmountX, yPos - 3, colAmountX, yPos - 3 + headerRowHeight);
@@ -408,12 +453,14 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     // Header text
     doc.setTextColor(0, 0, 0);
     doc.text('Sr No', colSrNoX + 3, yPos);
-    doc.text('Item Description', colDescX + 3, yPos);
+    doc.text('Item Name', colDescX + 3, yPos);
     doc.text('HSN', colHSNX + 3, yPos);
     const qtyHeaderWidth = doc.getTextWidth('Qty');
     doc.text('Qty', colQtyX + colQtyWidth - qtyHeaderWidth - 3, yPos);
     const rateHeaderWidth = doc.getTextWidth('Rate');
     doc.text('Rate', colRateX + colRateWidth - rateHeaderWidth - 3, yPos);
+    const rateQtyHeaderWidth = doc.getTextWidth('Rate*Qty');
+    doc.text('Rate*Qty', colRateQtyX + colRateQtyWidth - rateQtyHeaderWidth - 3, yPos);
     // GST % - center or left align to prevent overlap
     doc.text('GST %', colGSTX + 3, yPos);
     // GST Amount - left align with proper spacing
@@ -459,14 +506,16 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       const srNo = String(index + 1);
       const qty = String(itemQty);
       const rate = itemPrice.toFixed(2);
+      const rateQty = itemSubtotal.toFixed(2); // Rate * Quantity (subtotal before GST)
       const gstPercent = itemGstPercentage > 0 ? itemGstPercentage.toFixed(2) : '-';
       const gstAmount = itemGstAmount.toFixed(2);
       const amount = itemTotal.toFixed(2);
       const hsnCodeStr = String(hsnCode || '482369');
       
       // Calculate dynamic row height based on product name wrapping
-      const maxNameWidth = 38; // Adjusted to match reduced column width
-      const productName = String(item.productName || 'Product');
+      // Reduced width to ensure proper wrapping for long product names
+      const maxNameWidth = 32; // Reduced to ensure long names wrap properly to next line
+      const productName = String(item.productName || item.product?.productName || 'Product');
       const productNameLines = doc.splitTextToSize(productName, maxNameWidth);
       const actualRowHeight = baseRowHeight + (productNameLines.length - 1) * lineSpacing;
       const rowStartY = yPos - 3;
@@ -488,6 +537,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       doc.line(colHSNX, rowStartY, colHSNX, rowEndY);
       doc.line(colQtyX, rowStartY, colQtyX, rowEndY);
       doc.line(colRateX, rowStartY, colRateX, rowEndY);
+      doc.line(colRateQtyX, rowStartY, colRateQtyX, rowEndY);
       doc.line(colGSTX, rowStartY, colGSTX, rowEndY);
       doc.line(colGSTAmountX, rowStartY, colGSTAmountX, rowEndY);
       doc.line(colAmountX, rowStartY, colAmountX, rowEndY);
@@ -499,7 +549,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       // Sr No
       doc.text(srNo, colSrNoX + 3, textY);
       
-      // Item Description - can be multiple lines
+      // Item Name - can be multiple lines (wraps to next line if long)
       productNameLines.forEach((line, lineIndex) => {
         doc.text(line, colDescX + 3, textY + (lineIndex * lineSpacing));
       });
@@ -512,6 +562,8 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       doc.text(qty, colQtyX + colQtyWidth - qtyWidth - 3, textY);
       const rateWidth = doc.getTextWidth(rate);
       doc.text(rate, colRateX + colRateWidth - rateWidth - 3, textY);
+      const rateQtyWidth = doc.getTextWidth(rateQty);
+      doc.text(rateQty, colRateQtyX + colRateQtyWidth - rateQtyWidth - 3, textY);
       const gstPercentWidth = doc.getTextWidth(gstPercent);
       doc.text(gstPercent, colGSTX + colGSTWidth - gstPercentWidth - 3, textY);
       const gstAmountWidth = doc.getTextWidth(gstAmount);
@@ -641,58 +693,77 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       yPos = 20;
     }
 
-    const bankDetails = vendor.bankDetails || {};
-    const bankName = bankDetails.bankName || 'Kotak Mahindra Bank';
-    const accountName = bankDetails.accountHolderName || bankDetails.accountName || vendor.businessName || 'AK Enterprises';
-    const bankAccountNo = bankDetails.accountNumber || bankDetails.bankAccountNo || '9545235223';
-    const branch = bankDetails.branch || 'Baner';
-    const bankIFSC = bankDetails.ifsc || bankDetails.ifscCode || bankDetails.bankIFSC || 'KKBK0001767';
-    const upiId = bankDetails.upiId || '9545235223@kotak';
+    const bankDetails = vendorData.bankDetails || {};
+    const bankName = bankDetails.bankName || '';
+    const accountName = bankDetails.accountHolderName || vendorData.businessName || '';
+    const bankAccountNo = bankDetails.accountNumber || '';
+    const branch = bankDetails.branch || '';
+    const bankIFSC = bankDetails.ifsc || '';
+    const upiId = bankDetails.upiId || '';
 
-    // Build UPI payment URL for QR (amount + invoice ref)
-    const invRef = invoiceNumber || (formattedOrderNo ? `Order ${formattedOrderNo}` : 'Invoice');
-    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(accountName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invRef)}`;
+    // Build UPI payment URL for QR (amount + invoice ref) - only if UPI ID is available
     let qrDataUrl = null;
-    try {
-      qrDataUrl = await fetchUPIQRAsDataURL(upiUrl);
-    } catch (qrErr) {
-      console.warn('Could not fetch QR code for invoice, continuing without:', qrErr);
+    if (upiId && accountName) {
+      const invRef = invoiceNumber || (formattedOrderNo ? `Order ${formattedOrderNo}` : 'Invoice');
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(accountName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invRef)}`;
+      try {
+        qrDataUrl = await fetchUPIQRAsDataURL(upiUrl);
+      } catch (qrErr) {
+        console.warn('Could not fetch QR code for invoice, continuing without:', qrErr);
+      }
     }
 
-    // Bank Details
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.text('Bank Details:', leftMargin + 3, yPos);
-    yPos += 5;
-    doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
-
-    const bankStartY = yPos;
-    const qrSize = 48;
-    const qrX = rightMargin - qrSize - 5;
-
-    doc.text(`Bank: ${bankName}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`Branch: ${branch}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`IFSC Code: ${bankIFSC}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`Account Name: ${accountName}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`Account No: ${bankAccountNo}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`UPI ID: ${upiId}`, leftMargin + 3, yPos);
-
-    if (qrDataUrl) {
-      doc.setFontSize(7);
+    // Bank Details - Only show if we have bank details
+    const hasBankDetails = accountName || upiId || bankAccountNo || bankName || bankIFSC;
+    
+    if (hasBankDetails) {
+      doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
-      doc.text('Scan to Pay', qrX + qrSize / 2 - doc.getTextWidth('Scan to Pay') / 2, bankStartY - 2);
-      doc.setFont(undefined, 'normal');
+      doc.text('Bank Details:', leftMargin + 3, yPos);
+      yPos += 5;
       doc.setFontSize(8);
-      doc.addImage(qrDataUrl, 'PNG', qrX, bankStartY, qrSize, qrSize);
-      yPos = Math.max(yPos, bankStartY + qrSize + 4);
+      doc.setFont(undefined, 'normal');
+
+      const bankStartY = yPos;
+      const qrSize = 48;
+      const qrX = rightMargin - qrSize - 5;
+
+      if (bankName) {
+        doc.text(`Bank: ${bankName}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (branch) {
+        doc.text(`Branch: ${branch}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (bankIFSC) {
+        doc.text(`IFSC Code: ${bankIFSC}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (accountName) {
+        doc.text(`Account Name: ${accountName}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (bankAccountNo) {
+        doc.text(`Account No: ${bankAccountNo}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (upiId) {
+        doc.text(`UPI ID: ${upiId}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+
+      if (qrDataUrl) {
+        doc.setFontSize(7);
+        doc.setFont(undefined, 'bold');
+        doc.text('Scan to Pay', qrX + qrSize / 2 - doc.getTextWidth('Scan to Pay') / 2, bankStartY - 2);
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.addImage(qrDataUrl, 'PNG', qrX, bankStartY, qrSize, qrSize);
+        yPos = Math.max(yPos, bankStartY + qrSize + 4);
+      }
+      yPos += 6;
     }
-    yPos += 6;
 
     // Disclaimer
     doc.setFontSize(7);

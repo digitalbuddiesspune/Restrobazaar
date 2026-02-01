@@ -222,6 +222,7 @@ export const createOrder = async (req, res) => {
       state: address.state,
       pincode: address.pincode,
       landmark: address.landmark || '',
+      gstNumber: req.body.gstNumber || undefined, // Include GST number if provided
     };
 
     // Determine payment status
@@ -321,11 +322,16 @@ export const createOrder = async (req, res) => {
 export const getUserOrders = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, cityId, page = 1, limit = 10 } = req.query;
 
     const query = { userId };
     if (status) {
       query.orderStatus = status;
+    }
+    
+    // Filter by city if specified
+    if (cityId) {
+      query.vendorServiceCityId = cityId;
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -335,7 +341,9 @@ export const getUserOrders = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .populate('userId', 'name email phone')
-      .populate('items.productId', 'hsnCode productName');
+      .populate('items.productId', 'hsnCode productName')
+      .populate('vendorServiceCityId', 'name displayName')
+      .populate('vendorId', 'businessName email gstNumber address bankDetails');
 
     const total = await Order.countDocuments(query);
 
