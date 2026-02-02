@@ -18,7 +18,7 @@ const Cart = () => {
   const cartItems = useAppSelector(selectCartItems);
   const cartTotal = useAppSelector(selectCartTotal);
   const [selectedCity] = useState(localStorage.getItem(CITY_STORAGE_KEY) || 'Select City');
-  
+
   // Calculate shipping charges based on cart total
   const shippingCharges = calculateShippingCharges(cartTotal);
   const grandTotal = cartTotal + shippingCharges;
@@ -32,24 +32,24 @@ const Cart = () => {
   const handleQuantityChange = (itemId, newQuantity) => {
     const item = cartItems.find(item => item.id === itemId);
     if (!item) return;
-    
+
     const minOrderQty = item.minimumOrderQuantity || 1;
     let quantity = parseInt(newQuantity);
-    
+
     // Calculate maximum valid quantity (round down available stock to nearest multiple of minOrderQty)
     const maxValidQty = Math.floor(item.availableStock / minOrderQty) * minOrderQty;
-    
+
     // Ensure quantity is at least minimum order quantity
     if (quantity < minOrderQty) {
       quantity = minOrderQty;
     }
-    
+
     // Round to nearest multiple of minimum order quantity
     const roundedQty = Math.round(quantity / minOrderQty) * minOrderQty;
-    
+
     // Ensure quantity doesn't exceed the maximum valid quantity (which is a multiple of minOrderQty)
     const finalQty = Math.max(minOrderQty, Math.min(roundedQty, maxValidQty));
-    
+
     if (finalQty > 0) {
       dispatch(updateQuantity({ itemId, quantity: finalQty }));
     }
@@ -94,6 +94,7 @@ const Cart = () => {
               >
                 Continue Shopping
               </Link>
+
             </div>
           </div>
         </div>
@@ -157,7 +158,7 @@ const Cart = () => {
                               >
                                 {item.productName}
                               </Link>
-                             
+
                             </div>
                             <Button
                               variant="icon"
@@ -184,7 +185,7 @@ const Cart = () => {
                           {/* Price and Quantity */}
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2">
                             <div>
-                              <p className="text-base font-bold text-red-600">
+                              <p className="text-sm font-bold text-red-600">
                                 ₹{item.price.toFixed(2)} / {item.unit}
                               </p>
                               {item.priceType === 'bulk' && item.selectedPrice && (
@@ -194,7 +195,7 @@ const Cart = () => {
                               )}
                             </div>
 
-                              <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
                               <div className="flex items-center gap-1">
                                 <label className="text-sm text-gray-700">Qty:</label>
                                 <div className="flex items-center border border-gray-300 rounded">
@@ -210,7 +211,7 @@ const Cart = () => {
                                       handleQuantityChange(item.id, newQty);
                                     }}
                                     disabled={item.quantity <= item.minimumOrderQuantity}
-                                    className="px-2 py-0.5 hover:bg-gray-100 border-0 rounded-none"
+                                    className="px-1 py-0.5 hover:bg-gray-100 border-0 rounded-none"
                                     title={`Decrease by ${item.minimumOrderQuantity || 1}`}
                                   >
                                     −
@@ -227,7 +228,7 @@ const Cart = () => {
                                     onChange={(e) =>
                                       handleQuantityChange(item.id, parseInt(e.target.value) || item.minimumOrderQuantity)
                                     }
-                                    className="w-12 px-1 py-0.5 text-sm text-center border-0 focus:ring-1 focus:ring-red-500 focus:outline-none"
+                                    className="w-fit px-1 py-0.5 text-sm text-center border-0 focus:ring-1 focus:ring-red-500 focus:outline-none"
                                   />
                                   <Button
                                     variant="textGray"
@@ -315,12 +316,11 @@ const Cart = () => {
                   Place Order
                 </Button>
 
-                <Link
-                  to="/"
-                  className="block text-center text-sm text-gray-600 hover:text-red-600 transition-colors font-medium"
-                >
-                  Continue Shopping
-                </Link>
+
+                <p className="text-sm text-left text-gray-600">
+                  Prices are exclusive of GST. Applicable GST will be calculated at checkout.
+                </p>
+
               </div>
             </div>
           </div>

@@ -210,15 +210,6 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       });
     }
     
-    // Calculate CGST and SGST (assuming equal split for intra-state)
-    const cgstAmount = totalGstAmount / 2;
-    const sgstAmount = totalGstAmount / 2;
-    // Calculate GST rate - percentage based on cartTotal
-    // Rate = (GST Amount / Cart Total) * 100
-    const cgstRate = cartTotal > 0 && totalGstAmount > 0 
-      ? Math.round((cgstAmount / cartTotal) * 100 * 100) / 100  // Round to 2 decimal places
-      : 0;
-    const sgstRate = cgstRate;
 
     // ========== HEADER SECTION ==========
     // "RESTROBAZAAR" in red, bold, larger font
@@ -407,11 +398,8 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     const orderTableStartY = yPos;
-    const headerRowHeight = 5;
-    
-    // Draw header background
-    doc.setFillColor(230, 230, 230); // Light gray background
-    doc.rect(leftMargin, yPos - 3, contentWidth, headerRowHeight, 'F');
+    const baseHeaderRowHeight = 5;
+    const headerLineSpacing = 4;
     
     // Column positions - adjusted to include Rate*Qty and GST Amount columns with proper spacing
     const colSrNoX = leftMargin;
@@ -433,6 +421,36 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     const colAmountX = leftMargin + 142;
     const colAmountWidth = rightMargin - colAmountX;
     
+    // Calculate header text wrapping and determine maximum lines needed
+    const headerTexts = [
+      { text: 'Sr No', width: colSrNoWidth - 6, align: 'left' },
+      { text: 'Item Name', width: colDescWidth - 6, align: 'left' },
+      { text: 'HSN', width: colHSNWidth - 6, align: 'center' },
+      { text: 'Qty', width: colQtyWidth - 6, align: 'right' },
+      { text: 'Rate', width: colRateWidth - 6, align: 'right' },
+      { text: 'Taxable Value', width: colRateQtyWidth - 6, align: 'right' },
+      { text: 'GST %', width: colGSTWidth - 6, align: 'left' },
+      { text: 'GST Amount', width: colGSTAmountWidth - 6, align: 'left' },
+      { text: 'Amount', width: colAmountWidth - 6, align: 'right' }
+    ];
+    
+    let maxHeaderLines = 1;
+    const headerLines = [];
+    headerTexts.forEach((header, index) => {
+      const lines = doc.splitTextToSize(header.text, header.width);
+      headerLines.push({ lines, align: header.align, index });
+      if (lines.length > maxHeaderLines) {
+        maxHeaderLines = lines.length;
+      }
+    });
+    
+    // Calculate dynamic header row height based on maximum lines
+    const headerRowHeight = baseHeaderRowHeight + (maxHeaderLines - 1) * headerLineSpacing;
+    
+    // Draw header background
+    doc.setFillColor(230, 230, 230); // Light gray background
+    doc.rect(leftMargin, yPos - 3, contentWidth, headerRowHeight, 'F');
+    
     // Draw header borders
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.1);
@@ -450,23 +468,73 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.line(colGSTAmountX, yPos - 3, colGSTAmountX, yPos - 3 + headerRowHeight);
     doc.line(colAmountX, yPos - 3, colAmountX, yPos - 3 + headerRowHeight);
     
-    // Header text
+    // Header text with wrapping - all center-aligned
     doc.setTextColor(0, 0, 0);
-    doc.text('Sr No', colSrNoX + 3, yPos);
-    doc.text('Item Name', colDescX + 3, yPos);
-    doc.text('HSN', colHSNX + 3, yPos);
-    const qtyHeaderWidth = doc.getTextWidth('Qty');
-    doc.text('Qty', colQtyX + colQtyWidth - qtyHeaderWidth - 3, yPos);
-    const rateHeaderWidth = doc.getTextWidth('Rate');
-    doc.text('Rate', colRateX + colRateWidth - rateHeaderWidth - 3, yPos);
-    const rateQtyHeaderWidth = doc.getTextWidth('Rate*Qty');
-    doc.text('Rate*Qty', colRateQtyX + colRateQtyWidth - rateQtyHeaderWidth - 3, yPos);
-    // GST % - center or left align to prevent overlap
-    doc.text('GST %', colGSTX + 3, yPos);
-    // GST Amount - left align with proper spacing
-    doc.text('GST Amount', colGSTAmountX + 3, yPos);
-    const amountHeaderWidth = doc.getTextWidth('Amount');
-    doc.text('Amount', rightMargin - amountHeaderWidth - 3, yPos);
+    const headerStartY = yPos - 3 + 3; // Top padding
+    
+    // Sr No - center aligned
+    const srNoLines = headerLines[0].lines;
+    srNoLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colSrNoX + (colSrNoWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Item Name - center aligned
+    const itemNameLines = headerLines[1].lines;
+    itemNameLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colDescX + (colDescWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // HSN - center aligned
+    const hsnLines = headerLines[2].lines;
+    hsnLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colHSNX + (colHSNWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Qty - center aligned
+    const qtyLines = headerLines[3].lines;
+    qtyLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colQtyX + (colQtyWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Rate - center aligned
+    const rateLines = headerLines[4].lines;
+    rateLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colRateX + (colRateWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Taxable Value - center aligned
+    const taxableValueLines = headerLines[5].lines;
+    taxableValueLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colRateQtyX + (colRateQtyWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // GST % - center aligned
+    const gstPercentLines = headerLines[6].lines;
+    gstPercentLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colGSTX + (colGSTWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // GST Amount - center aligned
+    const gstAmountLines = headerLines[7].lines;
+    gstAmountLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colGSTAmountX + (colGSTAmountWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Amount - center aligned
+    const amountLines = headerLines[8].lines;
+    amountLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colAmountX + (colAmountWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
     yPos += headerRowHeight;
 
     // Table rows with borders
@@ -542,34 +610,37 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       doc.line(colGSTAmountX, rowStartY, colGSTAmountX, rowEndY);
       doc.line(colAmountX, rowStartY, colAmountX, rowEndY);
       
-      // Draw text - all columns aligned to top of row
+      // Draw text - all columns center-aligned
       doc.setTextColor(0, 0, 0);
       const textY = rowStartY + 3; // Top alignment with padding
       
-      // Sr No
-      doc.text(srNo, colSrNoX + 3, textY);
+      // Sr No - center aligned
+      const srNoWidth = doc.getTextWidth(srNo);
+      doc.text(srNo, colSrNoX + (colSrNoWidth / 2) - (srNoWidth / 2), textY);
       
-      // Item Name - can be multiple lines (wraps to next line if long)
+      // Item Name - can be multiple lines (wraps to next line if long), center aligned
       productNameLines.forEach((line, lineIndex) => {
-        doc.text(line, colDescX + 3, textY + (lineIndex * lineSpacing));
+        const lineWidth = doc.getTextWidth(line);
+        doc.text(line, colDescX + (colDescWidth / 2) - (lineWidth / 2), textY + (lineIndex * lineSpacing));
       });
       
-      // HSN - aligned to top
-      doc.text(hsnCodeStr, colHSNX + 3, textY);
+      // HSN - center aligned
+      const hsnWidth = doc.getTextWidth(hsnCodeStr);
+      doc.text(hsnCodeStr, colHSNX + (colHSNWidth / 2) - (hsnWidth / 2), textY);
       
-      // Right-aligned numerical values - all aligned to top
+      // All numerical values - center aligned
       const qtyWidth = doc.getTextWidth(qty);
-      doc.text(qty, colQtyX + colQtyWidth - qtyWidth - 3, textY);
+      doc.text(qty, colQtyX + (colQtyWidth / 2) - (qtyWidth / 2), textY);
       const rateWidth = doc.getTextWidth(rate);
-      doc.text(rate, colRateX + colRateWidth - rateWidth - 3, textY);
+      doc.text(rate, colRateX + (colRateWidth / 2) - (rateWidth / 2), textY);
       const rateQtyWidth = doc.getTextWidth(rateQty);
-      doc.text(rateQty, colRateQtyX + colRateQtyWidth - rateQtyWidth - 3, textY);
+      doc.text(rateQty, colRateQtyX + (colRateQtyWidth / 2) - (rateQtyWidth / 2), textY);
       const gstPercentWidth = doc.getTextWidth(gstPercent);
-      doc.text(gstPercent, colGSTX + colGSTWidth - gstPercentWidth - 3, textY);
+      doc.text(gstPercent, colGSTX + (colGSTWidth / 2) - (gstPercentWidth / 2), textY);
       const gstAmountWidth = doc.getTextWidth(gstAmount);
-      doc.text(gstAmount, colGSTAmountX + colGSTAmountWidth - gstAmountWidth - 3, textY);
+      doc.text(gstAmount, colGSTAmountX + (colGSTAmountWidth / 2) - (gstAmountWidth / 2), textY);
       const amountWidth = doc.getTextWidth(amount);
-      doc.text(amount, rightMargin - amountWidth - 3, textY);
+      doc.text(amount, colAmountX + (colAmountWidth / 2) - (amountWidth / 2), textY);
       
       // Move to next row
       yPos = rowEndY + 3;
@@ -590,28 +661,19 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     // Convert all numbers to strings
     const subTotalNum = parseFloat(cartTotal) || 0;
     const subTotalStr = subTotalNum.toFixed(2);
-    const cgstAmountNum = parseFloat(cgstAmount) || 0;
-    const cgstAmountStr = cgstAmountNum.toFixed(2);
-    const sgstAmountNum = parseFloat(sgstAmount) || 0;
-    const sgstAmountStr = sgstAmountNum.toFixed(2);
+    const totalGstAmountNum = parseFloat(totalGstAmount) || 0;
+    const totalGstAmountStr = totalGstAmountNum.toFixed(2);
     const totalAmountNum = parseFloat(totalAmount) || 0;
     const totalAmountStr = totalAmountNum.toFixed(2);
-    const cgstRateNum = parseInt(cgstRate) || 0;
-    const cgstRateStr = String(cgstRateNum);
-    const sgstRateNum = parseInt(sgstRate) || 0;
-    const sgstRateStr = String(sgstRateNum);
     
     // Build summary rows
     const summaryRows = [
       { label: 'Sub Total:', value: subTotalStr, isTotal: false }
     ];
     
-    if (cgstAmount > 0) {
-      summaryRows.push({ label: `CGST (${cgstRateStr}%):`, value: cgstAmountStr, isTotal: false });
-    }
-    
-    if (sgstAmount > 0) {
-      summaryRows.push({ label: `SGST (${sgstRateStr}%):`, value: sgstAmountStr, isTotal: false });
+    // Total GST Amount - show after Sub Total
+    if (totalGstAmount > 0) {
+      summaryRows.push({ label: 'Total GST Amount:', value: totalGstAmountStr, isTotal: false });
     }
     
     // Shipping Charges - always show (Free when 0)
