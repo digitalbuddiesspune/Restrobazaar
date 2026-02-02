@@ -129,6 +129,9 @@ const Header = () => {
         
         // Dispatch event to notify other components
         window.dispatchEvent(new Event('cityChange'));
+        
+        // Reload the page to apply the city change
+        window.location.reload();
       }
     }
   }
@@ -150,7 +153,25 @@ const Header = () => {
         
         // Dispatch event to notify other components
         window.dispatchEvent(new Event('cityChange'));
+        
+        // Reload the page to apply the city change
+        window.location.reload();
       }
+    } else {
+      // Clear city selection
+      localStorage.removeItem(CITY_STORAGE_KEY);
+      localStorage.removeItem(CITY_ID_KEY);
+      setSelectedCityId(null);
+      setDeliveryLocation({ 
+        city: '', 
+        pincode: deliveryLocation.pincode 
+      });
+      
+      // Dispatch event to notify other components
+      window.dispatchEvent(new Event('cityChange'));
+      
+      // Reload the page to apply the city change
+      window.location.reload();
     }
     setIsCityDropdownOpen(false);
   }
