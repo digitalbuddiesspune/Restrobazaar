@@ -278,6 +278,42 @@ const Checkout = () => {
   });
   
   const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
+  
+  // Group items by GST percentage and calculate SGST/CGST
+  const gstGroups = {};
+  gstBreakdown.forEach(item => {
+    if (item.gstPercentage > 0 && item.gstAmount > 0) {
+      const gstKey = item.gstPercentage.toFixed(2);
+      if (!gstGroups[gstKey]) {
+        gstGroups[gstKey] = {
+          percentage: item.gstPercentage,
+          totalGst: 0
+        };
+      }
+      gstGroups[gstKey].totalGst += item.gstAmount;
+    }
+  });
+  
+  // Convert groups to array and calculate SGST/CGST for each
+  const sgstCgstBreakdown = Object.keys(gstGroups)
+    .sort((a, b) => parseFloat(b) - parseFloat(a))
+    .map(gstKey => {
+      const group = gstGroups[gstKey];
+      const totalGst = parseFloat(group.totalGst.toFixed(2));
+      const sgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const cgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const sgstRate = parseFloat((group.percentage / 2).toFixed(2));
+      const cgstRate = sgstRate;
+      
+      return {
+        gstPercentage: group.percentage,
+        sgstRate,
+        cgstRate,
+        sgstAmount,
+        cgstAmount,
+        totalGst
+      };
+    });
   const shippingCharges = calculateShippingCharges(cartTotal);
   // Apply coupon discount to final total
   const totalBeforeCoupon = cartTotal + gstAmount + shippingCharges;
@@ -926,17 +962,21 @@ const Checkout = () => {
                     <span>GST</span>
                     <span className="font-medium">₹{gstAmount.toFixed(2)}</span>
                   </div>
-                  {/* GST Breakdown */}
-                  {gstBreakdown.some(item => item.gstPercentage > 0) && (
+                  {/* SGST/CGST Breakdown */}
+                  {sgstCgstBreakdown.length > 0 && (
                     <div className="pl-2 border-l-2 border-gray-200 space-y-1">
-                      {gstBreakdown
-                        .filter(item => item.gstPercentage > 0)
-                        .map((item, index) => (
-                          <div key={item.itemId || index} className="flex justify-between text-xs text-gray-600">
-                            <span>{item.productName} ({item.gstPercentage}%):</span>
-                            <span>₹{item.gstAmount.toFixed(2)}</span>
+                      {sgstCgstBreakdown.map((group, index) => (
+                        <div key={`gst-group-${index}`} className="space-y-0.5">
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>SGST ({group.sgstRate}%):</span>
+                            <span>₹{group.sgstAmount.toFixed(2)}</span>
                           </div>
-                        ))}
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>CGST ({group.cgstRate}%):</span>
+                            <span>₹{group.cgstAmount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                   <div className="flex justify-between text-sm text-gray-700">

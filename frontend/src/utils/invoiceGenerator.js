@@ -661,20 +661,63 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     // Convert all numbers to strings
     const subTotalNum = parseFloat(cartTotal) || 0;
     const subTotalStr = subTotalNum.toFixed(2);
-    const totalGstAmountNum = parseFloat(totalGstAmount) || 0;
-    const totalGstAmountStr = totalGstAmountNum.toFixed(2);
     const totalAmountNum = parseFloat(totalAmount) || 0;
     const totalAmountStr = totalAmountNum.toFixed(2);
+    
+    // Group items by GST percentage and calculate SGST/CGST
+    const gstGroups = {};
+    if (order.items && order.items.length > 0) {
+      order.items.forEach(item => {
+        const itemGstPercentage = parseFloat(item.gstPercentage) || 0;
+        const itemGstAmount = parseFloat(item.gstAmount) || 0;
+        
+        if (itemGstPercentage > 0 && itemGstAmount > 0) {
+          // Round GST percentage to 2 decimal places for grouping
+          const gstKey = itemGstPercentage.toFixed(2);
+          
+          if (!gstGroups[gstKey]) {
+            gstGroups[gstKey] = {
+              percentage: itemGstPercentage,
+              totalGst: 0
+            };
+          }
+          
+          gstGroups[gstKey].totalGst += itemGstAmount;
+        }
+      });
+    }
     
     // Build summary rows
     const summaryRows = [
       { label: 'Sub Total:', value: subTotalStr, isTotal: false }
     ];
     
-    // Total GST Amount - show after Sub Total
-    if (totalGstAmount > 0) {
-      summaryRows.push({ label: 'Total GST Amount:', value: totalGstAmountStr, isTotal: false });
-    }
+    // Add SGST and CGST for each GST percentage group
+    // Sort by GST percentage (descending) for better readability
+    const sortedGstKeys = Object.keys(gstGroups).sort((a, b) => parseFloat(b) - parseFloat(a));
+    
+    sortedGstKeys.forEach(gstKey => {
+      const group = gstGroups[gstKey];
+      const totalGst = parseFloat(group.totalGst.toFixed(2));
+      const sgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const cgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const sgstRate = parseFloat((group.percentage / 2).toFixed(2));
+      const cgstRate = sgstRate;
+      
+      // Add SGST row
+      summaryRows.push({ 
+        label: `SGST (${sgstRate}%):`, 
+        value: sgstAmount.toFixed(2), 
+        isTotal: false 
+      });
+      
+      // Add CGST row
+      summaryRows.push({ 
+        label: `CGST (${cgstRate}%):`, 
+        value: cgstAmount.toFixed(2), 
+        isTotal: false 
+      });
+    });
     
     // Shipping Charges - always show (Free when 0)
     const shippingStr = shippingCharges > 0 ? shippingCharges.toFixed(2) : 'Free';
