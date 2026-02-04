@@ -56,6 +56,12 @@ const productSchema = new mongoose.Schema(
 
     /* TAX */
     hsnCode: String,
+
+    /* MRP / Original price (for showing strikethrough when selling price is lower) */
+    originalPrice: {
+      type: Number,
+      default: 0,
+    },
    
     /* FLAGS */
     isReturnable: {
