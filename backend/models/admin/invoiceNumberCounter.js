@@ -41,8 +41,7 @@ const invoiceNumberCounterSchema = new mongoose.Schema(
   }
 );
 
-// Compound index to ensure uniqueness
-invoiceNumberCounterSchema.index({ financialYear: 1 }, { unique: true });
+// Note: financialYear already has unique: true in field definition which creates a unique index
 
 // Static method to get current financial year
 invoiceNumberCounterSchema.statics.getCurrentFinancialYear = function () {

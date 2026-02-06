@@ -52,7 +52,7 @@ const cartSchema = new mongoose.Schema(
 );
 
 // Calculate total amount before saving
-cartSchema.pre("save", function (next) {
+cartSchema.pre("save", function () {
   if (this.items && this.items.length > 0) {
     this.totalAmount = this.items.reduce((total, item) => {
       return total + item.price * item.quantity;
@@ -60,11 +60,9 @@ cartSchema.pre("save", function (next) {
   } else {
     this.totalAmount = 0;
   }
-  next();
 });
 
-// Index for faster queries
-cartSchema.index({ user: 1 });
+// Note: user field already has unique: true which creates an index
 
 const Cart = mongoose.model("Cart", cartSchema);
 export default Cart;

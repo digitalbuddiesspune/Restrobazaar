@@ -61,8 +61,7 @@ const addressSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for userId to improve query performance
-addressSchema.index({ userId: 1 });
+// Note: userId already has index: true in field definition
 
 const Address = mongoose.model("Address", addressSchema);
 export default Address;

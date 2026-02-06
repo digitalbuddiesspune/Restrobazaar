@@ -54,17 +54,17 @@ export const authAPI = {
   },
 
   // OTP endpoints
-  sendOTPForSignup: async (phone, email) => {
+  sendOTPForSignup: async (data) => {
     return apiRequest('/users/send-otp-signup', {
       method: 'POST',
-      body: JSON.stringify({ phone, email }),
+      body: JSON.stringify(data),
     });
   },
 
-  verifyOTPAndSignup: async (name, email, phone, password, otp) => {
+  verifyOTPAndSignup: async (data) => {
     return apiRequest('/users/verify-otp-signup', {
       method: 'POST',
-      body: JSON.stringify({ name, email, phone, password, otp }),
+      body: JSON.stringify(data),
     });
   },
 

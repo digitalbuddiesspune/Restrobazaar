@@ -25,8 +25,7 @@ const wishlistSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for faster queries
-wishlistSchema.index({ user: 1 });
+// Note: user field already has unique: true which creates an index
 wishlistSchema.index({ "products.vendorProduct": 1 });
 
 const Wishlist = mongoose.model("Wishlist", wishlistSchema);

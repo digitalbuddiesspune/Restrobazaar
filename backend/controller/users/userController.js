@@ -2,7 +2,6 @@ import User from "../../models/users/user.js";
 import Cart from "../../models/users/cart.js";
 import Wishlist from "../../models/users/wishlist.js";
 import Address from "../../models/users/address.js";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendAndSaveOTP, verifyOTPFromDB } from "../../services/otpService.js";
 
@@ -22,7 +21,7 @@ export const getAllUsers = async (req, res) => {
     // Build query
     const query = {};
 
-    // Search by name, email, phone, or city
+    // Search by name, phone, restaurantName, or city
     if (search) {
       // First, find addresses matching the city search
       const matchingAddresses = await Address.find({
@@ -31,11 +30,11 @@ export const getAllUsers = async (req, res) => {
       
       const cityUserIds = matchingAddresses.map(addr => addr.userId);
       
-      // Build search query: name, email, phone OR city (via userIds from addresses)
+      // Build search query: name, phone, restaurantName OR city (via userIds from addresses)
       query.$or = [
         { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
         { phone: { $regex: search, $options: "i" } },
+        { restaurantName: { $regex: search, $options: "i" } },
       ];
       
       // If city matches found, add userIds to search
@@ -213,32 +212,68 @@ export const getCurrentUser = async (req, res) => {
 // @access  Admin/Super Admin
 export const createUser = async (req, res) => {
   try {
-    const { name, email, phone } = req.body;
+    const { name, phone, restaurantName, gstNumber } = req.body;
 
     // Validate required fields
-    if (!name || !email || !phone) {
+    if (!name || !phone) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, and phone are required",
+        message: "Name and phone are required",
       });
     }
 
-    // Check if user with email already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    // Validate and clean phone number
+    const cleanedPhone = phone.replace(/\D/g, "");
+    let validPhone = cleanedPhone;
+    
+    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+      validPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      validPhone = cleanedPhone.substring(1);
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(validPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9",
+      });
+    }
+
+    // Check if user with phone already exists
+    const existingUser = await User.findOne({ phone: validPhone });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: "User with this email already exists",
+        message: "User with this phone number already exists",
       });
     }
 
     // Create user
     const user = await User.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
-      phone,
+      phone: validPhone,
+      restaurantName: restaurantName?.trim() || null,
+      gstNumber: gstNumber?.trim() || null,
     });
+
+    // Create cart for the user
+    const cart = await Cart.create({
+      user: user._id,
+      items: [],
+    });
+
+    // Create wishlist for the user
+    const wishlist = await Wishlist.create({
+      user: user._id,
+      products: [],
+    });
+
+    // Update user with cart and wishlist references
+    user.cart = cart._id;
+    user.wishlist = wishlist._id;
+    await user.save();
 
     res.status(201).json({
       success: true,
@@ -250,7 +285,7 @@ export const createUser = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "User with this email already exists",
+        message: "User with this phone number already exists",
       });
     }
 
@@ -279,7 +314,7 @@ export const updateUser = async (req, res) => {
     const { id } = req.params;
     const userId = req.user?.userId || req.user?.id;
     const userRole = req.user?.role;
-    const { name, email, phone, cart } = req.body;
+    const { name, phone, restaurantName, gstNumber, cart } = req.body;
 
     // Users can only update their own profile unless they're admin
     if (userId !== id && !["admin", "super_admin", "city_admin"].includes(userRole)) {
@@ -303,23 +338,43 @@ export const updateUser = async (req, res) => {
     const updateData = {};
 
     if (name !== undefined) updateData.name = name.trim();
-    if (email !== undefined) updateData.email = email.toLowerCase().trim();
-    if (phone !== undefined) updateData.phone = phone;
+    if (restaurantName !== undefined) updateData.restaurantName = restaurantName?.trim() || null;
+    if (gstNumber !== undefined) updateData.gstNumber = gstNumber?.trim() || null;
     if (cart !== undefined) updateData.cart = cart;
 
-    // Check if email conflicts with another user
-    if (updateData.email) {
+    // Handle phone update with validation
+    if (phone !== undefined) {
+      const cleanedPhone = phone.replace(/\D/g, "");
+      let validPhone = cleanedPhone;
+      
+      if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+        validPhone = cleanedPhone.substring(2);
+      } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+        validPhone = cleanedPhone.substring(1);
+      }
+
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(validPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid 10-digit mobile number",
+        });
+      }
+
+      // Check if phone conflicts with another user
       const existingUser = await User.findOne({
-        email: updateData.email,
+        phone: validPhone,
         _id: { $ne: id },
       });
 
       if (existingUser) {
         return res.status(409).json({
           success: false,
-          message: "User with this email already exists",
+          message: "User with this phone number already exists",
         });
       }
+
+      updateData.phone = validPhone;
     }
 
     // Update user
@@ -341,7 +396,7 @@ export const updateUser = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "User with this email already exists",
+        message: "User with this phone number already exists",
       });
     }
 
@@ -403,14 +458,24 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// @desc    Get user by email
-// @route   GET /api/v1/admin/users/email/:email
+// @desc    Get user by phone
+// @route   GET /api/v1/admin/users/phone/:phone
 // @access  Admin/Super Admin
-export const getUserByEmail = async (req, res) => {
+export const getUserByPhone = async (req, res) => {
   try {
-    const { email } = req.params;
+    const { phone } = req.params;
 
-    const user = await User.findOne({ email: email.toLowerCase() }).populate({
+    // Clean phone number
+    const cleanedPhone = phone.replace(/\D/g, "");
+    let validPhone = cleanedPhone;
+    
+    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
+      validPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      validPhone = cleanedPhone.substring(1);
+    }
+
+    const user = await User.findOne({ phone: validPhone }).populate({
       path: "cart",
       select: "-__v",
     });
@@ -623,140 +688,15 @@ export const updateUserCart = async (req, res) => {
   }
 };
 
-// @desc    User signup/register
+// @desc    User signup/register - Deprecated, use OTP flow instead
 // @route   POST /api/v1/users/signup
 // @access  Public
 export const userSignup = async (req, res) => {
-  try {
-    const { name, email, phone, password } = req.body;
-
-    // Validate required fields
-    if (!name || !email || !phone || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, email, phone, and password are required",
-      });
-    }
-
-    // Validate password length
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters long",
-      });
-    }
-
-    // Validate and clean phone number
-    // Remove all non-digit characters (spaces, dashes, plus signs, etc.)
-    const cleanedPhone = phone.replace(/\D/g, "");
-    
-    // Check if phone number is valid (Indian mobile number: 10 digits starting with 6, 7, 8, or 9)
-    // Also allow numbers with country code +91 (13 digits total, remove country code)
-    let validPhone = cleanedPhone;
-    
-    if (cleanedPhone.length === 13 && cleanedPhone.startsWith("91")) {
-      // Remove country code +91
-      validPhone = cleanedPhone.substring(2);
-    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
-      // Remove leading 0
-      validPhone = cleanedPhone.substring(1);
-    }
-    
-    // Validate Indian mobile number format (10 digits starting with 6, 7, 8, or 9)
-    const phoneRegex = /^[6-9]\d{9}$/;
-    if (!phoneRegex.test(validPhone)) {
-      return res.status(400).json({
-        success: false,
-        message: "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9",
-      });
-    }
-
-    // Check if user with email already exists
-    const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
-
-    if (existingUserByEmail) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this email already exists",
-      });
-    }
-
-    // Check if user with phone number already exists
-    const existingUserByPhone = await User.findOne({ phone: validPhone });
-
-    if (existingUserByPhone) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this phone number already exists",
-      });
-    }
-
-    // Create user (password will be hashed by pre-save hook)
-    const user = await User.create({
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      phone: validPhone, // Use cleaned and validated phone number
-      password,
-    });
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "30d",
-      }
-    );
-
-    // Set JWT in HTTP-only cookie
-    const cookieOptions = {
-      httpOnly: true, // Prevents JavaScript access (XSS protection)
-      secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection - use 'lax' in dev for cross-origin
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-      path: "/", // Available for all routes
-    };
-
-    res.cookie("token", token, cookieOptions);
-
-    // Remove password from response
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      data: {
-        id: userResponse._id,
-        name: userResponse.name,
-        email: userResponse.email,
-        role: userResponse.role || "user",
-      },
-    });
-  } catch (error) {
-    // Handle duplicate key error
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this email already exists",
-      });
-    }
-
-    // Handle validation errors
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        error: error.message,
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Error registering user",
-      error: error.message,
-    });
-  }
+  // Redirect to use OTP-based signup
+  return res.status(400).json({
+    success: false,
+    message: "Please use OTP-based registration. Send OTP first using /send-otp-signup endpoint.",
+  });
 };
 
 // @desc    User logout
@@ -786,83 +726,15 @@ export const userLogout = async (req, res) => {
   }
 };
 
-// @desc    User signin/login
+// @desc    User signin/login - Deprecated, use OTP flow instead
 // @route   POST /api/v1/users/signin
 // @access  Public
 export const userSignin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Validate required fields
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
-    }
-
-    // Find user with password field included
-    const user = await User.findOne({
-      email: email.toLowerCase().trim(),
-    }).select("+password");
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Invalid email or password",
-      });
-    }
-
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password",
-      });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "30d",
-      }
-    );
-
-    // Set JWT in HTTP-only cookie
-    const cookieOptions = {
-      httpOnly: true, // Prevents JavaScript access (XSS protection)
-      secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection - use 'lax' in dev for cross-origin
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-      path: "/", // Available for all routes
-    };
-
-    res.cookie("token", token, cookieOptions);
-
-    // Remove password from response
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    res.status(200).json({
-      success: true,
-      message: "Login successful",
-      data: {
-        id: userResponse._id,
-        name: userResponse.name,
-        email: userResponse.email,
-        role: userResponse.role || "user",
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error signing in",
-      error: error.message,
-    });
-  }
+  // Redirect to use OTP-based login
+  return res.status(400).json({
+    success: false,
+    message: "Please use OTP-based login. Send OTP first using /send-otp-login endpoint.",
+  });
 };
 
 // @desc    Get user wishlist
@@ -1138,7 +1010,7 @@ export const removeFromWishlist = async (req, res) => {
 // @access  Public
 export const sendOTPForSignup = async (req, res) => {
   try {
-    const { phone, email } = req.body;
+    const { phone } = req.body;
 
     if (!phone) {
       return res.status(400).json({
@@ -1161,7 +1033,7 @@ export const sendOTPForSignup = async (req, res) => {
     if (!phoneRegex.test(validPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Please enter a valid phone number",
+        message: "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9",
       });
     }
 
@@ -1170,17 +1042,18 @@ export const sendOTPForSignup = async (req, res) => {
     if (existingUserByPhone) {
       return res.status(409).json({
         success: false,
-        message: "User with this phone number already exists",
+        message: "User with this phone number already exists. Please login instead.",
       });
     }
 
     // Send OTP
-    const result = await sendAndSaveOTP(validPhone, email || null, "signup");
+    const result = await sendAndSaveOTP(validPhone, null, "signup");
 
     if (result.success) {
       res.status(200).json({
         success: true,
         message: result.message || "OTP sent successfully to your phone number",
+        phone: validPhone,
       });
     } else {
       res.status(500).json({
@@ -1203,21 +1076,13 @@ export const sendOTPForSignup = async (req, res) => {
 // @access  Public
 export const verifyOTPAndSignup = async (req, res) => {
   try {
-    const { name, email, phone, password, otp } = req.body;
+    const { name, phone, otp, restaurantName, gstNumber } = req.body;
 
     // Validate required fields
-    if (!name || !email || !phone || !password || !otp) {
+    if (!name || !phone || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, phone, password, and OTP are required",
-      });
-    }
-
-    // Validate password length
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters long",
+        message: "Name, phone, and OTP are required",
       });
     }
 
@@ -1235,7 +1100,7 @@ export const verifyOTPAndSignup = async (req, res) => {
     if (!phoneRegex.test(validPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Please enter a valid phone number",
+        message: "Please enter a valid 10-digit mobile number",
       });
     }
 
@@ -1249,31 +1114,39 @@ export const verifyOTPAndSignup = async (req, res) => {
       });
     }
 
-    // Check if user with email already exists
-    const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
-    if (existingUserByEmail) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this email already exists",
-      });
-    }
-
     // Check if user with phone number already exists
     const existingUserByPhone = await User.findOne({ phone: validPhone });
     if (existingUserByPhone) {
       return res.status(409).json({
         success: false,
-        message: "User with this phone number already exists",
+        message: "User with this phone number already exists. Please login instead.",
       });
     }
 
-    // Create user (password will be hashed by pre-save hook)
+    // Create user
     const user = await User.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
       phone: validPhone,
-      password,
+      restaurantName: restaurantName?.trim() || null,
+      gstNumber: gstNumber?.trim() || null,
     });
+
+    // Create cart for the user
+    const cart = await Cart.create({
+      user: user._id,
+      items: [],
+    });
+
+    // Create wishlist for the user
+    const wishlist = await Wishlist.create({
+      user: user._id,
+      products: [],
+    });
+
+    // Update user with cart and wishlist references
+    user.cart = cart._id;
+    user.wishlist = wishlist._id;
+    await user.save();
 
     // Generate JWT token
     const token = jwt.sign(
@@ -1295,25 +1168,22 @@ export const verifyOTPAndSignup = async (req, res) => {
 
     res.cookie("token", token, cookieOptions);
 
-    // Remove password from response
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
     res.status(201).json({
       success: true,
       message: "User registered successfully",
       data: {
-        id: userResponse._id,
-        name: userResponse.name,
-        email: userResponse.email,
-        role: userResponse.role || "user",
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        restaurantName: user.restaurantName,
+        role: "user",
       },
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "User with this email or phone already exists",
+        message: "User with this phone number already exists",
       });
     }
 
@@ -1362,7 +1232,7 @@ export const sendOTPForLogin = async (req, res) => {
     if (!phoneRegex.test(validPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Please enter a valid phone number",
+        message: "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9",
       });
     }
 
@@ -1376,12 +1246,13 @@ export const sendOTPForLogin = async (req, res) => {
     }
 
     // Send OTP
-    const result = await sendAndSaveOTP(validPhone, user.email || null, "login");
+    const result = await sendAndSaveOTP(validPhone, null, "login");
 
     if (result.success) {
       res.status(200).json({
         success: true,
         message: result.message || "OTP sent successfully to your phone number",
+        phone: validPhone,
       });
     } else {
       res.status(500).json({
@@ -1427,7 +1298,7 @@ export const verifyOTPAndLogin = async (req, res) => {
     if (!phoneRegex.test(validPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Please enter a valid phone number",
+        message: "Please enter a valid 10-digit mobile number",
       });
     }
 
@@ -1447,7 +1318,7 @@ export const verifyOTPAndLogin = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "User not found. Please sign up first.",
       });
     }
 
@@ -1471,18 +1342,15 @@ export const verifyOTPAndLogin = async (req, res) => {
 
     res.cookie("token", token, cookieOptions);
 
-    // Remove password from response
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
     res.status(200).json({
       success: true,
       message: "Login successful",
       data: {
-        id: userResponse._id,
-        name: userResponse.name,
-        email: userResponse.email,
-        role: userResponse.role || "user",
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        restaurantName: user.restaurantName,
+        role: "user",
       },
     });
   } catch (error) {

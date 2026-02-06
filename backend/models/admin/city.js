@@ -62,11 +62,6 @@ const citySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/* ============================
-   INDEXES
-============================ */
-citySchema.index({ name: 1 });
-citySchema.index({ isActive: 1 });
-citySchema.index({ isServiceable: 1 });
+// Note: name, isActive, and isServiceable already have index: true in field definitions
 
 export default mongoose.model("City", citySchema);
