@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
-const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
+const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
+  const setActiveTab = navigateToTab;
   const mainMenuItems = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'order-records', label: 'Order Records', icon: '📄' },

@@ -3,6 +3,23 @@ import User from "../models/users/user.js";
 import SuperAdmin from "../models/admin/superAdmin.js";
 import Vendor from "../models/admin/vendor.js";
 
+// Clear auth cookie so client stops sending invalid/expired token (matches logout cookie options)
+const clearAuthCookie = (res) => {
+  res.cookie("token", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 0,
+    path: "/",
+  });
+};
+
+// Send 401 and clear cookie so user is not stuck with "User not found" on every request
+const sendUnauthorized = (res, message) => {
+  clearAuthCookie(res);
+  return res.status(401).json({ success: false, message });
+};
+
 // Authentication middleware
 export const authenticate = async (req, res, next) => {
   try {
@@ -18,9 +35,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     if (!token) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized - No token provided" });
+      return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
     }
 
     let decoded;
@@ -28,14 +43,10 @@ export const authenticate = async (req, res, next) => {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (jwtError) {
       if (jwtError.name === "JsonWebTokenError") {
-        return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized - Invalid token" });
+        return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
       }
       if (jwtError.name === "TokenExpiredError") {
-        return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized - Token expired" });
+        return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
       }
       throw jwtError;
     }
@@ -51,9 +62,7 @@ export const authenticate = async (req, res, next) => {
         // Vendor token
         const vendor = await Vendor.findById(decoded.id);
         if (!vendor) {
-          return res
-            .status(401)
-            .json({ success: false, message: "Unauthorized - Vendor not found" });
+          return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
         }
         if (!vendor.isActive) {
           return res
@@ -76,9 +85,7 @@ export const authenticate = async (req, res, next) => {
         // Super admin token
         const superAdmin = await SuperAdmin.findById(decoded.id);
         if (!superAdmin) {
-          return res
-            .status(401)
-            .json({ success: false, message: "Unauthorized - Super admin not found" });
+          return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
         }
         if (!superAdmin.isActive) {
           return res
@@ -96,31 +103,25 @@ export const authenticate = async (req, res, next) => {
       // Regular user token
       const foundUser = await User.findById(decoded.userId);
       if (!foundUser) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized - User not found" });
+        return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
       }
       user = foundUser;
       // Default to "user" role if not set in the user model
       userRole = foundUser.role || "user";
     } else {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized - Invalid token payload" });
+      return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
     }
 
     // Ensure role is set correctly
     if (!userRole) {
-      console.error("Authentication error: userRole is not set", { 
-        decoded, 
-        user, 
-        hasId: !!decoded.id, 
+      console.error("Authentication error: userRole is not set", {
+        decoded,
+        user,
+        hasId: !!decoded.id,
         hasUserId: !!decoded.userId,
-        decodedRole: decoded.role 
+        decodedRole: decoded.role,
       });
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized - Invalid token format. Token payload: " + JSON.stringify(decoded) });
+      return sendUnauthorized(res, "Session expired or invalid. Please sign in again.");
     }
 
     req.user = {

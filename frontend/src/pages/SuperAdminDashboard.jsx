@@ -1,5 +1,30 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+
+const ADMIN_BASE = "/admin/dashboard";
+
+function useSuperAdminRoute() {
+  const location = useLocation();
+  const path = (location.pathname || "").replace(/^\/admin\/dashboard\/?/, "") || "overview";
+  const segments = path.split("/").filter(Boolean);
+
+  const activeTab = useMemo(() => {
+    if (!segments[0]) return "overview";
+    const first = segments[0];
+    if (first === "overview") return "overview";
+    if (first === "order-records") return "order-records";
+    if (first === "products") return segments[1] === "add" ? "add-product" : "products";
+    if (first === "product-catalog") return "product-catalog";
+    if (first === "cities") return segments[1] === "add" ? "add-city" : "cities";
+    if (first === "categories") return segments[1] === "add" ? "add-category" : "categories";
+    if (first === "vendors") return segments[1] === "add" ? "add-vendor" : "vendors";
+    if (first === "users") return "users";
+    if (first === "testimonials") return segments[1] === "add" ? "add-testimonial" : "testimonials";
+    return "overview";
+  }, [path, segments]);
+
+  return { activeTab, segments };
+}
 import axios from "axios";
 import Sidebar from "../components/super_admin/Sidebar";
 import Header from "../components/super_admin/Header";
@@ -19,7 +44,26 @@ const SuperAdminDashboard = () => {
   const baseUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const { activeTab } = useSuperAdminRoute();
+
+  const navigateToTab = (tab) => {
+    if (tab === "overview") navigate(ADMIN_BASE);
+    else if (tab === "order-records") navigate(`${ADMIN_BASE}/order-records`);
+    else if (tab === "products") navigate(`${ADMIN_BASE}/products`);
+    else if (tab === "product-catalog") navigate(`${ADMIN_BASE}/product-catalog`);
+    else if (tab === "add-product") navigate(`${ADMIN_BASE}/products/add`);
+    else if (tab === "cities") navigate(`${ADMIN_BASE}/cities`);
+    else if (tab === "add-city") navigate(`${ADMIN_BASE}/cities/add`);
+    else if (tab === "categories") navigate(`${ADMIN_BASE}/categories`);
+    else if (tab === "add-category") navigate(`${ADMIN_BASE}/categories/add`);
+    else if (tab === "vendors") navigate(`${ADMIN_BASE}/vendors`);
+    else if (tab === "add-vendor") navigate(`${ADMIN_BASE}/vendors/add`);
+    else if (tab === "users") navigate(`${ADMIN_BASE}/users`);
+    else if (tab === "testimonials") navigate(`${ADMIN_BASE}/testimonials`);
+    else if (tab === "add-testimonial") navigate(`${ADMIN_BASE}/testimonials/add`);
+    else navigate(ADMIN_BASE);
+  };
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -436,15 +480,15 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  // Fetch pending orders
+  // Fetch unpaid orders (by payment status, not order status)
   const fetchPendingOrders = async (cityId, startDate, endDate) => {
     try {
       const token = getToken();
       if (!token) return;
 
       const params = {
-        orderStatus: 'pending',
-        limit: 100, // Increased limit to see all pending orders
+        paymentStatus: 'pending',
+        limit: 1000,
         sortBy: 'createdAt',
         sortOrder: 'desc'
       };
@@ -462,7 +506,7 @@ const SuperAdminDashboard = () => {
         setPendingOrders(response.data.data || []);
       }
     } catch (err) {
-      console.error("Error fetching pending orders:", err);
+      console.error("Error fetching unpaid orders:", err);
     }
   };
 
@@ -781,7 +825,7 @@ const SuperAdminDashboard = () => {
           isApproved: vendor.isApproved !== undefined ? vendor.isApproved : false,
         });
         setEditingVendorId(vendorId);
-        setActiveTab("add-vendor");
+        navigateToTab("add-vendor");
         setError("");
         setSuccess("");
       }
@@ -806,7 +850,7 @@ const SuperAdminDashboard = () => {
         priority: category.priority || 0,
       });
       setEditingCategoryId(categoryId);
-      setActiveTab("add-category");
+      navigateToTab("add-category");
       setError("");
       setSuccess("");
     }
@@ -853,7 +897,7 @@ const SuperAdminDashboard = () => {
               : [],
         });
         setEditingProductId(productId);
-        setActiveTab("add-product");
+        navigateToTab("add-product");
         setError("");
         setSuccess("");
       }
@@ -1320,7 +1364,7 @@ const SuperAdminDashboard = () => {
       location: testimonial.location || "",
       status: testimonial.status !== undefined ? testimonial.status : true,
     });
-    setActiveTab("add-testimonial");
+    navigateToTab("add-testimonial");
   };
 
   const handleTestimonialSubmit = async (e) => {
@@ -1364,7 +1408,7 @@ const SuperAdminDashboard = () => {
       });
       setEditingTestimonialId(null);
       fetchTestimonials();
-      setActiveTab("testimonials");
+      navigateToTab("testimonials");
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -1416,8 +1460,8 @@ const SuperAdminDashboard = () => {
     <div className="min-h-screen bg-gray-50 scrollbar-hide">
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
+        navigateToTab={(tab) => {
+          navigateToTab(tab);
           setError("");
           setSuccess("");
           if (tab !== "add-product") {
@@ -1462,7 +1506,7 @@ const SuperAdminDashboard = () => {
             <div className="mb-4">
               <button
                 onClick={() => {
-                  setActiveTab("overview");
+                  navigateToTab("overview");
                   setOrderStatusFilter(null);
                 }}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
@@ -1505,13 +1549,13 @@ const SuperAdminDashboard = () => {
                 setPendingCity={setPendingCity}
                 onClearPendingFilters={handleClearPendingFilters}
                 onCardClick={(tab) => {
-                  setActiveTab(tab);
+                  navigateToTab(tab);
                   setError("");
                   setSuccess("");
                 }}
                 onOrderCardClick={(status) => {
                   setOrderStatusFilter(status);
-                  setActiveTab("order-records");
+                  navigateToTab("order-records");
                   setError("");
                   setSuccess("");
                 }}
@@ -3619,7 +3663,7 @@ const SuperAdminDashboard = () => {
                           location: "",
                           status: true,
                         });
-                        setActiveTab("testimonials");
+                        navigateToTab("testimonials");
                       }}
                       className="px-6 py-2 text-sm bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                     >

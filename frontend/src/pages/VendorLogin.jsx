@@ -1,9 +1,20 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const VendorLogin = () => {
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showSessionExpiredMessage, setShowSessionExpiredMessage] = useState(
+    () => searchParams.get('session') === 'expired'
+  );
+
+  useEffect(() => {
+    if (searchParams.get('session') === 'expired') {
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -70,6 +81,11 @@ const VendorLogin = () => {
       <div className="max-w-md w-full relative z-10">
         {/* Card Container */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8 space-y-6 transform transition-all duration-300 hover:shadow-2xl">
+          {showSessionExpiredMessage && (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm text-center">
+              Your session expired or was invalid. Please sign in again.
+            </div>
+          )}
           {/* Header */}
           <div className="text-center space-y-2">
             <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-600 rounded-xl mb-3 shadow-lg">

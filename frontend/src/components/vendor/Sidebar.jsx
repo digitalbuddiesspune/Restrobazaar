@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
-const Sidebar = ({ activeTab, setActiveTab, onLogout, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
+const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
+  const setActiveTab = navigateToTab;
   const [productDropdownOpen, setProductDropdownOpen] = useState(false);
   const [orderDropdownOpen, setOrderDropdownOpen] = useState(false);
 
