@@ -597,8 +597,8 @@ export const useTestimonials = (filters = {}, options = {}) => {
   return useQuery({
     queryKey: queryKeys.testimonials.list(filters),
     queryFn: () => testimonialAPI.getAllTestimonials(filters),
-    staleTime: 10 * 60 * 1000, // 10 minutes - testimonials don't change often
-    gcTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes - testimonials don't change often (same as Categories)
+    gcTime: 60 * 60 * 1000, // 1 hour - keep in cache for 1 hour (same as Categories)
     ...options,
   });
 };

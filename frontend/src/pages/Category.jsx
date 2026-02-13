@@ -264,7 +264,7 @@ const Category = () => {
       return `₹${product.pricing.single.price}`;
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
       const firstSlab = product.pricing.bulk[0];
-      return `₹${firstSlab.price} (${firstSlab.minQty}-${firstSlab.maxQty} pcs)`;
+      return `₹${firstSlab.price} (${firstSlab.minQty}+ pcs)`;
     }
     return 'Price on request';
   };
@@ -382,25 +382,18 @@ const Category = () => {
         display: `₹${product.pricing.single.price} per piece`,
       };
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
-      // Find the appropriate price slab for the quantity
-      const slab = product.pricing.bulk.find(
-        s => quantity >= s.minQty && quantity <= s.maxQty
-      );
-      if (slab) {
+      // Sort slabs by minQty and find the best matching slab
+      const sortedSlabs = [...product.pricing.bulk].sort((a, b) => a.minQty - b.minQty);
+      const matchingSlabs = sortedSlabs.filter(s => quantity >= s.minQty);
+      
+      if (matchingSlabs.length > 0) {
+        // Get the slab with the highest minQty (best price tier)
+        const slab = matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
         return {
           type: 'bulk',
           price: slab.price,
-          display: `₹${slab.price} per piece (${slab.minQty}-${slab.maxQty} pieces)`,
+          display: `₹${slab.price} per piece (${slab.minQty}+ pieces)`,
           slab: slab,
-        };
-      } else {
-        // If quantity exceeds all slabs, use the last (highest) slab
-        const lastSlab = product.pricing.bulk[product.pricing.bulk.length - 1];
-        return {
-          type: 'bulk',
-          price: lastSlab.price,
-          display: `₹${lastSlab.price} per piece (${lastSlab.minQty}+ pieces)`,
-          slab: lastSlab,
         };
       }
     }
@@ -905,20 +898,47 @@ const Category = () => {
                             </h3>
 
                             <div className="flex items-center justify-between">
-                              <span className="text-sm lg:text-base text-gray-900 font-bold  whitespace-nowrap truncate">
+                              <div className="flex items-baseline gap-2 whitespace-nowrap">
                                 {product.priceType === 'single' && product.pricing?.single?.price ? (
-                                  `₹${product.pricing.single.price}`
+                                  <>
+                                    {product.defaultPrice && product.defaultPrice > product.pricing.single.price ? (
+                                      <>
+                                        <span className="text-xs lg:text-sm font-normal text-gray-400 line-through">
+                                          ₹{product.defaultPrice}
+                                        </span>
+                                        <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                          ₹{product.pricing.single.price}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                        ₹{product.pricing.single.price}
+                                      </span>
+                                    )}
+                                  </>
                                 ) : product.priceType === 'bulk' && product.pricing?.bulk?.length > 0 ? (
                                   <>
-                                    ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}{' '}
-                                    {/* <span className="text-[10px]  font-semibold">
-                                      ({product.pricing.bulk[product.pricing.bulk.length - 1].minQty}-{product.pricing.bulk[product.pricing.bulk.length - 1].maxQty} pcs)
-                                    </span> */}
+                                    {product.defaultPrice && product.defaultPrice > product.pricing.bulk[product.pricing.bulk.length - 1].price ? (
+                                      <>
+                                        <span className="text-xs lg:text-sm font-normal text-gray-400 line-through">
+                                          ₹{product.defaultPrice}
+                                        </span>
+                                        <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                          ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                        ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}
+                                      </span>
+                                    )}
                                   </>
                                 ) : (
-                                  'Price on request'
+                                  <span className="text-sm lg:text-base text-gray-900 font-bold">
+                                    Price on request
+                                  </span>
                                 )}
-                              </span>
+                              </div>
                             </div>
 
                             {/* Add to Cart Button / Quantity Selector */}

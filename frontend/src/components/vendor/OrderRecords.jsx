@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { formatOrderId } from '../../utils/orderIdFormatter';
+import * as XLSX from 'xlsx';
 
 const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => {
   const [orders, setOrders] = useState([]);
@@ -6,6 +8,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [downloading, setDownloading] = useState(false);
   const [filters, setFilters] = useState({
     orderStatus: initialOrderStatus || '',
     paymentStatus: '',
@@ -58,7 +61,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
       if (data.success) {
         // Format orders to match the required fields
         const formattedOrders = data.data.map((order) => ({
-          order_id: order.order_id || order._id || order.orderNumber || 'N/A',
+          order_id: order.orderNumber || order._id || order.order_id || order.id || 'N/A',
           user_id: order.user_id || order.userId?._id || order.userId || 'N/A',
           Customer_Name: order.Customer_Name || order.deliveryAddress?.name || order.userId?.name || 'N/A',
           Phone: order.Phone || order.deliveryAddress?.phone || order.userId?.phone || 'N/A',
@@ -106,6 +109,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
     return `₹${parseFloat(amount || 0).toFixed(2)}`;
   };
 
+  // Helper function to get last 6 digits of user ID (without # prefix)
   const getLast6Digits = (id) => {
     if (!id || id === 'N/A') return 'N/A';
     const idString = typeof id === 'object' ? id.toString() : String(id);
@@ -160,6 +164,159 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
     setPage(1);
   };
 
+  // Fetch all orders for export (with current filters)
+  const fetchAllOrdersForExport = async () => {
+    try {
+      const params = new URLSearchParams({
+        limit: '10000', // Large limit to get all orders
+      });
+
+      if (filters.orderStatus) params.append('orderStatus', filters.orderStatus);
+      if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+
+      const endpoint = `${baseUrl}/vendor/orders`;
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return data.data.map((order) => ({
+          order_id: order.orderNumber || order._id || order.order_id || order.id || 'N/A',
+          user_id: order.user_id || order.userId?._id || order.userId || 'N/A',
+          Customer_Name: order.Customer_Name || order.deliveryAddress?.name || order.userId?.name || 'N/A',
+          Phone: order.Phone || order.deliveryAddress?.phone || order.userId?.phone || 'N/A',
+          order_date_and_time: order.order_date_and_time || order.order_data_and_time || order.createdAt || 'N/A',
+          sub_total: order.sub_total || order.billingDetails?.cartTotal || 0,
+          Total_Tax: order.Total_Tax || order.billingDetails?.gstAmount || 0,
+          Net_total: order.Net_total || order.billingDetails?.totalAmount || 0,
+          Coupon_amount: order.Coupon_amount || order.couponAmount || 0,
+          Order_status: order.Order_status || order.orderStatus || 'pending',
+          Payment_mode: order.Payment_mode || order.paymentMethod || 'N/A',
+          Payment_status: order.Payment_status || order.paymentStatus || 'pending',
+          delivery_date: order.delivery_date || order.delivery_data || order.deliveryDate || null,
+          Email: order.Email || order.userId?.email || 'N/A',
+          City: order.City || order.deliveryAddress?.city || order.userId?.city || 'N/A',
+        }));
+      }
+      return [];
+    } catch (err) {
+      console.error('Error fetching orders for export:', err);
+      throw err;
+    }
+  };
+
+  // Export orders to Excel
+  const exportToExcel = async () => {
+    try {
+      setDownloading(true);
+      setError('');
+
+      // Fetch all orders based on current filters
+      const allOrders = await fetchAllOrdersForExport();
+
+      if (allOrders.length === 0) {
+        setError('No orders found to export');
+        setDownloading(false);
+        return;
+      }
+
+      // Format data for Excel
+      const excelData = allOrders.map((order) => {
+        // Format Order ID
+        const formattedOrderId = formatOrderId(order.order_id);
+
+        // Format User ID: last 6 digits
+        const userIdStr = order.user_id && order.user_id !== 'N/A'
+          ? String(order.user_id)
+          : 'N/A';
+        const formattedUserId = userIdStr !== 'N/A' && userIdStr.length > 6
+          ? userIdStr.slice(-6)
+          : userIdStr;
+
+        return {
+          'Order ID': formattedOrderId,
+          'User ID': formattedUserId,
+          'Customer Name': order.Customer_Name,
+          'Phone': order.Phone,
+          'Email': order.Email,
+          'Order Date & Time': formatDate(order.order_date_and_time),
+          'Sub Total (₹)': parseFloat(order.sub_total || 0),
+          'Tax (₹)': parseFloat(order.Total_Tax || 0),
+          'Net Total (₹)': parseFloat(order.Net_total || 0),
+          'Coupon Amount (₹)': parseFloat(order.Coupon_amount || 0),
+          'Order Status': order.Order_status,
+          'Payment Mode': order.Payment_mode === 'cod' ? 'COD' : order.Payment_mode === 'online' ? 'Online' : order.Payment_mode,
+          'Payment Status': order.Payment_status,
+          'Delivery Date': order.delivery_date ? formatDate(order.delivery_date) : 'N/A',
+          'City': order.City,
+        };
+      });
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 20 }, // Order ID
+        { wch: 15 }, // User ID
+        { wch: 20 }, // Customer Name
+        { wch: 15 }, // Phone
+        { wch: 25 }, // Email
+        { wch: 25 }, // Order Date & Time
+        { wch: 15 }, // Sub Total
+        { wch: 12 }, // Tax
+        { wch: 15 }, // Net Total
+        { wch: 15 }, // Coupon Amount
+        { wch: 15 }, // Order Status
+        { wch: 15 }, // Payment Mode
+        { wch: 15 }, // Payment Status
+        { wch: 20 }, // Delivery Date
+        { wch: 15 }, // City
+      ];
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Order Records');
+
+      // Generate filename with current date and filters
+      const dateStr = new Date().toISOString().split('T')[0];
+      let filename = `Order_Records_${dateStr}`;
+      
+      if (filters.orderStatus) {
+        filename += `_${filters.orderStatus}`;
+      }
+      if (filters.paymentStatus) {
+        filename += `_${filters.paymentStatus}`;
+      }
+      if (filters.startDate) {
+        filename += `_from_${filters.startDate}`;
+      }
+      if (filters.endDate) {
+        filename += `_to_${filters.endDate}`;
+      }
+
+      filename += '.xlsx';
+
+      // Write file
+      XLSX.writeFile(wb, filename);
+      
+      setDownloading(false);
+    } catch (err) {
+      console.error('Error exporting to Excel:', err);
+      setError(err.message || 'Failed to export orders to Excel');
+      setDownloading(false);
+    }
+  };
+
   if (loading && orders.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -172,7 +329,28 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-900">Order Records</h1>
-     
+        <button
+          onClick={exportToExcel}
+          disabled={downloading || loading}
+          className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          {downloading ? (
+            <>
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Exporting...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Download XLS</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Filters */}
@@ -311,7 +489,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
                 orders.map((order, index) => (
                   <tr key={index} className="hover:bg-gray-50 even:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900 leading-tight">
-                      #{getLast6Digits(order.order_id)}
+                      {formatOrderId(order.order_id)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {getLast6Digits(order.user_id)}

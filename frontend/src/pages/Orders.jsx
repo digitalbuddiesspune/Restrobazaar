@@ -110,7 +110,7 @@ const Orders = () => {
     });
   };
 
-  const handleDownloadInvoice = (order) => {
+  const handleDownloadInvoice = async (order) => {
     try {
       // Use vendor from order if populated, otherwise fetch it
       let vendor = order.vendorId || {};
@@ -267,7 +267,7 @@ const Orders = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Order #{order.orderNumber}</span>
+                      <span className="text-sm text-gray-600">Order {formatOrderId(order.orderNumber || order._id)}</span>
                       <Button
                         variant="text"
                         size="sm"

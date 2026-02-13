@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatOrderId } from '../../utils/orderIdFormatter';
 
 const OrdersTable = ({ 
   orders, 
@@ -8,8 +9,19 @@ const OrdersTable = ({
   totalPages = 1,
   onPageChange,
   onOrderClick,
+  allOrders = [], // All orders to calculate accurate order count per user
 }) => {
   const [showStatusDropdown, setShowStatusDropdown] = useState(null);
+
+  // Calculate order count per user from all orders
+  const getUserOrderCount = (userId) => {
+    if (!userId) return 0;
+    const userIdStr = userId._id?.toString() || userId.toString();
+    return allOrders.filter(order => {
+      const orderUserId = order.userId?._id?.toString() || order.userId?.toString();
+      return orderUserId === userIdStr;
+    }).length;
+  };
 
   const orderStatuses = [
     { value: 'pending', label: 'Pending', colorClass: 'bg-yellow-500' },
@@ -129,10 +141,13 @@ const OrdersTable = ({
           <thead className="bg-gray-200">
             <tr>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Order #
+                Order#
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Customer
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                Order Count
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Items
@@ -160,13 +175,7 @@ const OrdersTable = ({
               >
                 <td className="px-4 py-2 whitespace-nowrap">
                   <div className="text-xs font-medium text-gray-900 leading-tight">
-                    {(() => {
-                      const orderId = order._id || order.orderNumber || 'N/A';
-                      if (!orderId || orderId === 'N/A') return 'N/A';
-                      const idString = String(orderId);
-                      const lastSix = idString.length > 6 ? idString.slice(-6) : idString;
-                      return `#${lastSix}`;
-                    })()}
+                    {formatOrderId(order.orderNumber || order._id)}
                   </div>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap">
@@ -175,6 +184,11 @@ const OrdersTable = ({
                   </div>
                   <div className="text-xs text-gray-500 leading-tight">
                     {order.deliveryAddress?.phone || ''}
+                  </div>
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <div className="text-xs text-gray-900 font-medium leading-tight">
+                    {getUserOrderCount(order.userId)}
                   </div>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap">

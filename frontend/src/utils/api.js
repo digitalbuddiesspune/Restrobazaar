@@ -657,6 +657,37 @@ export const testimonialAPI = {
   },
 };
 
+// Invoice API
+export const invoiceAPI = {
+  generateInvoiceNumber: async () => {
+    return authenticatedApiRequest('/admin/invoices/generate', {
+      method: 'POST',
+    });
+  },
+  getInvoiceCounterStatus: async () => {
+    return authenticatedApiRequest('/admin/invoices/status', {
+      method: 'GET',
+    });
+  },
+  generateInvoiceForOrder: async (orderId) => {
+    return authenticatedApiRequest(`/admin/invoices/generate-for-order/${orderId}`, {
+      method: 'POST',
+    });
+  },
+  // Vendor endpoint for generating invoice numbers
+  generateInvoiceForVendorOrder: async (orderId) => {
+    return vendorAuthenticatedApiRequest(`/vendor/orders/${orderId}/generate-invoice`, {
+      method: 'POST',
+    });
+  },
+  validateInvoiceNumber: async (invoiceNumber) => {
+    return authenticatedApiRequest('/admin/invoices/validate', {
+      method: 'POST',
+      body: JSON.stringify({ invoiceNumber }),
+    });
+  },
+};
+
 export default {
   authAPI,
   userAPI,
@@ -673,5 +704,6 @@ export default {
   couponAPI,
   userCouponAPI,
   testimonialAPI,
+  invoiceAPI,
 };
 

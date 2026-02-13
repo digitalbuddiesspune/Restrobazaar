@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 
-const ProductForm = ({ 
-  product, 
-  globalProducts, 
-  cities, 
+const ProductForm = ({
+  product,
+  globalProducts,
+  cities,
   vendorCityId,
-  onSubmit, 
+  onSubmit,
   onCancel,
-  isLoading 
+  isLoading
 }) => {
   const [formData, setFormData] = useState({
     productId: product?.productId?._id || product?.productId || '',
@@ -18,16 +18,16 @@ const ProductForm = ({
     productPurchasedFrom: product?.productPurchasedFrom || '',
     purchasedMode: product?.purchasedMode || '',
     purchasedAmount: product?.purchasedAmount || '',
-    gst: product?.gst || 0,
-    cgst: product?.cgst || 0,
-    sgst: product?.sgst || 0,
-    igst: product?.igst || 0,
+    gst: product?.gst || '',
+    cgst: product?.cgst || '',
+    sgst: product?.sgst || '',
+    igst: product?.igst || '',
     pricing: product?.pricing || {
       single: { price: '' },
       bulk: [],
     },
-    availableStock: product?.availableStock || 0,
-    minimumOrderQuantity: product?.minimumOrderQuantity || 1,
+    availableStock: product?.availableStock || '',
+    minimumOrderQuantity: product?.minimumOrderQuantity || '',
     notifyQuantity: product?.notifyQuantity || '',
     status: product?.status !== undefined ? product.status : true,
   });
@@ -41,7 +41,7 @@ const ProductForm = ({
       const gstValue = product.gst || 0;
       const gstNum = parseFloat(gstValue) || 0;
       const calculatedCgstSgst = gstNum > 0 ? (gstNum / 2).toFixed(2) : (product.cgst || 0);
-      
+
       setFormData({
         productId: product.productId?._id || product.productId || '',
         cityId: product.cityId?._id || product.cityId || vendorCityId || '',
@@ -71,7 +71,7 @@ const ProductForm = ({
   // Automatically add one slab when bulk pricing is selected
   useEffect(() => {
     if (formData.priceType === 'bulk' && bulkSlabs.length === 0) {
-      setBulkSlabs([{ minQty: '', maxQty: '', price: '' }]);
+      setBulkSlabs([{ minQty: '', price: '' }]);
     }
   }, [formData.priceType]);
 
@@ -88,14 +88,17 @@ const ProductForm = ({
       };
     } else {
       const validSlabs = bulkSlabs.filter(
-        (slab) => slab.minQty && slab.maxQty && slab.price
+        (slab) => slab.minQty && slab.price
       );
-      pricingData = {
-        bulk: validSlabs.map((slab) => ({
+      // Sort slabs by minQty in ascending order
+      const sortedSlabs = validSlabs
+        .map((slab) => ({
           minQty: parseFloat(slab.minQty),
-          maxQty: parseFloat(slab.maxQty),
           price: parseFloat(slab.price),
-        })),
+        }))
+        .sort((a, b) => a.minQty - b.minQty);
+      pricingData = {
+        bulk: sortedSlabs,
       };
     }
 
@@ -125,7 +128,7 @@ const ProductForm = ({
   };
 
   const addBulkSlab = () => {
-    setBulkSlabs([...bulkSlabs, { minQty: '', maxQty: '', price: '' }]);
+    setBulkSlabs([...bulkSlabs, { minQty: '', price: '' }]);
   };
 
   const removeBulkSlab = (index) => {
@@ -140,7 +143,7 @@ const ProductForm = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-     
+
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Row 1: Select Product, City, and Price Type */}
@@ -234,34 +237,22 @@ const ProductForm = ({
               </button>
             </div>
             {bulkSlabs.map((slab, index) => (
-              <div key={index} className="grid grid-cols-4 gap-2 mb-2">
+              <div key={index} className="grid grid-cols-3 gap-2 mb-2">
                 <input
-                  type="number"
+                  type="text"
                   required
-                  min="1"
                   value={slab.minQty}
                   onChange={(e) => updateBulkSlab(index, 'minQty', e.target.value)}
                   className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Min Qty"
+                  placeholder="Min Quantity (or more)"
                 />
                 <input
-                  type="number"
+                  type="text"
                   required
-                  min="1"
-                  value={slab.maxQty}
-                  onChange={(e) => updateBulkSlab(index, 'maxQty', e.target.value)}
-                  className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Max Qty"
-                />
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  step="0.01"
                   value={slab.price}
                   onChange={(e) => updateBulkSlab(index, 'price', e.target.value)}
                   className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Price"
+                  placeholder="Price per piece"
                 />
                 <button
                   type="button"
@@ -283,10 +274,8 @@ const ProductForm = ({
                 Price *
               </label>
               <input
-                type="number"
+                type="text"
                 required
-                min="0"
-                step="0.01"
                 value={formData.pricing.single.price}
                 onChange={(e) =>
                   setFormData({
@@ -534,8 +523,8 @@ const ProductForm = ({
                   const gstValue = e.target.value;
                   const gstNum = parseFloat(gstValue) || 0;
                   const cgstSgstValue = gstNum > 0 ? (gstNum / 2).toFixed(2) : '';
-                  setFormData({ 
-                    ...formData, 
+                  setFormData({
+                    ...formData,
                     gst: gstValue,
                     cgst: cgstSgstValue,
                     sgst: cgstSgstValue
@@ -617,8 +606,8 @@ const ProductForm = ({
             {isLoading
               ? 'Saving...'
               : product
-              ? 'Update Product'
-              : 'Add Product'}
+                ? 'Update Product'
+                : 'Add Product'}
           </button>
         </div>
       </form>

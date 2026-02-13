@@ -59,6 +59,7 @@ import UserForm from '../components/vendor/UserForm';
 import CreateOrder from '../components/vendor/CreateOrder';
 import UnpaidCustomersTable from '../components/vendor/UnpaidCustomersTable';
 import OrdersGraph from '../components/super_admin/OrdersGraph';
+import { formatOrderId } from '../utils/orderIdFormatter';
 import {
   useMyVendorProducts,
   useGlobalProducts,
@@ -884,12 +885,9 @@ const VendorDashboard = () => {
                               navigateToTab('orders', { orderId });
                             }}>
                             <td className="px-4 py-2 whitespace-nowrap">
-                              <span className="text-sm font-medium text-gray-900 leading-tight">#{(() => {
-                                const orderId = order.order_id || order._id || 'N/A';
-                                if (!orderId || orderId === 'N/A') return 'N/A';
-                                const idString = String(orderId);
-                                return idString.length > 6 ? idString.slice(-6) : idString;
-                              })()}</span>
+                              <span className="text-sm font-medium text-gray-900 leading-tight">
+                                {formatOrderId(displayOrderId)}
+                              </span>
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap">
                               <span className="text-sm text-gray-500 leading-tight">{(() => {
@@ -927,7 +925,8 @@ const VendorDashboard = () => {
                               </span>
                             </td>
                           </tr>
-                        ))
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1259,7 +1258,7 @@ const VendorDashboard = () => {
                         Pending: <span className="font-semibold text-yellow-600">{orderStats.pendingOrders || 0}</span>
                       </div>
                       <div className="text-gray-600">
-                        Completed: <span className="font-semibold text-green-600">{orderStats.completedOrders || 0}</span>
+                        Delivered: <span className="font-semibold text-green-600">{orderStats.deliveredOrders || 0}</span>
                       </div>
                     </div>
                   )}

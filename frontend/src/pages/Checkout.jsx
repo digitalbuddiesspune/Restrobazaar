@@ -8,6 +8,7 @@ import { calculateShippingCharges } from '../utils/shipping';
 import Modal from '../components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '../components/Button';
+import { formatOrderId } from '../utils/orderIdFormatter';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -1223,7 +1224,7 @@ const Checkout = () => {
               <div className="space-y-1 mt-3">
                 <p className="text-xs text-gray-600">
                   <span className="font-semibold">Order Number:</span>{' '}
-                  <span className="text-red-600 font-mono">{orderData.orderNumber}</span>
+                  <span className="text-red-600 font-mono">{formatOrderId(orderData.orderNumber || orderData._id)}</span>
                 </p>
                 <p className="text-xs text-gray-600">
                   <span className="font-semibold">Total Amount:</span>{' '}

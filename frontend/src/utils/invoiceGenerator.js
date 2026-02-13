@@ -1,4 +1,18 @@
 import jsPDF from 'jspdf';
+import { formatOrderId } from './orderIdFormatter';
+
+// Fetch QR code image as base64 data URL for UPI payment
+const fetchUPIQRAsDataURL = async (upiUrl) => {
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=5&data=${encodeURIComponent(upiUrl)}`;
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+};
 
 // Convert number to words for invoice amount
 export const numberToWords = (num) => {
@@ -168,10 +182,33 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
 
     // Calculate totals - use stored billingDetails for accuracy
     const billing = order.billingDetails || {};
-    const cartTotal = billing.cartTotal || 0;
-    const totalGstAmount = billing.gstAmount || 0;
-    const shippingCharges = billing.shippingCharges || 0;
-    const totalAmount = billing.totalAmount || (cartTotal + totalGstAmount + shippingCharges);
+    const cartTotal = parseFloat(billing.cartTotal) || 0;
+    const totalGstAmount = parseFloat(billing.gstAmount) || 0;
+    const shippingCharges = parseFloat(billing.shippingCharges) || 0;
+    const couponDiscount = parseFloat(order.couponAmount ?? billing.couponDiscount) || 0;
+    const totalAmount = parseFloat(billing.totalAmount) || (cartTotal + totalGstAmount + shippingCharges - couponDiscount);
+    
+    // Verify totals by summing items (for validation, but use billingDetails for display)
+    let calculatedCartTotal = 0;
+    let calculatedGstAmount = 0;
+    if (order.items && order.items.length > 0) {
+      order.items.forEach(item => {
+        const itemSubtotal = parseFloat(item.total) || (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
+        const itemGst = parseFloat(item.gstAmount) || 0;
+        calculatedCartTotal += itemSubtotal;
+        calculatedGstAmount += itemGst;
+      });
+    }
+    
+    // Use billingDetails values (they are the source of truth), but log if there's a mismatch
+    if (Math.abs(calculatedCartTotal - cartTotal) > 0.01 || Math.abs(calculatedGstAmount - totalGstAmount) > 0.01) {
+      console.warn('Invoice totals mismatch - using billingDetails values:', {
+        billingCartTotal: cartTotal,
+        calculatedCartTotal,
+        billingGstAmount: totalGstAmount,
+        calculatedGstAmount
+      });
+    }
     
 
     // ========== HEADER SECTION ==========
@@ -226,12 +263,50 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
     doc.setFont(undefined, 'normal');
+    // Determine payment mode text
+    const paymentModeText = order.paymentMethod === 'cod' 
+      ? 'Cash' 
+      : order.paymentMethod === 'online' 
+        ? 'UPI / Bank Transfer' 
+        : 'UPI / Cash / Bank Transfer';
+    
+    // Format invoice and order numbers correctly
+    // Use GST-compliant invoice number if available, otherwise use formatted order ID
+    let invoiceNumber = null;
+    let formattedOrderNo = null;
+    
+    // Priority: Use invoiceNumber from order (GST-compliant) if available
+    if (order.invoiceNumber) {
+      invoiceNumber = order.invoiceNumber;
+      // For display, we can still show formatted order ID
+      const orderId = order.orderNumber || order._id || order.order_id;
+      formattedOrderNo = formatOrderId(orderId);
+    } else {
+      // Fallback: Use formatted order ID if invoice number not available
+      let orderId = null;
+      if (order.orderNumber) {
+        orderId = String(order.orderNumber);
+      } else if (order._id) {
+        orderId = String(order._id);
+      } else if (order.order_id) {
+        orderId = String(order.order_id);
+      }
+      
+      if (!orderId) {
+        throw new Error('Order ID is missing. Cannot generate invoice.');
+      }
+      
+      formattedOrderNo = formatOrderId(orderId);
+      // Use formatted order ID as invoice number (legacy format)
+      invoiceNumber = `RBZ-${formattedOrderNo}`;
+    }
+    
     const invoiceDetails = [
-      ['Invoice No:', `RBZ-${order.orderNumber || order._id?.toString().slice(-5) || '00123'}`],
-      ['Order No:', `ORD-${order.orderNumber || order._id?.toString().slice(-5) || '45678'}`],
+      ['Invoice No:', invoiceNumber],
+      ['Order No:', formattedOrderNo],
       ['Order Status:', getStatusText(order.orderStatus)],
-      ['Place of Supply:', `${order.paymentMethod === 'cod' ? 'Cash' : order.paymentMethod === 'online' ? 'UPI / Bank Transfer' : 'UPI / Cash / Bank Transfer'}`],
-      ['Place of Supply:', `${vendorStateCode}-${vendorState}`],
+      ['Payment Mode:', paymentModeText],
+      ['Place of Supply:', `${vendorStateCode} – ${vendorState}`],
       ['Invoice Date:', formatDateForInvoice(order.createdAt)],
       ['Order Date:', formatDateForInvoice(order.createdAt)],
       ['Payment Status:', order.paymentStatus === 'completed' ? 'Paid' : 'Unpaid'],
@@ -473,14 +548,25 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
         yPos = 20;
       }
 
-      const hsnCode = item.hsnCode || item.productId?.hsnCode || '482369';
-      // Calculate item values properly
+      // Get HSN code from populated productId or fallback to default
+      // Priority: item.hsnCode (if stored) > item.productId.hsnCode (from populated product) > default
+      let hsnCode = '482369'; // Default fallback
+      if (item.hsnCode) {
+        hsnCode = item.hsnCode;
+      } else if (item.productId) {
+        // Check if productId is populated (object) or just an ID (string/ObjectId)
+        if (typeof item.productId === 'object' && item.productId !== null && item.productId.hsnCode) {
+          hsnCode = item.productId.hsnCode;
+        }
+      }
+      // Use stored values from order for accuracy
       const itemPrice = parseFloat(item.price) || 0;
       const itemQty = parseInt(item.quantity) || 0;
-      const itemSubtotal = itemPrice * itemQty;
+      // Use item.total if available (stored subtotal), otherwise calculate
+      const itemSubtotal = parseFloat(item.total) || (itemPrice * itemQty);
       const itemGstPercentage = parseFloat(item.gstPercentage) || 0;
-      // Use gstAmount from item if available, otherwise calculate it
-      const itemGstAmount = parseFloat(item.gstAmount) || (itemSubtotal * itemGstPercentage / 100);
+      // Use stored gstAmount from order (more accurate than recalculating)
+      const itemGstAmount = parseFloat(item.gstAmount) || 0;
       // Item total should be subtotal + GST
       const itemTotal = itemSubtotal + itemGstAmount;
 
@@ -792,7 +878,23 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.text('Reverse Charge: No', leftMargin + 3, yPos);
 
     // Save the PDF
-    doc.save(`Invoice-RBZ-${order.orderNumber || order._id}.pdf`);
+    // Use invoice number for filename if available, otherwise use formatted order ID
+    let filename = 'Invoice';
+    if (order.invoiceNumber) {
+      // Use invoice number (e.g., INV-2526-0001)
+      filename = order.invoiceNumber;
+    } else {
+      // Fallback: Use formatted order ID
+      const orderIdForFilename = order.orderNumber || 
+                                (order._id ? String(order._id) : null) || 
+                                (order.order_id ? String(order.order_id) : null) || 
+                                null;
+      if (orderIdForFilename) {
+        const filenameOrderId = formatOrderId(orderIdForFilename).replace('#', '');
+        filename = `Invoice-${filenameOrderId}`;
+      }
+    }
+    doc.save(`${filename}.pdf`);
   } catch (error) {
     console.error('Error generating invoice:', error);
     throw error;
