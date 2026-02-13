@@ -48,8 +48,11 @@ class CartScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.shopping_bag_outlined,
-                        size: 72, color: Colors.grey),
+                    const Icon(
+                      Icons.shopping_bag_outlined,
+                      size: 72,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'Your cart is empty',
@@ -91,15 +94,6 @@ class CartScreen extends ConsumerWidget {
       );
     }
 
-    final gst = cartState.items
-        .map((item) {
-          final itemTotal =
-              item.unitPriceForQuantity(item.quantity) * item.quantity;
-          final gstAmount = (itemTotal * item.gstPercentage) / 100;
-          return gstAmount;
-        })
-        .fold<double>(0, (sum, value) => sum + value);
-    final gstTotal = double.parse(gst.toStringAsFixed(2));
     final shipping = calculateShippingCharges(cartState.subtotal);
     final itemCount = cartState.totalItems;
 
@@ -176,8 +170,9 @@ class CartScreen extends ConsumerWidget {
                     final item = entry.value;
                     final unitPrice = item.unitPriceForQuantity(item.quantity);
                     final total = unitPrice * item.quantity;
-                    final minQty =
-                        item.minimumOrderQuantity > 0 ? item.minimumOrderQuantity : 1;
+                    final minQty = item.minimumOrderQuantity > 0
+                        ? item.minimumOrderQuantity
+                        : 1;
                     int? maxValidQty;
                     if (item.availableStock != null) {
                       maxValidQty = (item.availableStock! ~/ minQty) * minQty;
@@ -186,8 +181,9 @@ class CartScreen extends ConsumerWidget {
                       }
                     }
                     final canDecrease = item.quantity > minQty;
-                    final canIncrease =
-                        maxValidQty == null ? true : item.quantity < maxValidQty;
+                    final canIncrease = maxValidQty == null
+                        ? true
+                        : item.quantity < maxValidQty;
 
                     return Column(
                       children: [
@@ -220,7 +216,8 @@ class CartScreen extends ConsumerWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Expanded(
                                           child: Text(
@@ -280,11 +277,11 @@ class CartScreen extends ConsumerWidget {
                                                     icon: Icons.remove,
                                                     onTap: canDecrease
                                                         ? () => cartNotifier
-                                                            .updateQuantity(
-                                                              item.id,
-                                                              item.quantity -
-                                                                  minQty,
-                                                            )
+                                                              .updateQuantity(
+                                                                item.id,
+                                                                item.quantity -
+                                                                    minQty,
+                                                              )
                                                         : null,
                                                   ),
                                                   Container(
@@ -292,8 +289,8 @@ class CartScreen extends ConsumerWidget {
                                                     width: 36,
                                                     padding:
                                                         const EdgeInsets.symmetric(
-                                                      vertical: 4,
-                                                    ),
+                                                          vertical: 4,
+                                                        ),
                                                     child: Text(
                                                       '${item.quantity}',
                                                       style: const TextStyle(
@@ -309,7 +306,7 @@ class CartScreen extends ConsumerWidget {
                                                         ? () {
                                                             var nextQty =
                                                                 item.quantity +
-                                                                    minQty;
+                                                                minQty;
                                                             if (maxValidQty !=
                                                                     null &&
                                                                 nextQty >
@@ -319,9 +316,9 @@ class CartScreen extends ConsumerWidget {
                                                             }
                                                             cartNotifier
                                                                 .updateQuantity(
-                                                              item.id,
-                                                              nextQty,
-                                                            );
+                                                                  item.id,
+                                                                  nextQty,
+                                                                );
                                                           }
                                                         : null,
                                                   ),
@@ -397,29 +394,29 @@ class CartScreen extends ConsumerWidget {
                 children: [
                   const Text(
                     'Order Summary',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 10),
                   _SummaryRow(
                     label: 'Subtotal ($itemCount items)',
                     value: formatCurrency(cartState.subtotal),
                   ),
-                  _SummaryRow(label: 'GST', value: formatCurrency(gstTotal)),
                   _SummaryRow(
                     label: 'Shipping Charges',
                     value: shipping == 0 ? 'Free' : formatCurrency(shipping),
-                    valueColor:
-                        shipping == 0 ? const Color(0xFF16A34A) : null,
+                    valueColor: shipping == 0 ? const Color(0xFF16A34A) : null,
                   ),
                   const Divider(height: 20),
                   _SummaryRow(
                     label: 'Total',
-                    value: formatCurrency(cartState.subtotal + gstTotal + shipping),
+                    value: formatCurrency(cartState.subtotal + shipping),
                     isBold: true,
                     valueColor: const Color(0xFFdc2626),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Prices are exclusive of GST. Applicable GST will be calculated at checkout.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF6b7280)),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -510,10 +507,7 @@ class _SummaryRow extends StatelessWidget {
         children: [
           Text(label, style: style),
           const Spacer(),
-          Text(
-            value,
-            style: style.copyWith(color: valueColor),
-          ),
+          Text(value, style: style.copyWith(color: valueColor)),
         ],
       ),
     );

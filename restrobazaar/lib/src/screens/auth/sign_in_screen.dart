@@ -15,13 +15,9 @@ class SignInScreen extends ConsumerStatefulWidget {
 }
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
 
-  String _loginMode = 'otp';
   bool _otpSent = false;
   bool _otpLoading = false;
   int _otpTimer = 0;
@@ -30,12 +26,26 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
     _otpTimerHandle?.cancel();
     super.dispose();
+  }
+
+  String _normalizeIndianPhone(String value) {
+    final cleaned = value.replaceAll(RegExp(r'\D'), '');
+    if (cleaned.length == 12 && cleaned.startsWith('91')) {
+      return cleaned.substring(2);
+    }
+    if (cleaned.length == 11 && cleaned.startsWith('0')) {
+      return cleaned.substring(1);
+    }
+    return cleaned;
+  }
+
+  bool _isValidIndianPhone(String value) {
+    final normalized = _normalizeIndianPhone(value);
+    return RegExp(r'^[6-9]\d{9}$').hasMatch(normalized);
   }
 
   void _startOtpTimer() {
@@ -47,10 +57,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         if (mounted) {
           setState(() => _otpTimer = 0);
         }
-      } else {
-        if (mounted) {
-          setState(() => _otpTimer -= 1);
-        }
+      } else if (mounted) {
+        setState(() => _otpTimer -= 1);
       }
     });
   }
@@ -70,16 +78,17 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       _otpLoading = true;
     });
 
-    final phone = _phoneController.text.trim();
-    if (phone.length < 10) {
+    final normalizedPhone = _normalizeIndianPhone(_phoneController.text.trim());
+    if (!_isValidIndianPhone(_phoneController.text.trim())) {
       setState(() {
-        _errorMessage = 'Please enter a valid phone number';
+        _errorMessage =
+            'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
         _otpLoading = false;
       });
       return;
     }
 
-    final success = await authNotifier.sendOtpLogin(phone: phone);
+    final success = await authNotifier.sendOtpLogin(phone: normalizedPhone);
     if (!mounted) return;
     final latest = ref.read(authControllerProvider);
     setState(() {
@@ -95,16 +104,27 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   Future<void> _verifyOtp(AuthController authNotifier) async {
     setState(() => _errorMessage = null);
-    final phone = _phoneController.text.trim();
+
+    final normalizedPhone = _normalizeIndianPhone(_phoneController.text.trim());
     final otp = _otpController.text.trim();
 
-    if (otp.length != 6) {
+    if (!_isValidIndianPhone(_phoneController.text.trim())) {
+      setState(() {
+        _errorMessage =
+            'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
+      });
+      return;
+    }
+
+    if (otp.length != 6 || !RegExp(r'^\d{6}$').hasMatch(otp)) {
       setState(() => _errorMessage = 'Please enter a valid 6-digit OTP');
       return;
     }
 
-    final success =
-        await authNotifier.verifyOtpLogin(phone: phone, otp: otp);
+    final success = await authNotifier.verifyOtpLogin(
+      phone: normalizedPhone,
+      otp: otp,
+    );
     if (!mounted) return;
     final latest = ref.read(authControllerProvider);
     if (success) {
@@ -125,11 +145,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFFFFF1F2),
-                Color(0xFFFFFBEB),
-                Color(0xFFF8FAFC),
-              ],
+              colors: [Color(0xFFFFF1F2), Color(0xFFFFFBEB), Color(0xFFF8FAFC)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -194,311 +210,174 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     ),
                   ],
                 ),
-                child: Form(
-                  key: _formKey,
-                  child: AutofillGroup(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Sign in',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: secondaryColor,
-                          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sign in',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: secondaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'OTP Login',
+                      style: TextStyle(
+                        color: Color(0xFF6b7280),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFECACA)),
                         ),
-                        const SizedBox(height: 12),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.all(4),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _loginMode = 'otp';
-                                      _errorMessage = null;
-                                      _resetOtpForm(clearPhone: false);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: _loginMode == 'otp'
-                                        ? const Color(0xFFdc2626)
-                                        : Colors.transparent,
-                                    foregroundColor: _loginMode == 'otp'
-                                        ? Colors.white
-                                        : const Color(0xFF4b5563),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'OTP Login',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _loginMode = 'email';
-                                      _errorMessage = null;
-                                      _resetOtpForm();
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: _loginMode == 'email'
-                                        ? const Color(0xFFdc2626)
-                                        : Colors.transparent,
-                                    foregroundColor: _loginMode == 'email'
-                                        ? Colors.white
-                                        : const Color(0xFF4b5563),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Email & Password',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_errorMessage != null) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEF2F2),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFFECACA)),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              color: Color(0xFFdc2626),
+                              size: 18,
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.error_outline,
-                                  color: Color(0xFFdc2626),
-                                  size: 18,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: Color(0xFF991B1B),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: const TextStyle(
-                                      color: Color(0xFF991B1B),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 14),
-                        if (_loginMode == 'otp') ...[
-                          if (!_otpSent) ...[
-                            TextFormField(
-                              controller: _phoneController,
-                              decoration: const InputDecoration(
-                                labelText: 'Phone Number',
-                                hintText: '9876543210',
-                                prefixIcon: Icon(Icons.phone_outlined),
-                              ),
-                              keyboardType: TextInputType.phone,
-                              textInputAction: TextInputAction.done,
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _otpLoading
-                                    ? null
-                                    : () => _sendOtp(authNotifier),
-                                style: ElevatedButton.styleFrom(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                child: _otpLoading
-                                    ? const SizedBox(
-                                        height: 18,
-                                        width: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Send OTP'),
-                              ),
-                            ),
-                          ] else ...[
-                            TextFormField(
-                              controller: _otpController,
-                              decoration: const InputDecoration(
-                                labelText: 'Enter OTP',
-                                hintText: '000000',
-                                prefixIcon: Icon(Icons.lock_outline),
-                              ),
-                              keyboardType: TextInputType.number,
-                              textInputAction: TextInputAction.done,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'OTP sent to ${_phoneController.text.trim()}',
-                              style: const TextStyle(
-                                color: Color(0xFF6b7280),
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _resetOtpForm(clearPhone: false);
-                                    });
-                                  },
-                                  child: const Text('Change Phone Number'),
-                                ),
-                                _otpTimer > 0
-                                    ? Text(
-                                        'Resend in $_otpTimer s',
-                                        style: const TextStyle(
-                                          color: Color(0xFF6b7280),
-                                          fontSize: 12,
-                                        ),
-                                      )
-                                    : TextButton(
-                                        onPressed: _otpLoading
-                                            ? null
-                                            : () => _sendOtp(authNotifier),
-                                        child: const Text('Resend OTP'),
-                                      ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: authState.loading
-                                    ? null
-                                    : () => _verifyOtp(authNotifier),
-                                style: ElevatedButton.styleFrom(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                child: authState.loading
-                                    ? const SizedBox(
-                                        height: 18,
-                                        width: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Verify & Sign In'),
                               ),
                             ),
                           ],
-                        ] else ...[
-                          TextFormField(
-                            controller: _emailController,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              hintText: 'you@company.com',
-                              prefixIcon: Icon(Icons.mail_outline),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    if (!_otpSent) ...[
+                      TextField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: '9876543210',
+                          prefixIcon: Icon(Icons.phone_outlined),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.done,
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '10-digit mobile number starting with 6, 7, 8, or 9',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6b7280),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _otpLoading
+                              ? null
+                              : () => _sendOtp(authNotifier),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            validator: (value) => value == null || value.isEmpty
-                                ? 'Required'
-                                : null,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.email],
                           ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _passwordController,
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                              hintText: 'Enter your password',
-                              prefixIcon: Icon(Icons.lock_outline),
-                            ),
-                            obscureText: true,
-                            validator: (value) =>
-                                value == null || value.isEmpty
-                                    ? 'Required'
-                                    : null,
-                            textInputAction: TextInputAction.done,
-                            autofillHints: const [AutofillHints.password],
+                          child: _otpLoading
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Send OTP'),
+                        ),
+                      ),
+                    ] else ...[
+                      TextField(
+                        controller: _otpController,
+                        decoration: const InputDecoration(
+                          labelText: 'Enter OTP',
+                          hintText: '000000',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'OTP sent to ${_normalizeIndianPhone(_phoneController.text.trim())}',
+                        style: const TextStyle(
+                          color: Color(0xFF6b7280),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _resetOtpForm(clearPhone: false);
+                              });
+                            },
+                            child: const Text('Change Phone Number'),
                           ),
-                          const SizedBox(height: 18),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: authState.loading
-                                  ? null
-                                  : () async {
-                                      if (!_formKey.currentState!.validate()) {
-                                        return;
-                                      }
-                                      final success =
-                                          await authNotifier.signIn(
-                                        email: _emailController.text,
-                                        password: _passwordController.text,
-                                      );
-                                      if (!context.mounted) return;
-                                      final latestState = ref.read(
-                                        authControllerProvider,
-                                      );
-                                      if (success) {
-                                        context.go('/home');
-                                      } else if (latestState.error != null) {
-                                        setState(() {
-                                          _errorMessage = latestState.error;
-                                        });
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                          _otpTimer > 0
+                              ? Text(
+                                  'Resend in $_otpTimer s',
+                                  style: const TextStyle(
+                                    color: Color(0xFF6b7280),
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : TextButton(
+                                  onPressed: _otpLoading
+                                      ? null
+                                      : () => _sendOtp(authNotifier),
+                                  child: const Text('Resend OTP'),
                                 ),
-                              ),
-                              child: authState.loading
-                                  ? const SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text('Sign in'),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: authState.loading
+                              ? null
+                              : () => _verifyOtp(authNotifier),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
+                          child: authState.loading
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Verify & Sign In'),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 16),

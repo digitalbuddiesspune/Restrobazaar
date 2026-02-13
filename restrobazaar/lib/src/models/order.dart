@@ -6,6 +6,8 @@ class OrderModel {
     required this.id,
     required this.status,
     required this.totalAmount,
+    this.orderNumber,
+    this.invoiceNumber,
     this.createdAt,
     this.items = const [],
     this.paymentMethod,
@@ -13,12 +15,18 @@ class OrderModel {
     this.cartTotal,
     this.gstAmount,
     this.shippingCharges,
+    this.couponAmount,
+    this.couponCode,
+    this.gstNumber,
+    this.billingDetails,
     this.deliveryAddress,
   });
 
   final String id;
   final String status;
   final double totalAmount;
+  final String? orderNumber;
+  final String? invoiceNumber;
   final DateTime? createdAt;
   final List<CartItem> items;
   final String? paymentMethod;
@@ -26,6 +34,10 @@ class OrderModel {
   final double? cartTotal;
   final double? gstAmount;
   final double? shippingCharges;
+  final double? couponAmount;
+  final String? couponCode;
+  final String? gstNumber;
+  final OrderBillingDetails? billingDetails;
   final AddressModel? deliveryAddress;
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -67,8 +79,7 @@ class OrderModel {
               'priceType': merged['priceType'] ?? 'single',
               'price': merged['price'] ?? 0,
               'quantity': merged['quantity'] ?? 1,
-              'gstPercentage':
-                  merged['gstPercentage'] ?? merged['gst'] ?? 0,
+              'gstPercentage': merged['gstPercentage'] ?? merged['gst'] ?? 0,
               'minimumOrderQuantity': merged['minimumOrderQuantity'] ?? 1,
             }),
           );
@@ -79,7 +90,10 @@ class OrderModel {
     return OrderModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       status: (json['orderStatus'] ?? json['status'] ?? 'created').toString(),
-      totalAmount: _toDouble(json['totalAmount']) ??
+      orderNumber: json['orderNumber']?.toString(),
+      invoiceNumber: json['invoiceNumber']?.toString(),
+      totalAmount:
+          _toDouble(json['totalAmount']) ??
           _toDouble(billing['totalAmount']) ??
           0,
       createdAt: json['createdAt'] != null
@@ -88,16 +102,52 @@ class OrderModel {
       items: items,
       paymentMethod: json['paymentMethod']?.toString(),
       paymentStatus: (json['paymentStatus'] ?? 'pending').toString(),
-      cartTotal: _toDouble(json['cartTotal']) ?? _toDouble(billing['cartTotal']),
-      gstAmount: _toDouble(json['gstAmount']) ?? _toDouble(billing['gstAmount']),
-      shippingCharges: _toDouble(json['shippingCharges']) ??
+      cartTotal:
+          _toDouble(json['cartTotal']) ?? _toDouble(billing['cartTotal']),
+      gstAmount:
+          _toDouble(json['gstAmount']) ?? _toDouble(billing['gstAmount']),
+      shippingCharges:
+          _toDouble(json['shippingCharges']) ??
           _toDouble(billing['shippingCharges']),
-      deliveryAddress:
-          json['deliveryAddress'] is Map<String, dynamic>
-              ? AddressModel.fromJson(
-                  json['deliveryAddress'] as Map<String, dynamic>,
-                )
-              : null,
+      couponAmount:
+          _toDouble(json['couponAmount']) ??
+          _toDouble(billing['couponDiscount']),
+      couponCode: json['couponCode']?.toString(),
+      gstNumber: (json['deliveryAddress'] is Map<String, dynamic>)
+          ? (json['deliveryAddress'] as Map<String, dynamic>)['gstNumber']
+                ?.toString()
+          : null,
+      billingDetails: billing.isNotEmpty
+          ? OrderBillingDetails.fromJson(billing)
+          : null,
+      deliveryAddress: json['deliveryAddress'] is Map<String, dynamic>
+          ? AddressModel.fromJson(
+              json['deliveryAddress'] as Map<String, dynamic>,
+            )
+          : null,
+    );
+  }
+}
+
+class OrderBillingDetails {
+  const OrderBillingDetails({
+    required this.cartTotal,
+    required this.gstAmount,
+    required this.shippingCharges,
+    required this.totalAmount,
+  });
+
+  final double cartTotal;
+  final double gstAmount;
+  final double shippingCharges;
+  final double totalAmount;
+
+  factory OrderBillingDetails.fromJson(Map<String, dynamic> json) {
+    return OrderBillingDetails(
+      cartTotal: _toDouble(json['cartTotal']) ?? 0,
+      gstAmount: _toDouble(json['gstAmount']) ?? 0,
+      shippingCharges: _toDouble(json['shippingCharges']) ?? 0,
+      totalAmount: _toDouble(json['totalAmount']) ?? 0,
     );
   }
 }

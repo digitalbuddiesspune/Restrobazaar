@@ -78,8 +78,8 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> refreshUser({bool force = false}) async {
     try {
       final existing = state.user;
-      final hasProfileDetails = existing?.phone?.isNotEmpty == true &&
-          existing?.createdAt != null;
+      final hasProfileDetails =
+          existing?.phone?.isNotEmpty == true && existing?.createdAt != null;
 
       if (!force && hasProfileDetails) return;
 
@@ -99,10 +99,7 @@ class AuthController extends StateNotifier<AuthState> {
   Future<bool> signIn({required String email, required String password}) async {
     try {
       state = state.copyWith(loading: true, error: null);
-      final result = await _repository.signIn(
-        email: email,
-        password: password,
-      );
+      final result = await _repository.signIn(email: email, password: password);
       await _storage.setJson(userInfoKey, result.user.toJson());
       if (result.token != null && result.token!.isNotEmpty) {
         await _storage.setString(authTokenKey, result.token!);
@@ -141,9 +138,57 @@ class AuthController extends StateNotifier<AuthState> {
   }) async {
     try {
       state = state.copyWith(loading: true, error: null);
-      final result = await _repository.verifyOtpLogin(
+      final result = await _repository.verifyOtpLogin(phone: phone, otp: otp);
+      await _storage.setJson(userInfoKey, result.user.toJson());
+      if (result.token != null && result.token!.isNotEmpty) {
+        await _storage.setString(authTokenKey, result.token!);
+        _apiClient.setBearerToken(result.token);
+      } else {
+        await _storage.remove(authTokenKey);
+        _apiClient.setBearerToken(null);
+      }
+      state = state.copyWith(user: result.user, loading: false);
+      await _registerDeviceToken();
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        loading: false,
+        error: error is ApiException ? error.message : error.toString(),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> sendOtpSignup({required String phone}) async {
+    try {
+      state = state.copyWith(loading: true, error: null);
+      await _repository.sendOtpForSignup(phone: phone);
+      state = state.copyWith(loading: false);
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        loading: false,
+        error: error is ApiException ? error.message : error.toString(),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtpSignup({
+    required String name,
+    required String phone,
+    required String otp,
+    String? restaurantName,
+    String? gstNumber,
+  }) async {
+    try {
+      state = state.copyWith(loading: true, error: null);
+      final result = await _repository.verifyOtpSignup(
+        name: name,
         phone: phone,
         otp: otp,
+        restaurantName: restaurantName,
+        gstNumber: gstNumber,
       );
       await _storage.setJson(userInfoKey, result.user.toJson());
       if (result.token != null && result.token!.isNotEmpty) {
@@ -213,17 +258,18 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> _registerDeviceToken() async {
     if (!state.isAuthenticated) return;
     try {
-      await NotificationService.instance.bindTokenRegistration(
-        (token, platform) async {
-          await _notificationRepository.registerToken(
-            token: token,
-            platform: platform,
-          );
-          debugPrint(
-            'Notification token registered ($platform): ${_maskToken(token)}',
-          );
-        },
-      );
+      await NotificationService.instance.bindTokenRegistration((
+        token,
+        platform,
+      ) async {
+        await _notificationRepository.registerToken(
+          token: token,
+          platform: platform,
+        );
+        debugPrint(
+          'Notification token registered ($platform): ${_maskToken(token)}',
+        );
+      });
     } catch (_) {
       // Ignore token registration errors.
     }

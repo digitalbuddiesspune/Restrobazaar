@@ -37,15 +37,16 @@ class ProductCard extends ConsumerWidget {
         }
       }
       if (best != null) return best;
-      return product.pricing.bulk
-          .reduce((a, b) => a.minQty <= b.minQty ? a : b);
+      return product.pricing.bulk.reduce(
+        (a, b) => a.minQty <= b.minQty ? a : b,
+      );
     }
 
     final cartState = ref.watch(cartControllerProvider);
     final wishlistState = ref.watch(wishlistControllerProvider);
     final inWishlist = wishlistState.contains(product.id);
     final price = product.displayPrice ?? 0;
-    final originalPrice = product.originalPrice;
+    final originalPrice = product.defaultPrice ?? product.originalPrice;
     final hasDiscount =
         originalPrice != null && originalPrice > price && price > 0;
     final discountPercent = hasDiscount
@@ -99,15 +100,19 @@ class ProductCard extends ConsumerWidget {
                   ),
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, _) =>
-                          Container(color: Colors.grey.shade200),
-                      errorWidget: (context, _, __) => Container(
-                        color: Colors.grey.shade200,
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.image_not_supported_outlined),
+                    child: Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(10),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.contain,
+                        placeholder: (context, _) =>
+                            Container(color: Colors.grey.shade200),
+                        errorWidget: (context, _, __) => Container(
+                          color: Colors.grey.shade200,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.image_not_supported_outlined),
+                        ),
                       ),
                     ),
                   ),
@@ -266,54 +271,55 @@ class ProductCard extends ConsumerWidget {
                         : () {
                             final item = cartItem!;
                             return Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Row(
-                              children: [
-                                _QtyButton(
-                                  icon: Icons.remove,
-                                  onTap: item.quantity <= minQty
-                                      ? null
-                                      : () => ref
-                                          .read(
-                                            cartControllerProvider.notifier,
-                                          )
-                                          .updateQuantity(
-                                            item.id,
-                                            item.quantity - minQty,
-                                          ),
-                                ),
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      '${item.quantity}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  _QtyButton(
+                                    icon: Icons.remove,
+                                    onTap: item.quantity <= minQty
+                                        ? null
+                                        : () => ref
+                                              .read(
+                                                cartControllerProvider.notifier,
+                                              )
+                                              .updateQuantity(
+                                                item.id,
+                                                item.quantity - minQty,
+                                              ),
+                                  ),
+                                  Expanded(
+                                    child: Center(
+                                      child: Text(
+                                        '${item.quantity}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                _QtyButton(
-                                  icon: Icons.add,
-                                  onTap: maxValidQty != null &&
-                                          item.quantity >= maxValidQty
-                                      ? null
-                                      : () => ref
-                                          .read(
-                                            cartControllerProvider.notifier,
-                                          )
-                                          .updateQuantity(
-                                            item.id,
-                                            item.quantity + minQty,
-                                          ),
-                                ),
-                              ],
-                            ),
-                          );
+                                  _QtyButton(
+                                    icon: Icons.add,
+                                    onTap:
+                                        maxValidQty != null &&
+                                            item.quantity >= maxValidQty
+                                        ? null
+                                        : () => ref
+                                              .read(
+                                                cartControllerProvider.notifier,
+                                              )
+                                              .updateQuantity(
+                                                item.id,
+                                                item.quantity + minQty,
+                                              ),
+                                  ),
+                                ],
+                              ),
+                            );
                           }(),
                   ),
                 ],

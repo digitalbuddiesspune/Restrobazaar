@@ -74,6 +74,59 @@ class AuthRepository {
     );
   }
 
+  Future<void> sendOtpForSignup({required String phone}) async {
+    final response = await _client.requestJson(
+      '/users/send-otp-signup',
+      method: 'POST',
+      data: {'phone': phone},
+    );
+
+    if (response['success'] == true) {
+      return;
+    }
+
+    throw ApiException(
+      statusCode: 400,
+      message:
+          response['message']?.toString() ?? 'Failed to send OTP. Try again.',
+    );
+  }
+
+  Future<AuthResult> verifyOtpSignup({
+    required String name,
+    required String phone,
+    required String otp,
+    String? restaurantName,
+    String? gstNumber,
+  }) async {
+    final response = await _client.requestJson(
+      '/users/verify-otp-signup',
+      method: 'POST',
+      data: {
+        'name': name,
+        'phone': phone,
+        'otp': otp,
+        if (restaurantName != null && restaurantName.isNotEmpty)
+          'restaurantName': restaurantName,
+        if (gstNumber != null && gstNumber.isNotEmpty) 'gstNumber': gstNumber,
+      },
+    );
+
+    if (response['success'] == true &&
+        response['data'] is Map<String, dynamic>) {
+      final data = response['data'] as Map<String, dynamic>;
+      return AuthResult(
+        user: UserModel.fromJson(data),
+        token: _extractToken(response, data),
+      );
+    }
+
+    throw ApiException(
+      statusCode: 400,
+      message: response['message']?.toString() ?? 'OTP verification failed',
+    );
+  }
+
   Future<AuthResult> signUp({
     required String name,
     required String email,

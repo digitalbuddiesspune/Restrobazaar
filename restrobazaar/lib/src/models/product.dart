@@ -40,8 +40,8 @@ class ProductModel {
     final parsedReturnable = rawReturnable is bool
         ? rawReturnable
         : (rawReturnable is String
-            ? rawReturnable.toLowerCase() == 'true'
-            : null);
+              ? rawReturnable.toLowerCase() == 'true'
+              : null);
     return ProductModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       productName: (json['productName'] ?? json['name'] ?? '').toString(),
@@ -207,6 +207,7 @@ class VendorProductModel {
     this.gst,
     this.minimumOrderQuantity,
     this.subCategory,
+    this.defaultPrice,
     this.originalPrice,
   }) : pricing = pricing ?? const PricingModel();
 
@@ -221,14 +222,17 @@ class VendorProductModel {
   final double? gst;
   final int? minimumOrderQuantity;
   final String? subCategory;
+  final double? defaultPrice;
   final double? originalPrice;
 
   factory VendorProductModel.fromJson(Map<String, dynamic> json) {
-    Map<String, dynamic>? productJson = json['productId'] is Map<String, dynamic>
+    Map<String, dynamic>? productJson =
+        json['productId'] is Map<String, dynamic>
         ? json['productId'] as Map<String, dynamic>
         : null;
-    productJson ??=
-        json['product'] is Map<String, dynamic> ? json['product'] as Map<String, dynamic> : null;
+    productJson ??= json['product'] is Map<String, dynamic>
+        ? json['product'] as Map<String, dynamic>
+        : null;
     // Some responses return the product fields directly (wishlist API)
     productJson ??= json['images'] is List ? json : null;
 
@@ -239,12 +243,15 @@ class VendorProductModel {
         ? json['cityId'] as Map<String, dynamic>
         : null;
 
-    final pricingJson =
-        json['pricing'] is Map<String, dynamic> ? json['pricing'] as Map<String, dynamic> : null;
+    final pricingJson = json['pricing'] is Map<String, dynamic>
+        ? json['pricing'] as Map<String, dynamic>
+        : null;
     final inferredPricing = pricingJson != null
         ? PricingModel.fromJson(pricingJson)
         : PricingModel(
-            singlePrice: json['price'] != null ? _toDouble(json['price']) : null,
+            singlePrice: json['price'] != null
+                ? _toDouble(json['price'])
+                : null,
           );
 
     final minimumOrderRaw =
@@ -270,8 +277,12 @@ class VendorProductModel {
       subCategory:
           json['subCategory']?.toString() ??
           productJson?['subCategory']?.toString(),
-      originalPrice:
-          json['originalPrice'] != null ? _toDouble(json['originalPrice']) : null,
+      defaultPrice: json['defaultPrice'] != null
+          ? _toDouble(json['defaultPrice'])
+          : null,
+      originalPrice: json['originalPrice'] != null
+          ? _toDouble(json['originalPrice'])
+          : null,
     );
   }
 
@@ -280,8 +291,7 @@ class VendorProductModel {
       return pricing.singlePrice;
     }
     if (priceType == 'bulk' && pricing.bulk.isNotEmpty) {
-      final best = pricing.bulk
-          .reduce((a, b) => a.minQty >= b.minQty ? a : b);
+      final best = pricing.bulk.reduce((a, b) => a.minQty >= b.minQty ? a : b);
       return best.price;
     }
     return null;

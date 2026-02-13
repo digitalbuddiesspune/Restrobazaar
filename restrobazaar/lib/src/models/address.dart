@@ -9,6 +9,7 @@ class AddressModel {
     this.state,
     this.pincode,
     this.landmark,
+    this.gstNumber,
     this.addressType = 'home',
   });
 
@@ -21,6 +22,7 @@ class AddressModel {
   final String? state;
   final String? pincode;
   final String? landmark;
+  final String? gstNumber;
   final String addressType;
 
   factory AddressModel.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class AddressModel {
       state: json['state']?.toString(),
       pincode: json['pincode']?.toString(),
       landmark: json['landmark']?.toString(),
+      gstNumber: json['gstNumber']?.toString(),
       addressType: (json['addressType'] ?? 'home').toString(),
     );
   }
@@ -50,6 +53,7 @@ class AddressModel {
       'state': state,
       'pincode': pincode,
       'landmark': landmark,
+      'gstNumber': gstNumber,
       'addressType': addressType,
     };
   }

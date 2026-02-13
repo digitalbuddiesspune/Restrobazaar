@@ -14,6 +14,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../controllers/order_providers.dart';
 import '../../core/formatters.dart';
+import '../../core/order_id_formatter.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';
 import '../../repositories/repository_providers.dart';
@@ -45,9 +46,7 @@ class OrdersScreen extends ConsumerWidget {
       body: ordersAsync.when(
         data: (orders) {
           if (orders.isEmpty) {
-            return _EmptyOrders(
-              onShop: () => context.go('/home'),
-            );
+            return _EmptyOrders(onShop: () => context.go('/home'));
           }
 
           return ListView(
@@ -56,17 +55,11 @@ class OrdersScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               const Text(
                 'Your Orders',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               Text(
                 '${orders.length} order${orders.length == 1 ? '' : 's'} placed',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
               const SizedBox(height: 12),
               ...orders.map(
@@ -134,10 +127,7 @@ class _ErrorOrders extends StatelessWidget {
             const SizedBox(height: 10),
             const Text(
               'Unable to load orders',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
@@ -187,18 +177,13 @@ class _EmptyOrders extends StatelessWidget {
               const SizedBox(height: 12),
               const Text(
                 'No orders yet',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 6),
               const Text(
                 'Start shopping to see your orders here',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF6b7280),
-                ),
+                style: TextStyle(color: Color(0xFF6b7280)),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -264,9 +249,7 @@ class _OrderCard extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade200),
-              ),
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
@@ -297,7 +280,7 @@ class _OrderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      'Order #${_shortOrderId(order.id)}',
+                      'Order ${_displayOrderId(order)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
@@ -408,18 +391,12 @@ class _OrderInfo extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF6b7280),
-          ),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF6b7280)),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         ),
       ],
     );
@@ -454,10 +431,7 @@ class _OrderItemTile extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'Quantity: ${item.quantity}',
-                style: const TextStyle(
-                  color: Color(0xFF6b7280),
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Color(0xFF6b7280), fontSize: 12),
               ),
               const SizedBox(height: 4),
               Text(
@@ -586,8 +560,10 @@ class _SummaryRow extends StatelessWidget {
 
 void _showOrderDetails(BuildContext context, WidgetRef ref, OrderModel order) {
   final statusStyle = _statusStyleFor(order.status);
-  final canCancel = !['cancelled', 'delivered']
-      .contains(order.status.toLowerCase());
+  final canCancel = ![
+    'cancelled',
+    'delivered',
+  ].contains(order.status.toLowerCase());
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -631,14 +607,17 @@ void _showOrderDetails(BuildContext context, WidgetRef ref, OrderModel order) {
                   children: [
                     Expanded(
                       child: Text(
-                        'Order #${_shortOrderId(order.id)}',
+                        'Order ${_displayOrderId(order)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
                         ),
                       ),
                     ),
-                    _StatusChip(label: _statusText(order.status), style: statusStyle),
+                    _StatusChip(
+                      label: _statusText(order.status),
+                      style: statusStyle,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -652,10 +631,7 @@ void _showOrderDetails(BuildContext context, WidgetRef ref, OrderModel order) {
                 const SizedBox(height: 12),
                 const Text(
                   'Items',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 const SizedBox(height: 8),
                 if (order.items.isEmpty)
@@ -671,7 +647,9 @@ void _showOrderDetails(BuildContext context, WidgetRef ref, OrderModel order) {
                         .map(
                           (entry) => Padding(
                             padding: EdgeInsets.only(
-                              bottom: entry.key == order.items.length - 1 ? 0 : 10,
+                              bottom: entry.key == order.items.length - 1
+                                  ? 0
+                                  : 10,
                             ),
                             child: _OrderItemTile(item: entry.value),
                           ),
@@ -821,7 +799,8 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
     } else {
       dir = await getApplicationDocumentsDirectory();
     }
-    final filename = 'Invoice-${_shortOrderId(order.id)}.pdf';
+    final filename =
+        'Invoice-${_displayOrderId(order).replaceAll('#', '')}.pdf';
     final file = File('${dir.path}/$filename');
     await file.writeAsBytes(bytes, flush: true);
     final elapsed = DateTime.now().difference(startedAt);
@@ -850,19 +829,34 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
 Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   final customer = order.deliveryAddress;
   final invoiceDate = order.createdAt ?? DateTime.now();
-  final subtotal = order.cartTotal ??
+  final subtotal =
+      order.billingDetails?.cartTotal ??
+      order.cartTotal ??
       order.items.fold<double>(0, (sum, item) => sum + item.lineTotal);
   final gstAmount =
-      order.gstAmount ?? _calculateGstFromItems(order.items);
-  final shipping = order.shippingCharges ?? 0;
+      order.billingDetails?.gstAmount ??
+      order.gstAmount ??
+      _calculateGstFromItems(order.items);
+  final shipping =
+      order.billingDetails?.shippingCharges ?? order.shippingCharges ?? 0;
   final totalAmount =
-      order.totalAmount != 0 ? order.totalAmount : subtotal + gstAmount + shipping;
-  final paymentStatus =
-      order.paymentStatus?.isNotEmpty == true ? _titleCase(order.paymentStatus!) : 'Pending';
-  final orderNumber = order.id.isNotEmpty ? order.id : 'N/A';
+      order.billingDetails?.totalAmount ??
+      (order.totalAmount != 0
+          ? order.totalAmount
+          : subtotal + gstAmount + shipping);
+  final paymentStatus = order.paymentStatus?.isNotEmpty == true
+      ? _titleCase(order.paymentStatus!)
+      : 'Pending';
+  final formattedOrderId = _displayOrderId(order);
+  final invoiceNumber = order.invoiceNumber?.isNotEmpty == true
+      ? order.invoiceNumber!
+      : 'RBZ-$formattedOrderId';
+  final orderNumber = order.orderNumber?.isNotEmpty == true
+      ? order.orderNumber!
+      : formattedOrderId;
   final paymentMethod = order.paymentMethod?.toLowerCase() ?? '';
   final showQr = paymentMethod == 'online' || paymentMethod == 'upi';
-  final upiUrl = _buildUpiUrl(totalAmount, orderNumber);
+  final upiUrl = _buildUpiUrl(totalAmount, formattedOrderId);
   final qrBytes = showQr ? await _buildQrBytes(upiUrl) : null;
 
   final pdf = pw.Document();
@@ -886,19 +880,13 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
               ),
               pw.SizedBox(height: 4),
               pw.Text(
-                'Your Trusted Restaurant Supply Partner',
-                style: pw.TextStyle(
-                  fontSize: 11,
-                  color: PdfColors.grey700,
-                ),
+                'Your Trusted Packaging Solutions Partner',
+                style: pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
               ),
               pw.SizedBox(height: 2),
               pw.Text(
-                'Email: support@restrobazaar.com | Phone: +91-XXXXXXXXXX',
-                style: pw.TextStyle(
-                  fontSize: 10,
-                  color: PdfColors.grey700,
-                ),
+                'By: AK Enterprises | Email: support@restrobazaar.com | GST No: 27DJSPK2679K1Z5 | State Code: 27',
+                style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
               ),
             ],
           ),
@@ -907,84 +895,108 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
         pw.Center(
           child: pw.Text(
             'TAX INVOICE',
-            style: pw.TextStyle(
-              fontSize: 16,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
           ),
         ),
         pw.SizedBox(height: 14),
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Invoice Details:',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 6),
-                  _detailLine('Invoice Number:', orderNumber),
-                  _detailLine('Invoice Date:', _formatDate(invoiceDate)),
-                  _detailLine('Order Number:', orderNumber),
-                  _detailLine('Order Date:', _formatDate(invoiceDate)),
-                  _detailLine('Order Status:', _statusText(order.status), boldValue: true),
-                  _detailLine('Payment Status:', paymentStatus),
-                  _detailLine('Payment Method:', _paymentLabel(order.paymentMethod)),
-                ],
-              ),
-            ),
-            pw.SizedBox(width: 24),
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Bill To / Ship To:',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 6),
-                  pw.Text(
-                    customer != null && customer.name.isNotEmpty
-                        ? customer.name
-                        : 'Not provided',
-                    style: const pw.TextStyle(fontSize: 12),
-                  ),
-                  if (customer != null && customer.addressLine1.isNotEmpty)
-                    pw.Text(customer.addressLine1, style: const pw.TextStyle(fontSize: 12)),
-                  if (customer?.addressLine2?.isNotEmpty == true)
-                    pw.Text(customer!.addressLine2!, style: const pw.TextStyle(fontSize: 12)),
-                  if (customer != null &&
-                      (customer!.city?.isNotEmpty == true || customer!.state?.isNotEmpty == true))
+        pw.Container(
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: PdfColors.grey400, width: 0.6),
+          ),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
                     pw.Text(
-                      '${customer!.city ?? ''}${customer!.city != null && customer!.state != null ? ', ' : ''}${customer!.state ?? ''}',
+                      'Invoice Details:',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 6),
+                    _detailLine('Invoice No:', invoiceNumber),
+                    _detailLine('Order No:', orderNumber),
+                    _detailLine(
+                      'Order Status:',
+                      _statusText(order.status),
+                      boldValue: true,
+                    ),
+                    _detailLine(
+                      'Payment Mode:',
+                      _paymentLabel(order.paymentMethod),
+                    ),
+                    _detailLine('Invoice Date:', _formatDate(invoiceDate)),
+                    _detailLine('Order Date:', _formatDate(invoiceDate)),
+                    _detailLine('Payment Status:', paymentStatus),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 20),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Bill To',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 6),
+                    pw.Text(
+                      customer != null && customer.name.isNotEmpty
+                          ? customer.name
+                          : 'Not provided',
                       style: const pw.TextStyle(fontSize: 12),
                     ),
-                  if (customer?.pincode?.isNotEmpty == true)
-                    pw.Text('Pincode: ${customer!.pincode}',
-                        style: const pw.TextStyle(fontSize: 12)),
-                  if (customer != null && customer.phone.isNotEmpty)
-                    pw.Text('Phone: ${customer.phone}', style: const pw.TextStyle(fontSize: 12)),
-                ],
+                    if (customer != null && customer.addressLine1.isNotEmpty)
+                      pw.Text(
+                        customer.addressLine1,
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    if (customer?.addressLine2?.isNotEmpty == true)
+                      pw.Text(
+                        customer!.addressLine2!,
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    if (customer != null &&
+                        (customer.city?.isNotEmpty == true ||
+                            customer.state?.isNotEmpty == true))
+                      pw.Text(
+                        '${customer.city ?? ''}${customer.city != null && customer.state != null ? ', ' : ''}${customer.state ?? ''}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    if (customer?.pincode?.isNotEmpty == true)
+                      pw.Text(
+                        'Pincode: ${customer!.pincode}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    if (customer != null && customer.phone.isNotEmpty)
+                      pw.Text(
+                        'Phone: ${customer.phone}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    if (order.gstNumber?.isNotEmpty == true)
+                      pw.Text(
+                        'GSTIN: ${order.gstNumber}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         pw.SizedBox(height: 18),
         pw.Text(
           'Order Items:',
-          style: pw.TextStyle(
-            fontSize: 13,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 8),
         if (order.items.isEmpty)
@@ -994,10 +1006,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
           )
         else
           pw.Table(
-            border: pw.TableBorder.all(
-              color: PdfColors.grey300,
-              width: 0.6,
-            ),
+            border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
             columnWidths: {
               0: const pw.FixedColumnWidth(40),
               1: const pw.FlexColumnWidth(3),
@@ -1036,9 +1045,14 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              _summaryLine('Subtotal (Excl. of all taxes):', _rs(subtotal)),
+              _summaryLine('Cart Total (Excl. of all taxes):', _rs(subtotal)),
               _summaryLine('GST:', _rs(gstAmount)),
               _summaryLine('Shipping Charges:', _rs(shipping)),
+              if (order.couponAmount != null && order.couponAmount! > 0)
+                _summaryLine(
+                  'Coupon Discount:',
+                  '-${_rs(order.couponAmount!)}',
+                ),
               pw.SizedBox(height: 6),
               pw.Row(
                 mainAxisSize: pw.MainAxisSize.min,
@@ -1066,10 +1080,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
         pw.SizedBox(height: 14),
         pw.Text(
           'Payment Information:',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 12,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
         ),
         pw.SizedBox(height: 6),
         pw.Text('Payment Method: ${_paymentLabel(order.paymentMethod)}'),
@@ -1078,10 +1089,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
           pw.SizedBox(height: 12),
           pw.Text(
             'Scan to pay (UPI):',
-            style: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 12,
-            ),
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
           ),
           pw.SizedBox(height: 8),
           pw.Center(
@@ -1090,11 +1098,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: PdfColors.grey300, width: 0.6),
               ),
-              child: pw.Image(
-                pw.MemoryImage(qrBytes),
-                width: 120,
-                height: 120,
-              ),
+              child: pw.Image(pw.MemoryImage(qrBytes), width: 120, height: 120),
             ),
           ),
           pw.SizedBox(height: 6),
@@ -1150,10 +1154,7 @@ pw.Widget _detailLine(String label, String value, {bool boldValue = false}) {
         children: [
           pw.TextSpan(
             text: '$label ',
-            style: pw.TextStyle(
-              fontSize: 12,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
           ),
           pw.TextSpan(
             text: value,
@@ -1173,10 +1174,7 @@ pw.Widget _tableHeaderCell(String value) {
     padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 6),
     child: pw.Text(
       value,
-      style: pw.TextStyle(
-        fontWeight: pw.FontWeight.bold,
-        fontSize: 11,
-      ),
+      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
     ),
   );
 }
@@ -1184,10 +1182,7 @@ pw.Widget _tableHeaderCell(String value) {
 pw.Widget _tableCell(String value) {
   return pw.Padding(
     padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-    child: pw.Text(
-      value,
-      style: const pw.TextStyle(fontSize: 11),
-    ),
+    child: pw.Text(value, style: const pw.TextStyle(fontSize: 11)),
   );
 }
 
@@ -1199,18 +1194,12 @@ pw.Widget _summaryLine(String label, String value) {
       children: [
         pw.Text(
           label,
-          style: pw.TextStyle(
-            fontSize: 12,
-            color: PdfColors.grey700,
-          ),
+          style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
         ),
         pw.SizedBox(width: 6),
         pw.Text(
           value,
-          style: const pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
       ],
     ),
@@ -1219,8 +1208,7 @@ pw.Widget _summaryLine(String label, String value) {
 
 double _calculateGstFromItems(List<CartItem> items) {
   final total = items.fold<double>(0, (sum, item) {
-    final itemTotal =
-        item.unitPriceForQuantity(item.quantity) * item.quantity;
+    final itemTotal = item.unitPriceForQuantity(item.quantity) * item.quantity;
     final gstAmount = (itemTotal * item.gstPercentage) / 100;
     return sum + gstAmount;
   });
@@ -1269,10 +1257,11 @@ Future<Uint8List?> _buildQrBytes(String data) async {
   return byteData.buffer.asUint8List();
 }
 
-String _shortOrderId(String id) {
-  if (id.isEmpty) return '—';
-  final trimmed = id.length > 8 ? id.substring(0, 8) : id;
-  return trimmed.toUpperCase();
+String _displayOrderId(OrderModel order) {
+  final rawOrderId = order.orderNumber?.isNotEmpty == true
+      ? order.orderNumber!
+      : order.id;
+  return formatOrderId(rawOrderId);
 }
 
 String _statusText(String status) {
