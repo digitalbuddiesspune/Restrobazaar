@@ -1,5 +1,48 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+
+const VENDOR_BASE = '/vendor/dashboard';
+
+// Parse pathname to get activeTab and optional IDs (orderId, productId for edit)
+function useVendorRoute() {
+  const location = useLocation();
+  const params = useParams();
+  const path = (location.pathname || '').replace(/^\/vendor\/dashboard\/?/, '') || 'overview';
+  const segments = path.split('/').filter(Boolean);
+
+  const activeTab = useMemo(() => {
+    if (!segments[0]) return 'overview';
+    if (segments[0] === 'overview') return 'overview';
+    if (segments[0] === 'products') {
+      if (segments[1] === 'add') return 'add-product';
+      return 'products';
+    }
+    if (segments[0] === 'catalog') return 'catalog';
+    if (segments[0] === 'orders') return 'orders';
+    if (segments[0] === 'unpaid-customers') return 'unpaid-customers';
+    if (segments[0] === 'order-records') return 'order-records';
+    if (segments[0] === 'create-order') return 'create-order';
+    if (segments[0] === 'create-user') return 'create-user';
+    if (segments[0] === 'coupons') {
+      if (segments[1] === 'add') return 'add-coupon';
+      return 'coupons';
+    }
+    if (segments[0] === 'account') return 'account';
+    return 'overview';
+  }, [path, segments]);
+
+  const selectedOrderId = useMemo(() => {
+    if (activeTab === 'orders' && segments[0] === 'orders' && segments[1]) return segments[1];
+    return null;
+  }, [activeTab, segments]);
+
+  const editingProductId = useMemo(() => {
+    if (activeTab === 'add-product' && segments[0] === 'products' && segments[1] === 'add' && segments[2]) return segments[2];
+    return null;
+  }, [activeTab, segments]);
+
+  return { activeTab, selectedOrderId, editingProductId, segments };
+}
 import Sidebar from '../components/vendor/Sidebar';
 import Header from '../components/vendor/Header';
 import StatsCard from '../components/vendor/StatsCard';
@@ -34,7 +77,8 @@ import { orderService } from '../services/vendorService';
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const { activeTab, selectedOrderId: selectedOrderIdFromRoute, editingProductId } = useVendorRoute();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [orderStatusFilter, setOrderStatusFilter] = useState(null);
@@ -43,8 +87,31 @@ const VendorDashboard = () => {
   const [ordersPage, setOrdersPage] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [editingCoupon, setEditingCoupon] = useState(null);
+
+  const selectedOrderId = selectedOrderIdFromRoute;
+
+  const navigateToTab = (tab, options = {}) => {
+    if (tab === 'overview') navigate(VENDOR_BASE);
+    else if (tab === 'products') navigate(`${VENDOR_BASE}/products`);
+    else if (tab === 'catalog') navigate(`${VENDOR_BASE}/catalog`);
+    else if (tab === 'add-product') {
+      if (options.productId) navigate(`${VENDOR_BASE}/products/add/${options.productId}`);
+      else navigate(`${VENDOR_BASE}/products/add`);
+    }
+    else if (tab === 'orders') {
+      if (options.orderId) navigate(`${VENDOR_BASE}/orders/${options.orderId}`);
+      else navigate(`${VENDOR_BASE}/orders`);
+    }
+    else if (tab === 'unpaid-customers') navigate(`${VENDOR_BASE}/unpaid-customers`);
+    else if (tab === 'order-records') navigate(`${VENDOR_BASE}/order-records`);
+    else if (tab === 'create-order') navigate(`${VENDOR_BASE}/create-order`);
+    else if (tab === 'create-user') navigate(`${VENDOR_BASE}/create-user`);
+    else if (tab === 'coupons') navigate(`${VENDOR_BASE}/coupons`);
+    else if (tab === 'add-coupon') navigate(`${VENDOR_BASE}/coupons/add`);
+    else if (tab === 'account') navigate(`${VENDOR_BASE}/account`);
+    else navigate(VENDOR_BASE);
+  };
   const [coupons, setCoupons] = useState([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
   const itemsPerPage = 10;
@@ -53,10 +120,8 @@ const VendorDashboard = () => {
   const [monthlyOrdersData, setMonthlyOrdersData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Pending Orders state
+  // Unpaid orders (all in DB with paymentStatus unpaid) for overview
   const [pendingOrders, setPendingOrders] = useState([]);
-  const [pendingStartDate, setPendingStartDate] = useState('');
-  const [pendingEndDate, setPendingEndDate] = useState('');
 
   // Filter and Sort states for My Products
   const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
@@ -404,6 +469,18 @@ const VendorDashboard = () => {
     }
   }, [vendorProductsError, vendorProductsLoading, navigate]);
 
+  // Sync editingProduct from URL when editing product by id
+  useEffect(() => {
+    if (activeTab === 'add-product' && editingProductId && vendorProducts.length) {
+      const product = vendorProducts.find((p) => (p._id || p.id) === editingProductId);
+      setEditingProduct(product || null);
+    } else if (activeTab === 'add-product' && !editingProductId) {
+      setEditingProduct(null);
+    } else if (activeTab !== 'add-product') {
+      setEditingProduct(null);
+    }
+  }, [editingProductId, activeTab, vendorProducts]);
+
   // Handlers
   const handleLogout = async () => {
     // Cookie clear kara backend logout endpoint kadun
@@ -430,7 +507,7 @@ const VendorDashboard = () => {
         await createMutation.mutateAsync(formData);
       }
       setEditingProduct(null);
-      setActiveTab('products');
+      navigateToTab('products');
       setSearchQuery('');
     } catch (error) {
       console.error('Error saving product:', error);
@@ -440,7 +517,7 @@ const VendorDashboard = () => {
 
   const handleEdit = (product) => {
     setEditingProduct(product);
-    setActiveTab('add-product');
+    navigateToTab('add-product', { productId: product._id || product.id });
   };
 
   const handleDelete = async (productId) => {
@@ -466,7 +543,7 @@ const VendorDashboard = () => {
       productId: product._id,
       cityId: vendorCityId || '',
     });
-    setActiveTab('add-product');
+    navigateToTab('add-product');
   };
 
   const isProductInCatalog = (productId) => {
@@ -477,7 +554,7 @@ const VendorDashboard = () => {
 
   const handleCancel = () => {
     setEditingProduct(null);
-    setActiveTab('products');
+    navigateToTab('products');
   };
 
   const handleUpdateOrderStatus = async (orderId, status) => {
@@ -567,21 +644,15 @@ const VendorDashboard = () => {
     }
   }, [selectedYear, activeTab]);
 
-  // Fetch pending orders for vendor
-  const fetchPendingOrders = async (startDate, endDate) => {
+  // Fetch all unpaid orders (paymentStatus: pending) for vendor - no date filter
+  const fetchPendingOrders = async () => {
     try {
-      const params = {
-        orderStatus: 'pending',
-        limit: 100,
-      };
-
-      if (startDate) params.startDate = new Date(startDate).toISOString();
-      if (endDate) params.endDate = new Date(new Date(endDate).setHours(23, 59, 59, 999)).toISOString();
-
-      const response = await orderService.getVendorOrders(params);
+      const response = await orderService.getVendorOrders({
+        paymentStatus: 'pending',
+        limit: 1000,
+      });
 
       if (response?.success) {
-        // Sort by createdAt descending (newest first)
         const sortedOrders = (response.data || []).sort((a, b) => {
           const dateA = new Date(a.createdAt || a.order_date_and_time || 0);
           const dateB = new Date(b.createdAt || b.order_date_and_time || 0);
@@ -590,32 +661,26 @@ const VendorDashboard = () => {
         setPendingOrders(sortedOrders);
       }
     } catch (err) {
-      console.error("Error fetching pending orders:", err);
+      console.error("Error fetching unpaid orders:", err);
       setPendingOrders([]);
     }
   };
 
-  // Fetch pending orders when filters change or overview tab is active
+  // Fetch all unpaid orders when overview tab is active
   useEffect(() => {
     if (activeTab === 'overview') {
-      fetchPendingOrders(pendingStartDate, pendingEndDate);
+      fetchPendingOrders();
     }
-    // Clear order status filter when navigating away from orders tab
     if (activeTab !== 'orders') {
       setOrderStatusFilter(null);
     }
-  }, [pendingStartDate, pendingEndDate, activeTab]);
-
-  const handleClearPendingFilters = () => {
-    setPendingStartDate('');
-    setPendingEndDate('');
-  };
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar 
         activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+        navigateToTab={navigateToTab} 
         onLogout={handleLogout}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -638,7 +703,7 @@ const VendorDashboard = () => {
           {activeTab !== 'overview' && !selectedOrderId && activeTab !== 'add-product' && (
             <div className="mb-4">
               <button
-                onClick={() => setActiveTab('overview')}
+                onClick={() => navigateToTab('overview')}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -655,7 +720,7 @@ const VendorDashboard = () => {
               <button
                 onClick={() => {
                   setEditingProduct(null);
-                  setActiveTab('products');
+                  navigateToTab('products');
                 }}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
               >
@@ -667,7 +732,7 @@ const VendorDashboard = () => {
               <button
                 onClick={() => {
                   setEditingProduct(null);
-                  setActiveTab('catalog');
+                  navigateToTab('catalog');
                 }}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
               >
@@ -702,7 +767,7 @@ const VendorDashboard = () => {
                   comparisonText="vs yesterday"
                   onClick={() => {
                     setOrderStatusFilter('cancelled');
-                    setActiveTab('orders');
+                    navigateToTab('orders');
                   }}
                 />
                 <StatsCard
@@ -720,7 +785,7 @@ const VendorDashboard = () => {
                   comparisonText="vs yesterday"
                   onClick={() => {
                     setOrderStatusFilter(null);
-                    setActiveTab('orders');
+                    navigateToTab('orders');
                   }}
                 />
                 <StatsCard
@@ -737,7 +802,7 @@ const VendorDashboard = () => {
                   comparisonText="vs yesterday"
                   onClick={() => {
                     setOrderStatusFilter('delivered');
-                    setActiveTab('orders');
+                    navigateToTab('orders');
                   }}
                 />
                 <StatsCard
@@ -754,7 +819,7 @@ const VendorDashboard = () => {
                   comparisonText="vs yesterday"
                   onClick={() => {
                     setOrderStatusFilter('pending');
-                    setActiveTab('orders');
+                    navigateToTab('orders');
                   }}
                 />
               </div>
@@ -771,7 +836,7 @@ const VendorDashboard = () => {
                 yAxisDomain={[0, 50]}
               />
 
-              {/* Pending Orders Table */}
+              {/* Unpaid Orders Table - all orders in DB with payment status unpaid */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
                 <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
@@ -781,40 +846,13 @@ const VendorDashboard = () => {
                       </svg>
                     </div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-bold text-gray-800">Pending Orders</h2>
+                      <h2 className="text-lg font-bold text-gray-800">Unpaid Orders</h2>
                       <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">
                         {pendingOrders.length}
                       </span>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto mt-4 md:mt-0">
-                    {/* Date Filters */}
-                    <input
-                      type="date"
-                      value={pendingStartDate}
-                      onChange={(e) => setPendingStartDate(e.target.value)}
-                      className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
-                      placeholder="Start Date"
-                    />
-                    <span className="hidden sm:inline text-gray-400">-</span>
-                    <input
-                      type="date"
-                      value={pendingEndDate}
-                      onChange={(e) => setPendingEndDate(e.target.value)}
-                      className="w-full sm:w-auto px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
-                      placeholder="End Date"
-                    />
-
-                    {(pendingStartDate || pendingEndDate) && (
-                      <button
-                        onClick={handleClearPendingFilters}
-                        className="col-span-2 sm:col-span-1 px-3 py-1.5 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200 w-full sm:w-auto"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
+                  <p className="text-sm text-gray-500">All orders with unpaid payment status</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -833,15 +871,18 @@ const VendorDashboard = () => {
                       {pendingOrders.length === 0 ? (
                         <tr>
                           <td colSpan="7" className="px-6 py-8 text-center text-xs text-gray-500">
-                            No pending orders found
+                            No unpaid orders found
                           </td>
                         </tr>
                       ) : (
-                        pendingOrders.map((order) => (
-                          <tr key={order._id || order.order_id} className="hover:bg-gray-50 transition-colors cursor-pointer even:bg-gray-50" onClick={() => {
-                            setSelectedOrderId(order._id || order.order_id);
-                            setActiveTab('orders');
-                          }}>
+                        pendingOrders.map((order) => {
+                          // Use _id for API calls (MongoDB ObjectId), orderNumber is just for display
+                          const orderId = order._id || order.order_id || order.id;
+                          const displayOrderId = order.orderNumber || order._id || order.order_id;
+                          return (
+                            <tr key={orderId} className="hover:bg-gray-50 transition-colors cursor-pointer even:bg-gray-50" onClick={() => {
+                              navigateToTab('orders', { orderId });
+                            }}>
                             <td className="px-4 py-2 whitespace-nowrap">
                               <span className="text-sm font-medium text-gray-900 leading-tight">#{(() => {
                                 const orderId = order.order_id || order._id || 'N/A';
@@ -903,7 +944,7 @@ const VendorDashboard = () => {
                 <button
                   onClick={() => {
                     setEditingProduct(null);
-                    setActiveTab('add-product');
+                    navigateToTab('add-product');
                   }}
                   className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
@@ -1184,10 +1225,7 @@ const VendorDashboard = () => {
               <UnpaidCustomersTable
                 orders={unpaidOrders}
                 isLoading={unpaidOrdersLoading}
-                onOrderClick={(orderId) => {
-                  setSelectedOrderId(orderId);
-                  setActiveTab('orders');
-                }}
+                onOrderClick={(orderId) => navigateToTab('orders', { orderId })}
               />
             </div>
           )}
@@ -1232,7 +1270,7 @@ const VendorDashboard = () => {
                 <OrderDetails
                   orderId={selectedOrderId}
                   onBack={() => {
-                    setSelectedOrderId(null);
+                    navigateToTab('orders');
                     setOrderStatusFilter(null);
                   }}
                   onUpdateStatus={handleUpdateOrderStatus}
@@ -1251,7 +1289,8 @@ const VendorDashboard = () => {
                   currentPage={ordersPage}
                   totalPages={ordersTotalPages}
                   onPageChange={setOrdersPage}
-                  onOrderClick={setSelectedOrderId}
+                  onOrderClick={(id) => navigateToTab('orders', { orderId: id })}
+                  allOrders={allOrders}
                 />
               )}
             </div>
@@ -1291,7 +1330,7 @@ const VendorDashboard = () => {
                   <button
                     onClick={() => {
                       setEditingCoupon({});
-                      setActiveTab('add-coupon');
+                      navigateToTab('add-coupon');
                     }}
                     className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                   >
@@ -1313,7 +1352,7 @@ const VendorDashboard = () => {
                       }
                       await fetchCoupons();
                       setEditingCoupon(null);
-                      setActiveTab('coupons');
+                      navigateToTab('coupons');
                     } catch (error) {
                       alert(error?.response?.data?.message || 'Failed to save coupon');
                     } finally {
@@ -1322,7 +1361,7 @@ const VendorDashboard = () => {
                   }}
                   onCancel={() => {
                     setEditingCoupon(null);
-                    setActiveTab('coupons');
+                    navigateToTab('coupons');
                   }}
                   isLoading={couponsLoading}
                 />
@@ -1332,7 +1371,7 @@ const VendorDashboard = () => {
                   isLoading={couponsLoading}
                   onEdit={(coupon) => {
                     setEditingCoupon(coupon);
-                    setActiveTab('add-coupon');
+                    navigateToTab('add-coupon');
                   }}
                   onDelete={async (couponId) => {
                     try {
@@ -1365,7 +1404,7 @@ const VendorDashboard = () => {
                 <button
                   onClick={() => {
                     setEditingCoupon(null);
-                    setActiveTab('coupons');
+                    navigateToTab('coupons');
                   }}
                   className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                 >
@@ -1385,7 +1424,7 @@ const VendorDashboard = () => {
                     }
                     await fetchCoupons();
                     setEditingCoupon(null);
-                    setActiveTab('coupons');
+                    navigateToTab('coupons');
                   } catch (error) {
                     alert(error?.response?.data?.message || 'Failed to save coupon');
                   } finally {
@@ -1394,7 +1433,7 @@ const VendorDashboard = () => {
                 }}
                 onCancel={() => {
                   setEditingCoupon(null);
-                  setActiveTab('coupons');
+                  navigateToTab('coupons');
                 }}
                 isLoading={couponsLoading}
               />

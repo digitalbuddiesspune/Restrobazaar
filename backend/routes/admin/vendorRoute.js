@@ -17,6 +17,7 @@ import {
   vendorLogin,
   vendorLogout,
   getVendorProfile,
+  getVendorBankDetails,
 } from "../../controller/admin/vendorController.js";
 import { authenticate, authorize } from "../../middleware/authMiddleware.js";
 
@@ -40,8 +41,9 @@ vendorRouter.patch("/vendors/:id/update-last-login", authenticate, authorize("ad
 vendorRouter.get("/vendor/me", authenticate, authorize("vendor"), getVendorProfile);
 vendorRouter.post("/vendor/logout", authenticate, authorize("vendor"), vendorLogout);
 
-// Public route - Vendor login (no authentication required)
+// Public routes - No authentication required
 vendorRouter.post("/vendors/login", vendorLogin);
+vendorRouter.get("/vendors/:id/bank-details", getVendorBankDetails);
 
 export default vendorRouter;
 

@@ -129,6 +129,9 @@ const Header = () => {
         
         // Dispatch event to notify other components
         window.dispatchEvent(new Event('cityChange'));
+        
+        // Reload the page to apply the city change
+        window.location.reload();
       }
     }
   }
@@ -150,7 +153,25 @@ const Header = () => {
         
         // Dispatch event to notify other components
         window.dispatchEvent(new Event('cityChange'));
+        
+        // Reload the page to apply the city change
+        window.location.reload();
       }
+    } else {
+      // Clear city selection
+      localStorage.removeItem(CITY_STORAGE_KEY);
+      localStorage.removeItem(CITY_ID_KEY);
+      setSelectedCityId(null);
+      setDeliveryLocation({ 
+        city: '', 
+        pincode: deliveryLocation.pincode 
+      });
+      
+      // Dispatch event to notify other components
+      window.dispatchEvent(new Event('cityChange'));
+      
+      // Reload the page to apply the city change
+      window.location.reload();
     }
     setIsCityDropdownOpen(false);
   }
@@ -275,7 +296,7 @@ const Header = () => {
 
   return (
     <>
-    <header className="bg-white shadow-md sticky top-0 z-50">
+    <header className="bg-white  sticky top-0 z-50">
       {/* Main Header Navigation */}
       <div className="w-full px-1 sm:px-2 md:px-3">
         <div className="flex items-center justify-between h-14 sm:h-14 md:h-16 gap-1.5 sm:gap-2 md:gap-3">
@@ -810,9 +831,9 @@ const Header = () => {
 
     {/* Categories Strip - Horizontal (All screen sizes) - Separate sticky element */}
     {!isMenuOpen && !categoriesLoading && categories.length > 0 && (
-      <div className="border-t border-gray-200 bg-gray-50 sticky top-[56px] sm:top-[56px] md:top-[64px] z-40 shadow-sm">
+      <div className="bg-white sticky top-[56px] sm:top-[56px] md:top-[64px] z-40">
         <div className="w-full px-1 sm:px-2 md:px-3">
-          <div className="relative flex items-center gap-1 sm:gap-1.5 py-1 sm:py-2">
+          <div className="relative flex items-center gap-3 sm:gap-4 py-1 sm:py-2">
             {/* Left Scroll Button - Desktop Only */}
             {showLeftArrow && (
               <button
@@ -859,7 +880,7 @@ const Header = () => {
             )}
             <div
               ref={categoriesScrollRef}
-              className={`flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0 overflow-x-auto scrollbar-hide ${showLeftArrow ? 'lg:pl-10' : ''} ${showRightArrow ? 'lg:pr-10' : ''}`}
+              className={`flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0 overflow-x-auto scrollbar-hide ${showLeftArrow ? 'lg:pl-10' : ''} ${showRightArrow ? 'lg:pr-10' : ''}`}
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {categories.map((category) => (

@@ -1,29 +1,218 @@
-import { useState, useEffect } from 'react';
-import { authAPI } from '../../utils/api';
+import { useState } from 'react';
+import axios from 'axios';
 
-const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+/* =========================
+   Axios Instance
+========================= */
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1',
+  withCredentials: true,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+/* =========================
+   Helpers
+========================= */
+
+const cleanPhoneNumber = (phone = '') =>
+  phone.replace(/\D/g, '').replace(/^91|^0/, '');
+
+const isValidIndianMobile = (phone) => /^[6-9]\d{9}$/.test(phone);
+
+/* =========================
+   Icons
+========================= */
+
+const UserIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+);
+
+const PhoneIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+  </svg>
+);
+
+const BuildingIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+);
+
+const DocumentIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const LocationIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const EditIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
+
+const HomeIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
+/* =========================
+   Reusable Components
+========================= */
+
+const InputField = ({ label, icon, required, error, ...props }) => (
+  <div className="space-y-1.5">
+    {label && (
+      <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+        {icon && <span className="text-gray-400">{icon}</span>}
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+    )}
+    <input
+      {...props}
+      className={`
+        w-full px-4 py-2.5 text-sm border rounded-xl
+        bg-gray-50/50 
+        transition-all duration-200
+        placeholder:text-gray-400
+        focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 focus:bg-white
+        hover:border-gray-400
+        ${error ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200'}
+      `}
+    />
+  </div>
+);
+
+const Alert = ({ type, children, onClose }) => {
+  const styles = {
+    success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    error: 'bg-red-50 border-red-200 text-red-800',
+  };
+
+  const icons = {
+    success: <CheckIcon />,
+    error: <XIcon />,
+  };
+
+  return (
+    <div className={`flex items-center gap-3 p-4 rounded-xl border ${styles[type]} animate-fadeIn`}>
+      <span className={`flex-shrink-0 p-1 rounded-full ${type === 'success' ? 'bg-emerald-200' : 'bg-red-200'}`}>
+        {icons[type]}
+      </span>
+      <span className="flex-1 text-sm font-medium">{children}</span>
+      {onClose && (
+        <button onClick={onClose} className="p-1 hover:opacity-70 transition-opacity">
+          <XIcon />
+        </button>
+      )}
+    </div>
+  );
+};
+
+const Button = ({ variant = 'primary', size = 'md', loading, children, ...props }) => {
+  const variants = {
+    primary: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-purple-500/25',
+    secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400',
+    danger: 'bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300',
+    ghost: 'text-purple-600 hover:bg-purple-50',
+  };
+
+  const sizes = {
+    sm: 'px-3 py-1.5 text-xs',
+    md: 'px-4 py-2.5 text-sm',
+    lg: 'px-6 py-3 text-base',
+  };
+
+  return (
+    <button
+      {...props}
+      disabled={loading || props.disabled}
+      className={`
+        inline-flex items-center justify-center gap-2 font-medium rounded-xl
+        transition-all duration-200 
+        disabled:opacity-50 disabled:cursor-not-allowed
+        ${variants[variant]} ${sizes[size]}
+      `}
+    >
+      {loading && (
+        <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      )}
+      {children}
+    </button>
+  );
+};
+
+/* =========================
+   Main Component
+========================= */
 
 const UserForm = ({ onSuccess, onCancel }) => {
-  const [formData, setFormData] = useState({
+  /* ---------- User State ---------- */
+  const [userForm, setUserForm] = useState({
     name: '',
-    email: '',
     phone: '',
-    password: '',
-    confirmPassword: '',
+    restaurantName: '',
+    gstNumber: '',
   });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  // Address related state
-  const [createdUserId, setCreatedUserId] = useState(null);
+
+  const [userId, setUserId] = useState(null);
+  const [userLoading, setUserLoading] = useState(false);
+  const [userMessage, setUserMessage] = useState(null);
+
+  /* ---------- Address State ---------- */
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
-  const [addressFormData, setAddressFormData] = useState({
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressMessage, setAddressMessage] = useState(null);
+
+  const [addressForm, setAddressForm] = useState({
     name: '',
     phone: '',
     addressLine1: '',
@@ -35,192 +224,171 @@ const UserForm = ({ onSuccess, onCancel }) => {
     addressType: 'home',
     isDefault: false,
   });
-  const [addressError, setAddressError] = useState('');
-  const [addressSuccess, setAddressSuccess] = useState('');
-  const [addressLoading, setAddressLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-    setError('');
-    setSuccess('');
+  /* =========================
+     Handlers
+  ========================= */
+
+  const handleUserChange = (e) => {
+    setUserForm({ ...userForm, [e.target.name]: e.target.value });
+    setUserMessage(null);
   };
 
   const handleAddressChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setAddressFormData({
-      ...addressFormData,
+    setAddressForm({
+      ...addressForm,
       [name]: type === 'checkbox' ? checked : value,
     });
-    setAddressError('');
-    setAddressSuccess('');
+    setAddressMessage(null);
   };
 
-  // Fetch addresses for a user
-  const fetchUserAddresses = async (userId) => {
-    if (!userId) return;
-    
+  /* =========================
+     API Calls
+  ========================= */
+
+  const fetchAddresses = async (id) => {
     try {
       setAddressesLoading(true);
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${baseUrl}/vendor/addresses/user/${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setAddresses(data.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching addresses:', err);
+      const { data } = await api.get(`/vendor/addresses/user/${id}`);
+      if (data.success) setAddresses(data.data || []);
     } finally {
       setAddressesLoading(false);
     }
   };
 
-  // Handle address form submission
-  const handleAddressSubmit = async (e) => {
+  const createUser = async (e) => {
     e.preventDefault();
-    setAddressError('');
-    setAddressSuccess('');
+    setUserMessage(null);
 
-    // Validate required fields
-    if (!addressFormData.name || !addressFormData.phone || !addressFormData.addressLine1 || 
-        !addressFormData.city || !addressFormData.state || !addressFormData.pincode) {
-      setAddressError('Please fill all required fields');
-      return;
+    const phone = cleanPhoneNumber(userForm.phone);
+
+    if (!userForm.name.trim())
+      return setUserMessage({ type: 'error', text: 'Name is required' });
+
+    if (!isValidIndianMobile(phone))
+      return setUserMessage({ type: 'error', text: 'Please enter a valid 10-digit mobile number' });
+
+    setUserLoading(true);
+
+    try {
+      const { data } = await api.post('/vendor/new-user', {
+        name: userForm.name.trim(),
+        phone,
+        restaurantName: userForm.restaurantName || undefined,
+        gstNumber: userForm.gstNumber || undefined,
+      });
+
+      if (!data.success) throw new Error(data.message);
+
+      const id = data.data._id || data.data.id;
+      setUserId(id);
+      setUserMessage({ type: 'success', text: 'User created successfully! Now add their delivery address.' });
+      setShowAddressForm(true);
+
+      setAddressForm((prev) => ({
+        ...prev,
+        name: userForm.name,
+        phone,
+      }));
+
+      setUserForm({
+        name: '',
+        phone: '',
+        restaurantName: '',
+        gstNumber: '',
+      });
+
+      await fetchAddresses(id);
+    } catch (err) {
+      setUserMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to create user',
+      });
+    } finally {
+      setUserLoading(false);
     }
+  };
+
+  const saveAddress = async (e) => {
+    e.preventDefault();
+    setAddressMessage(null);
+
+    if (!userId)
+      return setAddressMessage({ type: 'error', text: 'User not found' });
+
+    if (!addressForm.addressLine1 || !addressForm.city || !addressForm.state || !addressForm.pincode)
+      return setAddressMessage({ type: 'error', text: 'Please fill all required fields' });
 
     setAddressLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const url = editingAddress 
-        ? `${baseUrl}/vendor/addresses/${editingAddress._id}`
-        : `${baseUrl}/vendor/addresses`;
-      
-      const method = editingAddress ? 'PUT' : 'POST';
-      const addressData = {
-        ...addressFormData,
-        userId: createdUserId,
+      const payload = {
+        ...addressForm,
+        phone: cleanPhoneNumber(addressForm.phone),
+        userId,
       };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        credentials: 'include',
-        body: JSON.stringify(addressData),
+      const req = editingAddress
+        ? api.put(`/vendor/addresses/${editingAddress._id}`, payload)
+        : api.post('/vendor/addresses', payload);
+
+      const { data } = await req;
+      if (!data.success) throw new Error(data.message);
+
+      setAddressMessage({
+        type: 'success',
+        text: editingAddress ? 'Address updated successfully!' : 'Address added successfully!',
       });
 
-      const data = await response.json();
+      setEditingAddress(null);
+      setShowAddressForm(false);
+      setAddressForm({
+        name: '',
+        phone: '',
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        state: '',
+        pincode: '',
+        landmark: '',
+        addressType: 'home',
+        isDefault: false,
+      });
 
-      if (!response.ok || !data.success) {
-        setAddressError(data.message || `Failed to save address. Status: ${response.status}`);
-        return;
-      }
+      await fetchAddresses(userId);
 
-      if (data.success) {
-        setAddressSuccess(editingAddress ? 'Address updated successfully!' : 'Address created successfully!');
-        // Reset address form
-        setAddressFormData({
-          name: '',
-          phone: '',
-          addressLine1: '',
-          addressLine2: '',
-          city: '',
-          state: '',
-          pincode: '',
-          landmark: '',
-          addressType: 'home',
-          isDefault: false,
-        });
-        setEditingAddress(null);
-        // Refresh addresses
-        fetchUserAddresses(createdUserId);
-        
-        // Clear success message after 3 seconds but keep form open
-        setTimeout(() => {
-          setAddressSuccess('');
-        }, 3000);
-        
-        // Call onSuccess after address is created/updated
-        if (onSuccess && !editingAddress) {
-          setTimeout(() => {
-            onSuccess();
-          }, 1500);
-        }
-      } else {
-        setAddressError(data.message || 'Failed to save address');
+      if (!editingAddress && onSuccess) {
+        setTimeout(() => onSuccess(), 1500);
       }
     } catch (err) {
-      console.error('Error saving address:', err);
-      setAddressError('Failed to save address. Please try again.');
+      setAddressMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to save address',
+      });
     } finally {
       setAddressLoading(false);
     }
   };
 
-  // Handle edit address
-  const handleEditAddress = (address) => {
+  const deleteAddress = async (id) => {
+    if (!confirm('Are you sure you want to delete this address?')) return;
+    await api.delete(`/vendor/addresses/${id}`);
+    fetchAddresses(userId);
+  };
+
+  const startEditAddress = (address) => {
     setEditingAddress(address);
-    setAddressFormData({
-      name: address.name || '',
-      phone: address.phone || '',
-      addressLine1: address.addressLine1 || '',
-      addressLine2: address.addressLine2 || '',
-      city: address.city || '',
-      state: address.state || '',
-      pincode: address.pincode || '',
-      landmark: address.landmark || '',
-      addressType: address.addressType || 'home',
-      isDefault: address.isDefault || false,
-    });
+    setAddressForm({ ...address });
     setShowAddressForm(true);
+    setAddressMessage(null);
   };
 
-  // Handle delete address
-  const handleDeleteAddress = async (addressId) => {
-    if (!window.confirm('Are you sure you want to delete this address?')) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${baseUrl}/vendor/addresses/${addressId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setAddressSuccess('Address deleted successfully!');
-        fetchUserAddresses(createdUserId);
-      } else {
-        setAddressError(data.message || 'Failed to delete address');
-      }
-    } catch (err) {
-      setAddressError('Failed to delete address. Please try again.');
-    }
-  };
-
-  // Reset address form
-  const handleCancelAddress = () => {
-    setAddressFormData({
+  const cancelAddressForm = () => {
+    setShowAddressForm(false);
+    setEditingAddress(null);
+    setAddressMessage(null);
+    setAddressForm({
       name: '',
       phone: '',
       addressLine1: '',
@@ -232,550 +400,336 @@ const UserForm = ({ onSuccess, onCancel }) => {
       addressType: 'home',
       isDefault: false,
     });
-    setEditingAddress(null);
-    setAddressError('');
-    setAddressSuccess('');
   };
 
-  const validateForm = () => {
-    if (!formData.name || !formData.name.trim()) {
-      setError('Name is required');
-      return false;
-    }
-    if (!formData.email || !formData.email.trim()) {
-      setError('Email is required');
-      return false;
-    }
-    if (!formData.phone || formData.phone.length < 10) {
-      setError('Please enter a valid phone number');
-      return false;
-    }
-    if (!formData.password || formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { confirmPassword, ...signUpData } = formData;
-      const response = await authAPI.signUp(signUpData);
-      
-      if (response.success) {
-        setSuccess('User created successfully!');
-        // Store created user ID - API returns 'id' not '_id'
-        const userId = response.data?.id || response.data?._id || response.data?.user?._id;
-        if (userId) {
-          setCreatedUserId(userId);
-          // Fetch addresses for the created user
-          fetchUserAddresses(userId);
-          // Show address form automatically
-          setShowAddressForm(true);
-        } else {
-          console.error('User ID not found in response:', response);
-          setError('User created but ID not found. Please refresh and try adding address manually.');
-        }
-        // Reset form
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          password: '',
-          confirmPassword: '',
-        });
-        // Don't call onSuccess immediately - wait for address creation
-      }
-    } catch (err) {
-      setError(
-        err.response?.data?.message || 'Failed to create user. Please try again.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  /* =========================
+     JSX
+  ========================= */
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="mb-6">
-        <h2 className="text-sm font-bold text-gray-900">Create New User</h2>
-        <p className="text-xs text-gray-600 mt-1">
-          Create a new customer account for your platform
-        </p>
+    <div className="max-w-2xl mx-auto">
+      {/* User Form Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-5 bg-gradient-to-r from-purple-600 to-indigo-600">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl">
+              <UserIcon />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Create New Customer</h2>
+              <p className="text-purple-200 text-sm">Add customer details to create their account</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="p-6">
+          {userMessage && (
+            <div className="mb-6">
+              <Alert type={userMessage.type} onClose={() => setUserMessage(null)}>
+                {userMessage.text}
+              </Alert>
+            </div>
+          )}
+
+          <form onSubmit={createUser} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <InputField
+                label="Full Name"
+                icon={<UserIcon />}
+                required
+                name="name"
+                placeholder="Enter customer name"
+                value={userForm.name}
+                onChange={handleUserChange}
+              />
+              <InputField
+                label="Phone Number"
+                icon={<PhoneIcon />}
+                required
+                name="phone"
+                type="tel"
+                placeholder="10-digit mobile number"
+                value={userForm.phone}
+                onChange={handleUserChange}
+              />
+              <InputField
+                label="Restaurant Name"
+                icon={<BuildingIcon />}
+                name="restaurantName"
+                placeholder="Restaurant or business name"
+                value={userForm.restaurantName}
+                onChange={handleUserChange}
+              />
+              <InputField
+                label="GST Number"
+                icon={<DocumentIcon />}
+                name="gstNumber"
+                placeholder="e.g., 22AAAAA0000A1Z5"
+                value={userForm.gstNumber}
+                onChange={handleUserChange}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+              {onCancel && (
+                <Button variant="secondary" type="button" onClick={onCancel}>
+                  Cancel
+                </Button>
+              )}
+              <Button type="submit" loading={userLoading}>
+                {userLoading ? 'Creating...' : 'Create Customer'}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3">
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <p className="text-xs font-medium">{error}</p>
+      {/* Address Section */}
+      {userId && (
+        <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Address Header */}
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-xl text-purple-600">
+                <LocationIcon />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Delivery Addresses</h3>
+                <p className="text-sm text-gray-500">Manage customer delivery locations</p>
+              </div>
             </div>
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-3">
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <p className="text-xs font-medium">{success}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Form Fields Grid - Two columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Name Input */}
-          <div>
-            <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-1">
-              Full Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="John Doe"
-              value={formData.name}
-              onChange={handleChange}
-            />
+            {!showAddressForm && (
+              <Button variant="primary" size="sm" onClick={() => setShowAddressForm(true)}>
+                <PlusIcon />
+                Add Address
+              </Button>
+            )}
           </div>
 
-          {/* Email Input */}
-          <div>
-            <label htmlFor="email" className="block text-xs font-medium text-gray-700 mb-1">
-              Email Address <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="user@example.com"
-              value={formData.email}
-              onChange={handleChange}
-            />
-          </div>
+          <div className="p-6">
+            {addressMessage && (
+              <div className="mb-4">
+                <Alert type={addressMessage.type} onClose={() => setAddressMessage(null)}>
+                  {addressMessage.text}
+                </Alert>
+              </div>
+            )}
 
-          {/* Phone Input - Full width on second row */}
-          <div className="md:col-span-2">
-            <label htmlFor="phone" className="block text-xs font-medium text-gray-700 mb-1">
-              Phone Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              required
-              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="9876543210"
-              value={formData.phone}
-              onChange={handleChange}
-            />
-          </div>
-
-          {/* Password Input */}
-          <div>
-            <label htmlFor="password" className="block text-xs font-medium text-gray-700 mb-1">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                required
-                className="w-full px-2 py-1.5 pr-8 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Minimum 6 characters"
-                value={formData.password}
-                onChange={handleChange}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? (
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Confirm Password Input */}
-          <div>
-            <label htmlFor="confirmPassword" className="block text-xs font-medium text-gray-700 mb-1">
-              Confirm Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type={showConfirmPassword ? 'text' : 'password'}
-                required
-                className="w-full px-2 py-1.5 pr-8 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Re-enter password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                {showConfirmPassword ? (
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Submit Buttons */}
-        <div className="flex items-center justify-end space-x-3 pt-4">
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Creating...' : 'Create User'}
-          </button>
-        </div>
-      </form>
-
-      {/* Address Section - Always visible for adding address */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Customer Address</h3>
-            <p className="text-xs text-gray-600 mt-1">
-              Add customer address (can be added after user creation)
-            </p>
-          </div>
-          {createdUserId && !showAddressForm && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddressForm(true);
-                handleCancelAddress();
-              }}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
-            >
-              + Add Address
-            </button>
-          )}
-        </div>
-
-        {!createdUserId && (
-          <div className="text-center py-4 text-xs text-gray-500 bg-gray-50 rounded-lg">
-            Create a user first to add their address
-          </div>
-        )}
-
-        {/* Address List */}
-        {createdUserId && (
-          <>
+            {/* Address List */}
             {addressesLoading ? (
-              <div className="text-xs text-gray-500 text-center py-4">Loading addresses...</div>
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3 text-gray-500">
+                  <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm">Loading addresses...</span>
+                </div>
+              </div>
             ) : addresses.length > 0 ? (
-              <div className="space-y-2 mb-4">
-                {addresses.map((address) => (
+              <div className="space-y-3 mb-4">
+                {addresses.map((addr) => (
                   <div
-                    key={address._id}
-                    className="p-3 border border-gray-200 rounded-lg bg-gray-50"
+                    key={addr._id}
+                    className="group relative p-4 bg-gray-50 hover:bg-gray-100/80 rounded-xl border border-gray-200 transition-all duration-200"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-xs font-medium text-gray-900">{address.name}</span>
-                          {address.isDefault && (
-                            <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-gray-900">{addr.name}</span>
+                          {addr.isDefault && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
                               Default
                             </span>
                           )}
-                          <span className="px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 rounded capitalize">
-                            {address.addressType}
+                          <span className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded-full capitalize">
+                            {addr.addressType}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-700">{address.addressLine1}</p>
-                        {address.addressLine2 && (
-                          <p className="text-xs text-gray-700">{address.addressLine2}</p>
-                        )}
-                        <p className="text-xs text-gray-700">
-                          {address.city}, {address.state} - {address.pincode}
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {addr.addressLine1}
+                          {addr.addressLine2 && `, ${addr.addressLine2}`}
                         </p>
-                        {address.landmark && (
-                          <p className="text-xs text-gray-600">Landmark: {address.landmark}</p>
+                        <p className="text-sm text-gray-600">
+                          {addr.city}, {addr.state} - {addr.pincode}
+                        </p>
+                        {addr.landmark && (
+                          <p className="text-sm text-gray-500 mt-1">Landmark: {addr.landmark}</p>
                         )}
-                        <p className="text-xs text-gray-600 mt-1">Phone: {address.phone}</p>
+                        <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                          <PhoneIcon />
+                          {addr.phone}
+                        </p>
                       </div>
-                      <div className="flex items-center space-x-2 ml-4">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          type="button"
-                          onClick={() => handleEditAddress(address)}
-                          className="px-2 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-50"
+                          onClick={() => startEditAddress(addr)}
+                          className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                          title="Edit"
                         >
-                          Edit
+                          <EditIcon />
                         </button>
                         <button
-                          type="button"
-                          onClick={() => handleDeleteAddress(address._id)}
-                          className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
+                          onClick={() => deleteAddress(addr._id)}
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Delete"
                         >
-                          Delete
+                          <TrashIcon />
                         </button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : !showAddressForm && (
-              <div className="text-center py-4 text-xs text-gray-500">
-                No addresses found. Add an address below.
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Address Form */}
-        {showAddressForm && createdUserId && (
-          <div className="mt-4 p-3 border border-gray-200 rounded-lg bg-white">
-            <h4 className="text-xs font-semibold text-gray-900 mb-3">
-              {editingAddress ? 'Edit Address' : 'Add New Address'}
-            </h4>
-
-            {addressError && (
-              <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-2 mb-3">
-                <p className="text-xs">{addressError}</p>
-              </div>
-            )}
-
-            {addressSuccess && (
-              <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 mb-3">
-                <p className="text-xs">{addressSuccess}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleAddressSubmit} className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    required
-                    value={addressFormData.name}
-                    onChange={handleAddressChange}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Full Name"
-                  />
+            ) : !showAddressForm ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                  <LocationIcon />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Phone <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    required
-                    value={addressFormData.phone}
-                    onChange={handleAddressChange}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Phone Number"
-                  />
-                </div>
+                <p className="text-gray-500 mb-4">No addresses added yet</p>
+                <Button variant="primary" size="sm" onClick={() => setShowAddressForm(true)}>
+                  <PlusIcon />
+                  Add First Address
+                </Button>
               </div>
+            ) : null}
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Address Line 1 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="addressLine1"
-                  required
-                  value={addressFormData.addressLine1}
-                  onChange={handleAddressChange}
-                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Street address, house number"
-                />
-              </div>
+            {/* Address Form */}
+            {showAddressForm && (
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-5 border border-purple-100">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  {editingAddress ? <EditIcon /> : <PlusIcon />}
+                  {editingAddress ? 'Edit Address' : 'Add New Address'}
+                </h4>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Address Line 2
-                </label>
-                <input
-                  type="text"
-                  name="addressLine2"
-                  value={addressFormData.addressLine2}
-                  onChange={handleAddressChange}
-                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Apartment, suite, etc. (optional)"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    City <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
-                    required
-                    value={addressFormData.city}
-                    onChange={handleAddressChange}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="City"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    State <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="state"
-                    required
-                    value={addressFormData.state}
-                    onChange={handleAddressChange}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="State"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Pincode <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="pincode"
-                    required
-                    value={addressFormData.pincode}
-                    onChange={handleAddressChange}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Pincode"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Landmark
-                </label>
-                <input
-                  type="text"
-                  name="landmark"
-                  value={addressFormData.landmark}
-                  onChange={handleAddressChange}
-                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Nearby landmark (optional)"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Address Type
-                  </label>
-                  <select
-                    name="addressType"
-                    value={addressFormData.addressType}
-                    onChange={handleAddressChange}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="home">Home</option>
-                    <option value="work">Work</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center pt-5">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isDefault"
-                      checked={addressFormData.isDefault}
+                <form onSubmit={saveAddress} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField
+                      label="Contact Name"
+                      required
+                      name="name"
+                      placeholder="Recipient name"
+                      value={addressForm.name}
                       onChange={handleAddressChange}
-                      className="w-3.5 h-3.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
-                    <span className="text-xs text-gray-700">Set as default address</span>
-                  </label>
-                </div>
-              </div>
+                    <InputField
+                      label="Contact Phone"
+                      required
+                      name="phone"
+                      type="tel"
+                      placeholder="Mobile number"
+                      value={addressForm.phone}
+                      onChange={handleAddressChange}
+                    />
+                  </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddressForm(false);
-                    handleCancelAddress();
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={addressLoading}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {addressLoading ? 'Saving...' : editingAddress ? 'Update Address' : 'Add Address'}
-                </button>
+                  <InputField
+                    label="Address Line 1"
+                    required
+                    name="addressLine1"
+                    placeholder="Street address, building name"
+                    value={addressForm.addressLine1}
+                    onChange={handleAddressChange}
+                  />
+
+                  <InputField
+                    label="Address Line 2"
+                    name="addressLine2"
+                    placeholder="Apartment, suite, floor (optional)"
+                    value={addressForm.addressLine2}
+                    onChange={handleAddressChange}
+                  />
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <InputField
+                      label="City"
+                      required
+                      name="city"
+                      placeholder="City"
+                      value={addressForm.city}
+                      onChange={handleAddressChange}
+                    />
+                    <InputField
+                      label="State"
+                      required
+                      name="state"
+                      placeholder="State"
+                      value={addressForm.state}
+                      onChange={handleAddressChange}
+                    />
+                    <InputField
+                      label="Pincode"
+                      required
+                      name="pincode"
+                      placeholder="Pincode"
+                      value={addressForm.pincode}
+                      onChange={handleAddressChange}
+                    />
+                    <InputField
+                      label="Landmark"
+                      name="landmark"
+                      placeholder="Nearby"
+                      value={addressForm.landmark}
+                      onChange={handleAddressChange}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700">Address Type</label>
+                      <select
+                        name="addressType"
+                        value={addressForm.addressType}
+                        onChange={handleAddressChange}
+                        className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 focus:bg-white"
+                      >
+                        <option value="home">Home</option>
+                        <option value="work">Work</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-end pb-1">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          name="isDefault"
+                          checked={addressForm.isDefault}
+                          onChange={handleAddressChange}
+                          className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-gray-900">Set as default address</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-purple-200">
+                    <Button variant="secondary" type="button" onClick={cancelAddressForm}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" loading={addressLoading}>
+                      {addressLoading ? 'Saving...' : editingAddress ? 'Update Address' : 'Save Address'}
+                    </Button>
+                  </div>
+                </form>
               </div>
-            </form>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* CSS Animation */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

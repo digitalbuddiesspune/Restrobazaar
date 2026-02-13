@@ -92,8 +92,32 @@ export const getStatusText = (status) => {
 };
 
 // Generate invoice PDF
-export const generateInvoicePDF = (order, vendor = {}) => {
+export const generateInvoicePDF = async (order, vendor = {}) => {
   try {
+    // Fetch vendor details if vendorId is available but vendor object is incomplete
+    let vendorData = vendor;
+    if (order.vendorId && (!vendor.bankDetails || !vendor.businessName)) {
+      try {
+        const { vendorAPI } = await import('./api');
+        const vendorId = order.vendorId._id || order.vendorId;
+        const vendorResponse = await vendorAPI.getVendorBankDetails(vendorId);
+        if (vendorResponse.success && vendorResponse.data) {
+          // Merge fetched vendor data with existing vendor data
+          vendorData = {
+            ...vendor,
+            ...vendorResponse.data,
+            bankDetails: {
+              ...vendor.bankDetails,
+              ...vendorResponse.data.bankDetails,
+            },
+          };
+        }
+      } catch (err) {
+        console.warn('Could not fetch vendor details for invoice:', err);
+        // Continue with existing vendor data
+      }
+    }
+
     const doc = new jsPDF();
     // Set default font and encoding to avoid text rendering issues
     doc.setFont('helvetica');
@@ -107,33 +131,48 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     const contentWidth = pageWidth - 20;
 
     // Get vendor information
-    const vendorName = vendor.businessName || 'AK Enterprises';
-    const vendorEmail = vendor.email || 'support@restrobazaar.com';
-    const vendorGSTIN = vendor.gstNumber || '27AAXXXXXXXX';
-    const vendorState = vendor.address?.state || 'Maharashtra';
-    const vendorStateCode = getStateCode(vendorState) || '27';
+    const vendorName = vendorData.businessName || 'RestroBazaar';
+    const vendorEmail = vendorData.email || '';
+    const vendorGSTIN = vendorData.gstNumber || '';
+    const vendorState = vendorData.address?.state || '';
+    const vendorStateCode = vendorState ? getStateCode(vendorState) : '';
 
     // Get customer information
     const customer = order.deliveryAddress || {};
     const customerName = customer.name || 'Customer Name';
-    const customerAddress = customer.addressLine1 || '';
+    const customerPhone = customer.phone || '';
+    const customerAddressLine1 = customer.addressLine1 || '';
+    const customerAddressLine2 = customer.addressLine2 || '';
     const customerCity = customer.city || '';
     const customerState = customer.state || '';
     const customerPincode = customer.pincode || '';
-    const customerGSTIN = customer.gstNumber || 'URP';
+    // Get GST number from deliveryAddress - prioritize customer entered GST
+    // Check order.deliveryAddress.gstNumber first (from checkout), then fallback
+    const customerGSTIN = (order.deliveryAddress?.gstNumber) || 
+                          (customer.gstNumber) || 
+                          (order.gstNumber) || 
+                          '';
+    
+    // Debug: Log GST number retrieval (remove in production if needed)
+    if (order.deliveryAddress?.gstNumber) {
+      console.log('GST Number found in order.deliveryAddress:', order.deliveryAddress.gstNumber);
+    }
+    
+    // Build full address string
+    const addressParts = [customerAddressLine1];
+    if (customerAddressLine2) addressParts.push(customerAddressLine2);
+    if (customerCity) addressParts.push(customerCity);
+    if (customerState) addressParts.push(customerState);
+    if (customerPincode) addressParts.push(customerPincode);
+    const customerAddress = addressParts.join(', ');
 
-    // Calculate totals
+    // Calculate totals - use stored billingDetails for accuracy
     const billing = order.billingDetails || {};
     const cartTotal = billing.cartTotal || 0;
     const totalGstAmount = billing.gstAmount || 0;
     const shippingCharges = billing.shippingCharges || 0;
     const totalAmount = billing.totalAmount || (cartTotal + totalGstAmount + shippingCharges);
     
-    // Calculate CGST and SGST (assuming equal split for intra-state)
-    const cgstAmount = totalGstAmount / 2;
-    const sgstAmount = totalGstAmount / 2;
-    const cgstRate = totalGstAmount > 0 ? Math.round((cgstAmount / cartTotal) * 100) : 0;
-    const sgstRate = cgstRate;
 
     // ========== HEADER SECTION ==========
     // "RESTROBAZAAR" in red, bold, larger font
@@ -152,7 +191,7 @@ export const generateInvoicePDF = (order, vendor = {}) => {
 
     // Vendor information
     doc.setFontSize(9);
-    const vendorInfo = `By: ${vendorName} | Email: ${vendorEmail} | GST No: ${vendorGSTIN} | State Code: ${vendorStateCode}`;
+    const vendorInfo = `By: AK Enterprises | Email: ${vendorEmail} | GST No: 27DJSPK2679K1ZB | State Code: ${vendorStateCode}`;
     doc.text(vendorInfo, pageWidth / 2, yPos, { align: 'center' });
     yPos += 5;
 
@@ -257,10 +296,17 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.setFont(undefined, 'normal');
     doc.text(`Customer Name/ Restaurant Name: ${customerName}`, leftMargin + 3, yPos);
     yPos += 4;
-    doc.text(`Address: ${customerAddress}${customerCity ? `, ${customerCity}` : ''}${customerState ? `, ${customerState}` : ''}${customerPincode ? ` - ${customerPincode}` : ''}`, leftMargin + 3, yPos);
+    if (customerPhone) {
+      doc.text(`Phone: ${customerPhone}`, leftMargin + 3, yPos);
+      yPos += 4;
+    }
+    doc.text(`Address: ${customerAddress}`, leftMargin + 3, yPos);
     yPos += 4;
-    doc.text(`GST No: ${customerGSTIN}`, leftMargin + 3, yPos);
-    yPos += 6;
+    // Always show GST No - use customer GST if available, otherwise show URP
+    const gstDisplay = customerGSTIN && customerGSTIN.trim() ? customerGSTIN.trim() : 'URP';
+    doc.text(`GST No: ${gstDisplay}`, leftMargin + 3, yPos);
+    yPos += 4;
+    yPos += 2;
 
     // ========== ORDER DETAILS SECTION ==========
     // Header bar
@@ -277,29 +323,58 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     const orderTableStartY = yPos;
-    const headerRowHeight = 5;
+    const baseHeaderRowHeight = 5;
+    const headerLineSpacing = 4;
+    
+    // Column positions - adjusted to include Rate*Qty and GST Amount columns with proper spacing
+    const colSrNoX = leftMargin;
+    const colSrNoWidth = 10;
+    const colDescX = leftMargin + 10;
+    const colDescWidth = 38; // Reduced to make room for new column
+    const colHSNX = leftMargin + 48;
+    const colHSNWidth = 16;
+    const colQtyX = leftMargin + 64;
+    const colQtyWidth = 10;
+    const colRateX = leftMargin + 74;
+    const colRateWidth = 16;
+    const colRateQtyX = leftMargin + 90;
+    const colRateQtyWidth = 18; // New column for Rate * Qty
+    const colGSTX = leftMargin + 108;
+    const colGSTWidth = 14;
+    const colGSTAmountX = leftMargin + 122;
+    const colGSTAmountWidth = 20;
+    const colAmountX = leftMargin + 142;
+    const colAmountWidth = rightMargin - colAmountX;
+    
+    // Calculate header text wrapping and determine maximum lines needed
+    const headerTexts = [
+      { text: 'Sr No', width: colSrNoWidth - 6, align: 'left' },
+      { text: 'Item Name', width: colDescWidth - 6, align: 'left' },
+      { text: 'HSN', width: colHSNWidth - 6, align: 'center' },
+      { text: 'Qty', width: colQtyWidth - 6, align: 'right' },
+      { text: 'Rate', width: colRateWidth - 6, align: 'right' },
+      { text: 'Taxable Value', width: colRateQtyWidth - 6, align: 'right' },
+      { text: 'GST %', width: colGSTWidth - 6, align: 'left' },
+      { text: 'GST Amount', width: colGSTAmountWidth - 6, align: 'left' },
+      { text: 'Amount', width: colAmountWidth - 6, align: 'right' }
+    ];
+    
+    let maxHeaderLines = 1;
+    const headerLines = [];
+    headerTexts.forEach((header, index) => {
+      const lines = doc.splitTextToSize(header.text, header.width);
+      headerLines.push({ lines, align: header.align, index });
+      if (lines.length > maxHeaderLines) {
+        maxHeaderLines = lines.length;
+      }
+    });
+    
+    // Calculate dynamic header row height based on maximum lines
+    const headerRowHeight = baseHeaderRowHeight + (maxHeaderLines - 1) * headerLineSpacing;
     
     // Draw header background
     doc.setFillColor(230, 230, 230); // Light gray background
     doc.rect(leftMargin, yPos - 3, contentWidth, headerRowHeight, 'F');
-    
-    // Column positions - adjusted to include GST Amount column with proper spacing
-    const colSrNoX = leftMargin;
-    const colSrNoWidth = 12;
-    const colDescX = leftMargin + 12;
-    const colDescWidth = 42; // Reduced slightly to make room
-    const colHSNX = leftMargin + 54;
-    const colHSNWidth = 18;
-    const colQtyX = leftMargin + 72;
-    const colQtyWidth = 12;
-    const colRateX = leftMargin + 84;
-    const colRateWidth = 18;
-    const colGSTX = leftMargin + 102;
-    const colGSTWidth = 16; // Increased from 12 to prevent overlap
-    const colGSTAmountX = leftMargin + 118;
-    const colGSTAmountWidth = 24; // Increased from 18 to prevent overlap
-    const colAmountX = leftMargin + 142;
-    const colAmountWidth = rightMargin - colAmountX; // Reduced size
     
     // Draw header borders
     doc.setDrawColor(0, 0, 0);
@@ -313,25 +388,78 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     doc.line(colHSNX, yPos - 3, colHSNX, yPos - 3 + headerRowHeight);
     doc.line(colQtyX, yPos - 3, colQtyX, yPos - 3 + headerRowHeight);
     doc.line(colRateX, yPos - 3, colRateX, yPos - 3 + headerRowHeight);
+    doc.line(colRateQtyX, yPos - 3, colRateQtyX, yPos - 3 + headerRowHeight);
     doc.line(colGSTX, yPos - 3, colGSTX, yPos - 3 + headerRowHeight);
     doc.line(colGSTAmountX, yPos - 3, colGSTAmountX, yPos - 3 + headerRowHeight);
     doc.line(colAmountX, yPos - 3, colAmountX, yPos - 3 + headerRowHeight);
     
-    // Header text
+    // Header text with wrapping - all center-aligned
     doc.setTextColor(0, 0, 0);
-    doc.text('Sr No', colSrNoX + 3, yPos);
-    doc.text('Item Description', colDescX + 3, yPos);
-    doc.text('HSN', colHSNX + 3, yPos);
-    const qtyHeaderWidth = doc.getTextWidth('Qty');
-    doc.text('Qty', colQtyX + colQtyWidth - qtyHeaderWidth - 3, yPos);
-    const rateHeaderWidth = doc.getTextWidth('Rate');
-    doc.text('Rate', colRateX + colRateWidth - rateHeaderWidth - 3, yPos);
-    // GST % - center or left align to prevent overlap
-    doc.text('GST %', colGSTX + 3, yPos);
-    // GST Amount - left align with proper spacing
-    doc.text('GST Amount', colGSTAmountX + 3, yPos);
-    const amountHeaderWidth = doc.getTextWidth('Amount');
-    doc.text('Amount', rightMargin - amountHeaderWidth - 3, yPos);
+    const headerStartY = yPos - 3 + 3; // Top padding
+    
+    // Sr No - center aligned
+    const srNoLines = headerLines[0].lines;
+    srNoLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colSrNoX + (colSrNoWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Item Name - center aligned
+    const itemNameLines = headerLines[1].lines;
+    itemNameLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colDescX + (colDescWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // HSN - center aligned
+    const hsnLines = headerLines[2].lines;
+    hsnLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colHSNX + (colHSNWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Qty - center aligned
+    const qtyLines = headerLines[3].lines;
+    qtyLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colQtyX + (colQtyWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Rate - center aligned
+    const rateLines = headerLines[4].lines;
+    rateLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colRateX + (colRateWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Taxable Value - center aligned
+    const taxableValueLines = headerLines[5].lines;
+    taxableValueLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colRateQtyX + (colRateQtyWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // GST % - center aligned
+    const gstPercentLines = headerLines[6].lines;
+    gstPercentLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colGSTX + (colGSTWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // GST Amount - center aligned
+    const gstAmountLines = headerLines[7].lines;
+    gstAmountLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colGSTAmountX + (colGSTAmountWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
+    // Amount - center aligned
+    const amountLines = headerLines[8].lines;
+    amountLines.forEach((line, lineIndex) => {
+      const lineWidth = doc.getTextWidth(line);
+      doc.text(line, colAmountX + (colAmountWidth / 2) - (lineWidth / 2), headerStartY + (lineIndex * headerLineSpacing));
+    });
+    
     yPos += headerRowHeight;
 
     // Table rows with borders
@@ -360,14 +488,16 @@ export const generateInvoicePDF = (order, vendor = {}) => {
       const srNo = String(index + 1);
       const qty = String(itemQty);
       const rate = itemPrice.toFixed(2);
+      const rateQty = itemSubtotal.toFixed(2); // Rate * Quantity (subtotal before GST)
       const gstPercent = itemGstPercentage > 0 ? itemGstPercentage.toFixed(2) : '-';
       const gstAmount = itemGstAmount.toFixed(2);
       const amount = itemTotal.toFixed(2);
       const hsnCodeStr = String(hsnCode || '482369');
       
       // Calculate dynamic row height based on product name wrapping
-      const maxNameWidth = 38; // Adjusted to match reduced column width
-      const productName = String(item.productName || 'Product');
+      // Reduced width to ensure proper wrapping for long product names
+      const maxNameWidth = 32; // Reduced to ensure long names wrap properly to next line
+      const productName = String(item.productName || item.product?.productName || 'Product');
       const productNameLines = doc.splitTextToSize(productName, maxNameWidth);
       const actualRowHeight = baseRowHeight + (productNameLines.length - 1) * lineSpacing;
       const rowStartY = yPos - 3;
@@ -389,36 +519,42 @@ export const generateInvoicePDF = (order, vendor = {}) => {
       doc.line(colHSNX, rowStartY, colHSNX, rowEndY);
       doc.line(colQtyX, rowStartY, colQtyX, rowEndY);
       doc.line(colRateX, rowStartY, colRateX, rowEndY);
+      doc.line(colRateQtyX, rowStartY, colRateQtyX, rowEndY);
       doc.line(colGSTX, rowStartY, colGSTX, rowEndY);
       doc.line(colGSTAmountX, rowStartY, colGSTAmountX, rowEndY);
       doc.line(colAmountX, rowStartY, colAmountX, rowEndY);
       
-      // Draw text - all columns aligned to top of row
+      // Draw text - all columns center-aligned
       doc.setTextColor(0, 0, 0);
       const textY = rowStartY + 3; // Top alignment with padding
       
-      // Sr No
-      doc.text(srNo, colSrNoX + 3, textY);
+      // Sr No - center aligned
+      const srNoWidth = doc.getTextWidth(srNo);
+      doc.text(srNo, colSrNoX + (colSrNoWidth / 2) - (srNoWidth / 2), textY);
       
-      // Item Description - can be multiple lines
+      // Item Name - can be multiple lines (wraps to next line if long), center aligned
       productNameLines.forEach((line, lineIndex) => {
-        doc.text(line, colDescX + 3, textY + (lineIndex * lineSpacing));
+        const lineWidth = doc.getTextWidth(line);
+        doc.text(line, colDescX + (colDescWidth / 2) - (lineWidth / 2), textY + (lineIndex * lineSpacing));
       });
       
-      // HSN - aligned to top
-      doc.text(hsnCodeStr, colHSNX + 3, textY);
+      // HSN - center aligned
+      const hsnWidth = doc.getTextWidth(hsnCodeStr);
+      doc.text(hsnCodeStr, colHSNX + (colHSNWidth / 2) - (hsnWidth / 2), textY);
       
-      // Right-aligned numerical values - all aligned to top
+      // All numerical values - center aligned
       const qtyWidth = doc.getTextWidth(qty);
-      doc.text(qty, colQtyX + colQtyWidth - qtyWidth - 3, textY);
+      doc.text(qty, colQtyX + (colQtyWidth / 2) - (qtyWidth / 2), textY);
       const rateWidth = doc.getTextWidth(rate);
-      doc.text(rate, colRateX + colRateWidth - rateWidth - 3, textY);
+      doc.text(rate, colRateX + (colRateWidth / 2) - (rateWidth / 2), textY);
+      const rateQtyWidth = doc.getTextWidth(rateQty);
+      doc.text(rateQty, colRateQtyX + (colRateQtyWidth / 2) - (rateQtyWidth / 2), textY);
       const gstPercentWidth = doc.getTextWidth(gstPercent);
-      doc.text(gstPercent, colGSTX + colGSTWidth - gstPercentWidth - 3, textY);
+      doc.text(gstPercent, colGSTX + (colGSTWidth / 2) - (gstPercentWidth / 2), textY);
       const gstAmountWidth = doc.getTextWidth(gstAmount);
-      doc.text(gstAmount, colGSTAmountX + colGSTAmountWidth - gstAmountWidth - 3, textY);
+      doc.text(gstAmount, colGSTAmountX + (colGSTAmountWidth / 2) - (gstAmountWidth / 2), textY);
       const amountWidth = doc.getTextWidth(amount);
-      doc.text(amount, rightMargin - amountWidth - 3, textY);
+      doc.text(amount, colAmountX + (colAmountWidth / 2) - (amountWidth / 2), textY);
       
       // Move to next row
       yPos = rowEndY + 3;
@@ -439,28 +575,73 @@ export const generateInvoicePDF = (order, vendor = {}) => {
     // Convert all numbers to strings
     const subTotalNum = parseFloat(cartTotal) || 0;
     const subTotalStr = subTotalNum.toFixed(2);
-    const cgstAmountNum = parseFloat(cgstAmount) || 0;
-    const cgstAmountStr = cgstAmountNum.toFixed(2);
-    const sgstAmountNum = parseFloat(sgstAmount) || 0;
-    const sgstAmountStr = sgstAmountNum.toFixed(2);
     const totalAmountNum = parseFloat(totalAmount) || 0;
     const totalAmountStr = totalAmountNum.toFixed(2);
-    const cgstRateNum = parseInt(cgstRate) || 0;
-    const cgstRateStr = String(cgstRateNum);
-    const sgstRateNum = parseInt(sgstRate) || 0;
-    const sgstRateStr = String(sgstRateNum);
+    
+    // Group items by GST percentage and calculate SGST/CGST
+    const gstGroups = {};
+    if (order.items && order.items.length > 0) {
+      order.items.forEach(item => {
+        const itemGstPercentage = parseFloat(item.gstPercentage) || 0;
+        const itemGstAmount = parseFloat(item.gstAmount) || 0;
+        
+        if (itemGstPercentage > 0 && itemGstAmount > 0) {
+          // Round GST percentage to 2 decimal places for grouping
+          const gstKey = itemGstPercentage.toFixed(2);
+          
+          if (!gstGroups[gstKey]) {
+            gstGroups[gstKey] = {
+              percentage: itemGstPercentage,
+              totalGst: 0
+            };
+          }
+          
+          gstGroups[gstKey].totalGst += itemGstAmount;
+        }
+      });
+    }
     
     // Build summary rows
     const summaryRows = [
       { label: 'Sub Total:', value: subTotalStr, isTotal: false }
     ];
     
-    if (cgstAmount > 0) {
-      summaryRows.push({ label: `CGST (${cgstRateStr}%):`, value: cgstAmountStr, isTotal: false });
-    }
+    // Add SGST and CGST for each GST percentage group
+    // Sort by GST percentage (descending) for better readability
+    const sortedGstKeys = Object.keys(gstGroups).sort((a, b) => parseFloat(b) - parseFloat(a));
     
-    if (sgstAmount > 0) {
-      summaryRows.push({ label: `SGST (${sgstRateStr}%):`, value: sgstAmountStr, isTotal: false });
+    sortedGstKeys.forEach(gstKey => {
+      const group = gstGroups[gstKey];
+      const totalGst = parseFloat(group.totalGst.toFixed(2));
+      const sgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const cgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const sgstRate = parseFloat((group.percentage / 2).toFixed(2));
+      const cgstRate = sgstRate;
+      
+      // Add SGST row
+      summaryRows.push({ 
+        label: `SGST (${sgstRate}%):`, 
+        value: sgstAmount.toFixed(2), 
+        isTotal: false 
+      });
+      
+      // Add CGST row
+      summaryRows.push({ 
+        label: `CGST (${cgstRate}%):`, 
+        value: cgstAmount.toFixed(2), 
+        isTotal: false 
+      });
+    });
+    
+    // Shipping Charges - always show (Free when 0)
+    const shippingStr = shippingCharges > 0 ? shippingCharges.toFixed(2) : 'Free';
+    summaryRows.push({ label: 'Shipping Charges:', value: shippingStr, isTotal: false });
+    
+    // Coupon Discount - only when coupon applied
+    if (couponDiscount > 0) {
+      const couponCode = order.couponCode || '';
+      const couponLabel = couponCode ? `Coupon Discount (${couponCode}):` : 'Coupon Discount:';
+      summaryRows.push({ label: couponLabel, value: `-${couponDiscount.toFixed(2)}`, isTotal: false });
     }
     
     summaryRows.push({ label: 'Total Amount:', value: totalAmountStr, isTotal: true });
@@ -531,28 +712,77 @@ export const generateInvoicePDF = (order, vendor = {}) => {
       yPos = 20;
     }
 
-    // Bank Details
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.text('Bank Details:', leftMargin + 3, yPos);
-    yPos += 5;
-    doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
-    
-    const bankDetails = vendor.bankDetails || {};
-    const bankName = bankDetails.bankName || 'State Bank of India (SBI)';
-    const bankIFSC = bankDetails.ifscCode || bankDetails.bankIFSC || 'SBIN000XXX';
-    const bankAccountNo = bankDetails.accountNumber || bankDetails.bankAccountNo || '1234567890';
-    const upiId = bankDetails.upiId || 'restrobazaar@upi';
+    const bankDetails = vendorData.bankDetails || {};
+    const bankName = bankDetails.bankName || '';
+    const accountName = bankDetails.accountHolderName || vendorData.businessName || '';
+    const bankAccountNo = bankDetails.accountNumber || '';
+    const branch = bankDetails.branch || '';
+    const bankIFSC = bankDetails.ifsc || '';
+    const upiId = bankDetails.upiId || '';
 
-    doc.text(`Bank: ${bankName}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`IFSC: ${bankIFSC}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`Account No: ${bankAccountNo}`, leftMargin + 3, yPos);
-    yPos += 4;
-    doc.text(`UPI ID: ${upiId}`, leftMargin + 3, yPos);
-    yPos += 6;
+    // Build UPI payment URL for QR (amount + invoice ref) - only if UPI ID is available
+    let qrDataUrl = null;
+    if (upiId && accountName) {
+      const invRef = invoiceNumber || (formattedOrderNo ? `Order ${formattedOrderNo}` : 'Invoice');
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(accountName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invRef)}`;
+      try {
+        qrDataUrl = await fetchUPIQRAsDataURL(upiUrl);
+      } catch (qrErr) {
+        console.warn('Could not fetch QR code for invoice, continuing without:', qrErr);
+      }
+    }
+
+    // Bank Details - Only show if we have bank details
+    const hasBankDetails = accountName || upiId || bankAccountNo || bankName || bankIFSC;
+    
+    if (hasBankDetails) {
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text('Bank Details:', leftMargin + 3, yPos);
+      yPos += 5;
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+
+      const bankStartY = yPos;
+      const qrSize = 48;
+      const qrX = rightMargin - qrSize - 5;
+
+      if (bankName) {
+        doc.text(`Bank: ${bankName}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (branch) {
+        doc.text(`Branch: ${branch}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (bankIFSC) {
+        doc.text(`IFSC Code: ${bankIFSC}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (accountName) {
+        doc.text(`Account Name: ${accountName}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (bankAccountNo) {
+        doc.text(`Account No: ${bankAccountNo}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+      if (upiId) {
+        doc.text(`UPI ID: ${upiId}`, leftMargin + 3, yPos);
+        yPos += 4;
+      }
+
+      if (qrDataUrl) {
+        doc.setFontSize(7);
+        doc.setFont(undefined, 'bold');
+        doc.text('Scan to Pay', qrX + qrSize / 2 - doc.getTextWidth('Scan to Pay') / 2, bankStartY - 2);
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.addImage(qrDataUrl, 'PNG', qrX, bankStartY, qrSize, qrSize);
+        yPos = Math.max(yPos, bankStartY + qrSize + 4);
+      }
+      yPos += 6;
+    }
 
     // Disclaimer
     doc.setFontSize(7);

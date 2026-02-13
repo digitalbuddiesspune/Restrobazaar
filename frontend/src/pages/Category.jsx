@@ -78,14 +78,23 @@ const Category = () => {
   
   const totalPages = productsResponse?.pagination?.pages || 1;
 
-  // Filter products by subcategory
+  // Filter products by subcategory and sort by sequenceNumber
   const products = useMemo(() => {
+    let filteredProducts;
     if (selectedSubcategory === 'all') {
-      return allProducts;
+      filteredProducts = allProducts;
+    } else {
+      filteredProducts = allProducts.filter((product) => {
+        const productSubCategory = product.productId?.subCategory || product.subCategory;
+        return productSubCategory?.trim() === selectedSubcategory.trim();
+      });
     }
-    return allProducts.filter((product) => {
-      const productSubCategory = product.productId?.subCategory || product.subCategory;
-      return productSubCategory?.trim() === selectedSubcategory.trim();
+    
+    // Sort by sequenceNumber (ascending - lower numbers first)
+    return filteredProducts.sort((a, b) => {
+      const seqA = a.sequenceNumber ?? Number.MAX_SAFE_INTEGER;
+      const seqB = b.sequenceNumber ?? Number.MAX_SAFE_INTEGER;
+      return seqA - seqB;
     });
   }, [allProducts, selectedSubcategory]);
 

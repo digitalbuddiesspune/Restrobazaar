@@ -1,10 +1,22 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { authAPI, wishlistAPI } from '../utils/api';
 import { setUserInfo } from '../utils/auth';
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showSessionExpiredMessage, setShowSessionExpiredMessage] = useState(
+    () => searchParams.get('session') === 'expired'
+  );
+
+  // Clear session=expired from URL once (keeps URL clean; message stays via state)
+  useEffect(() => {
+    if (searchParams.get('session') === 'expired') {
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -75,6 +87,13 @@ const SignIn = () => {
       <div className="max-w-md w-full relative z-10">
         {/* Card Container */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 sm:p-10 space-y-8 transform transition-all duration-300 hover:shadow-2xl">
+          {/* Session expired message */}
+          {showSessionExpiredMessage && (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm text-center">
+              Your session expired or was invalid. Please sign in again.
+            </div>
+          )}
+
           {/* Header */}
           <div className="text-center space-y-2">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-2xl mb-4 shadow-lg">

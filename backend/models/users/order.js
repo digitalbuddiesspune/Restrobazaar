@@ -84,6 +84,9 @@ const orderSchema = new mongoose.Schema(
       landmark: {
         type: String,
       },
+      gstNumber: {
+        type: String,
+      },
     },
     billingDetails: {
       cartTotal: {
@@ -159,12 +162,12 @@ const orderSchema = new mongoose.Schema(
 );
 
 // Index for faster queries
+// Note: orderNumber and invoiceNumber already have unique: true which creates an index
+// vendorId and vendorServiceCityId already have index: true in their field definition
 orderSchema.index({ userId: 1 });
-orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ createdAt: -1 });
-orderSchema.index({ vendorId: 1, vendorServiceCityId: 1 });
-orderSchema.index({ vendorServiceCityId: 1 });
+orderSchema.index({ vendorId: 1, vendorServiceCityId: 1 }); // Compound index for vendor queries
 
 // Note: orderNumber is generated in the controller (orderController.js)
 // to ensure uniqueness before order creation

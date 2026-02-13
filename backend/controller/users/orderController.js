@@ -43,7 +43,7 @@ export const createOrder = async (req, res) => {
     // Determine vendorId and vendorServiceCityId from cart items first
     // Get productIds from cart items
     const productIds = cartItems.map(item => item._id || item.productId);
-    
+
     // Look up vendor products for these productIds
     // Also check if cart items have vendorProductId or vendorId/cityId
     let vendorId = null;
@@ -55,7 +55,7 @@ export const createOrder = async (req, res) => {
       if (cartItems[0].vendorId) {
         vendorId = cartItems[0].vendorId;
       }
-      
+
       // If cart items have cityId, use it
       if (cartItems[0].cityId) {
         vendorServiceCityId = cartItems[0].cityId;
@@ -71,14 +71,14 @@ export const createOrder = async (req, res) => {
 
       if (vendorProduct) {
         vendorId = vendorProduct.vendorId?._id || vendorProduct.vendorId;
-        
+
         // Get vendor to check service cities
         const vendor = await Vendor.findById(vendorId).populate('serviceCities', 'name displayName');
-        
+
         if (vendor && vendor.serviceCities && vendor.serviceCities.length > 0) {
           // Match delivery address city with vendor's service cities
           const deliveryCityName = address.city.toLowerCase();
-          
+
           // Find matching service city
           const matchingServiceCity = vendor.serviceCities.find(city => {
             const cityName = city.name?.toLowerCase() || '';
@@ -119,13 +119,13 @@ export const createOrder = async (req, res) => {
       const quantity = item.quantity;
       const price = item.price;
       const itemTotal = price * quantity;
-      
+
       // Get GST percentage for this product (default to 0 if not found)
       const gstPercentage = productGstMap[productIdStr] || 0;
-      
+
       // Calculate GST amount for this item
       const gstAmount = (itemTotal * gstPercentage) / 100;
-      
+
       return {
         productId: productId,
         productName: item.name || item.productName || 'Product',
@@ -146,7 +146,7 @@ export const createOrder = async (req, res) => {
     if (couponCode) {
       try {
         const coupon = await Coupon.findOne({ code: couponCode.toUpperCase().trim() });
-        
+
         if (coupon) {
           // Check if coupon belongs to the vendor
           if (vendorId && coupon.vendorId.toString() !== vendorId.toString()) {
@@ -194,7 +194,7 @@ export const createOrder = async (req, res) => {
 
     // Calculate total GST from all order items
     const totalGstAmount = orderItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
-    
+
     // Calculate final amounts with coupon discount
     // GST calculated per product, shipping calculated on original cart total, then discount applied
     const finalGstAmount = totalGstAmount; // GST calculated per product (before coupon)
@@ -221,6 +221,7 @@ export const createOrder = async (req, res) => {
       state: address.state,
       pincode: address.pincode,
       landmark: address.landmark || '',
+      gstNumber: req.body.gstNumber || undefined, // Include GST number if provided
     };
 
     // Determine payment status
@@ -319,11 +320,16 @@ export const createOrder = async (req, res) => {
 export const getUserOrders = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, cityId, page = 1, limit = 10 } = req.query;
 
     const query = { userId };
     if (status) {
       query.orderStatus = status;
+    }
+    
+    // Filter by city if specified
+    if (cityId) {
+      query.vendorServiceCityId = cityId;
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -332,7 +338,10 @@ export const getUserOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('userId', 'name email phone');
+      .populate('userId', 'name email phone')
+      .populate('items.productId', 'hsnCode productName')
+      .populate('vendorServiceCityId', 'name displayName')
+      .populate('vendorId', 'businessName email gstNumber address bankDetails');
 
     const total = await Order.countDocuments(query);
 
@@ -426,7 +435,6 @@ export const cancelOrder = async (req, res) => {
     }
 
     await order.save();
-
     sendNotificationToUser({
       userId,
       title: 'Order cancelled',
@@ -454,7 +462,6 @@ export const cancelOrder = async (req, res) => {
         console.error('FCM vendor notification error (order cancelled):', error)
       );
     }
-
     res.status(200).json({
       success: true,
       message: 'Order cancelled successfully',

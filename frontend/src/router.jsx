@@ -55,10 +55,12 @@ const router = createBrowserRouter(
       <Route path="checkout" element={<Checkout />} />
       <Route path="orders" element={<Orders />} />
       <Route path="super_admin/login" element={<SuperAdminLogin />} />
-      <Route path="admin/dashboard" element={<SuperAdminDashboard />} />
+      {/* Super admin dashboard: all sections as separate routes under /admin/dashboard/* */}
+      <Route path="admin/dashboard/*" element={<SuperAdminDashboard />} />
       <Route path="vendor/login" element={<VendorLogin />} />
       <Route path="vendor/admin" element={<VendorAdminDashboard />} />
-      <Route path="vendor/dashboard" element={<VendorDashboard />} />
+      {/* Vendor dashboard: all sections as separate routes under /vendor/dashboard/* */}
+      <Route path="vendor/dashboard/*" element={<VendorDashboard />} />
       <Route path="vendor/dashboard/old" element={<VendorAdminDashboard />} />
     </Route>
   )

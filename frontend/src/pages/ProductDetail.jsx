@@ -832,6 +832,15 @@ const ProductDetail = () => {
   const totalPrice = getPriceForQuantity(quantity);
   const minOrderQty = product?.minimumOrderQuantity || 1;
 
+  // Original price (MRP) for strikethrough - same source as Category page (defaultPrice first, then productId.originalPrice)
+  const originalPrice = (() => {
+    if (!product) return 0;
+    const val = product.defaultPrice ?? product.productId?.originalPrice ?? 0;
+    return Math.max(0, Number(val) || 0);
+  })();
+  const showDiscountedPriceSingle = priceInfo?.type === 'single' && originalPrice > 0 && originalPrice > (priceInfo.price ?? 0);
+  const showDiscountedPriceBulk = priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 && originalPrice > 0 && originalPrice > (priceInfo.slabs[priceInfo.slabs.length - 1]?.price ?? 0);
+
   return (
     <div className="min-h-screen bg-gray-50 pt-4 pb-8 relative">
       {/* Flying Animation Component */}
@@ -965,17 +974,38 @@ const ProductDetail = () => {
               {/* Price Display */}
               {priceInfo?.type === 'single' ? (
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-3xl font-bold text-black">
-                    ₹{priceInfo.price}
-                  </span>
+                  {showDiscountedPriceSingle ? (
+                    <>
+                      <span className="text-xl font-normal text-gray-400 line-through">
+                        ₹{originalPrice}
+                      </span>
+                      <span className="text-3xl font-bold text-black">
+                        ₹{priceInfo.price}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-3xl font-bold text-black">
+                      ₹{priceInfo.price}
+                    </span>
+                  )}
                   <span className="text-gray-500 text-sm">per piece</span>
                 </div>
               ) : priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 ? (
                 <div className="mb-2">
-                  <span className="text-3xl font-bold text-black">
-                    ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
-                  </span>
-                
+                  {showDiscountedPriceBulk ? (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl font-normal text-gray-400 line-through">
+                        ₹{originalPrice}
+                      </span>
+                      <span className="text-3xl font-bold text-black">
+                        ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-3xl font-bold text-black">
+                      ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
+                    </span>
+                  )}
                 </div>
               ) : (
                 <div className="mb-2">
@@ -995,9 +1025,20 @@ const ProductDetail = () => {
                 <span className="text-xs text-gray-600 block mb-1">Price</span>
                 {priceInfo?.type === 'single' ? (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-red-600">
-                      ₹{priceInfo.price}
-                    </span>
+                    {showDiscountedPriceSingle ? (
+                      <>
+                        <span className="text-base font-normal text-gray-400 line-through">
+                          ₹{originalPrice}
+                        </span>
+                        <span className="text-xl font-bold text-red-600">
+                          ₹{priceInfo.price}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xl font-bold text-red-600">
+                        ₹{priceInfo.price}
+                      </span>
+                    )}
                     <span className="text-gray-500 text-xs">per piece</span>
                   </div>
                 ) : priceInfo?.type === 'bulk' ? (
@@ -1134,13 +1175,20 @@ const ProductDetail = () => {
                     </p>
                   </div>
 
-                  {totalPrice && (
+                  {totalPrice != null && (
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center flex-wrap gap-1">
                         <span className="text-xs text-gray-700">Total Price</span>
-                        <span className="text-lg font-bold text-red-600">
-                          ₹{totalPrice.toLocaleString('en-IN')}
-                        </span>
+                        <div className="flex items-baseline gap-2">
+                          {(showDiscountedPriceSingle || showDiscountedPriceBulk) && originalPrice > 0 && (
+                            <span className="text-sm text-gray-400 line-through">
+                              ₹{(quantity * originalPrice).toLocaleString('en-IN')}
+                            </span>
+                          )}
+                          <span className="text-lg font-bold text-red-600">
+                            ₹{totalPrice.toLocaleString('en-IN')}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}

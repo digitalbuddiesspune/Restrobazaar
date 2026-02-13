@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectCartItems, selectCartTotal, clearCart } from '../store/slices/cartSlice';
-import { addressAPI, orderAPI, userCouponAPI } from '../utils/api';
+import { addressAPI, orderAPI, userCouponAPI, vendorAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import { calculateShippingCharges } from '../utils/shipping';
 import Modal from '../components/Modal';
@@ -33,6 +33,9 @@ const Checkout = () => {
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [showCoupons, setShowCoupons] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
+  const [vendorDetails, setVendorDetails] = useState(null);
+  const [hasGST, setHasGST] = useState(false);
+  const [gstNumber, setGstNumber] = useState('');
   const [addressForm, setAddressForm] = useState({
     name: '',
     phone: '',
@@ -44,6 +47,39 @@ const Checkout = () => {
     landmark: '',
     addressType: 'home', // home, work, other
   });
+
+  // Fetch vendor details
+  const fetchVendorDetails = async () => {
+    try {
+      // Get vendorId from cart items
+      const vendorId = cartItems[0]?.vendorId || null;
+      
+      if (!vendorId) {
+        setVendorDetails(null);
+        return;
+      }
+
+      // Check if all items are from the same vendor
+      const allSameVendor = cartItems.every(item => {
+        const itemVendorId = item.vendorId?.toString() || item.vendorId;
+        return itemVendorId === vendorId?.toString() || itemVendorId === vendorId;
+      });
+
+      if (!allSameVendor) {
+        setVendorDetails(null);
+        return;
+      }
+
+      // Use public endpoint for bank details
+      const response = await vendorAPI.getVendorBankDetails(vendorId);
+      if (response.success) {
+        setVendorDetails(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor details:', error);
+      setVendorDetails(null);
+    }
+  };
 
   // Fetch available coupons
   const fetchAvailableCoupons = async () => {
@@ -241,6 +277,42 @@ const Checkout = () => {
   });
   
   const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
+  
+  // Group items by GST percentage and calculate SGST/CGST
+  const gstGroups = {};
+  gstBreakdown.forEach(item => {
+    if (item.gstPercentage > 0 && item.gstAmount > 0) {
+      const gstKey = item.gstPercentage.toFixed(2);
+      if (!gstGroups[gstKey]) {
+        gstGroups[gstKey] = {
+          percentage: item.gstPercentage,
+          totalGst: 0
+        };
+      }
+      gstGroups[gstKey].totalGst += item.gstAmount;
+    }
+  });
+  
+  // Convert groups to array and calculate SGST/CGST for each
+  const sgstCgstBreakdown = Object.keys(gstGroups)
+    .sort((a, b) => parseFloat(b) - parseFloat(a))
+    .map(gstKey => {
+      const group = gstGroups[gstKey];
+      const totalGst = parseFloat(group.totalGst.toFixed(2));
+      const sgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const cgstAmount = parseFloat((totalGst / 2).toFixed(2));
+      const sgstRate = parseFloat((group.percentage / 2).toFixed(2));
+      const cgstRate = sgstRate;
+      
+      return {
+        gstPercentage: group.percentage,
+        sgstRate,
+        cgstRate,
+        sgstAmount,
+        cgstAmount,
+        totalGst
+      };
+    });
   const shippingCharges = calculateShippingCharges(cartTotal);
   // Apply coupon discount to final total
   const totalBeforeCoupon = cartTotal + gstAmount + shippingCharges;
@@ -276,6 +348,7 @@ const Checkout = () => {
         paymentId: qrCodeData?.paymentId || null,
         transactionId: qrCodeData?.transactionId || null,
         couponCode: appliedCoupon?.code || null,
+        gstNumber: hasGST && gstNumber ? gstNumber.trim() : null, // Include GST number if provided
       };
 
       // Create order
@@ -316,21 +389,21 @@ const Checkout = () => {
       const tempOrderId = `ORDER_${Date.now()}`;
       const selectedAddressData = addresses.find(addr => addr._id === selectedAddress);
       
-      // UPI Payment URL format (standard UPI protocol):
-      // upi://pay?pa=<merchant_vpa>&pn=<merchant_name>&am=<amount>&cu=INR&tn=<transaction_note>
-      const merchantVPA = import.meta.env.VITE_RAZORPAY_MERCHANT_VPA || 'restrobazaar@razorpay';
-      const merchantName = 'RestroBazaar';
-      const transactionNote = `Order ${tempOrderId} - RestroBazaar`;
+      // Get vendor UPI ID and account name from vendor details
+      const upiId = vendorDetails?.bankDetails?.upiId || import.meta.env.VITE_UPI_ID || 'yourname@paytm';
+      const accountName = vendorDetails?.bankDetails?.accountHolderName || vendorDetails?.businessName || 'RestroBazaar';
+      const transactionNote = `Order ${tempOrderId} - ${accountName}`;
       
       // Create UPI payment URL
-      const upiUrl = `upi://pay?pa=${merchantVPA}&pn=${encodeURIComponent(merchantName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(accountName)}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
       
       const qrData = {
         success: true,
         upiUrl: upiUrl,
         amount: totalAmount,
         orderId: tempOrderId,
-        merchantVPA: merchantVPA,
+        merchantVPA: upiId,
+        accountName: accountName,
       };
       
       setQrCodeData(qrData);
@@ -338,7 +411,25 @@ const Checkout = () => {
       console.error('Error generating QR code:', err);
       alert('Failed to generate QR code. Please try again.');
     }
-  }, [paymentMethod, selectedAddress, totalAmount, addresses]);
+  }, [paymentMethod, selectedAddress, totalAmount, addresses, vendorDetails]);
+
+  // Load GST number from localStorage on mount
+  useEffect(() => {
+    const savedHasGST = localStorage.getItem('customerHasGST') === 'true';
+    const savedGstNumber = localStorage.getItem('customerGSTNumber') || '';
+    setHasGST(savedHasGST);
+    setGstNumber(savedGstNumber);
+  }, []);
+
+  // Save GST number to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('customerHasGST', hasGST.toString());
+    if (hasGST && gstNumber) {
+      localStorage.setItem('customerGSTNumber', gstNumber);
+    } else {
+      localStorage.removeItem('customerGSTNumber');
+    }
+  }, [hasGST, gstNumber]);
 
   // Fetch addresses and coupons on component mount
   useEffect(() => {
@@ -351,12 +442,23 @@ const Checkout = () => {
     // Fetch addresses
     fetchAddresses();
 
-    // Fetch coupons if cart has items
+    // Fetch vendor details and coupons if cart has items
     if (cartItems && cartItems.length > 0) {
+      fetchVendorDetails();
       fetchAvailableCoupons();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
+
+  // Refetch vendor details when cart items change (e.g., city switch)
+  useEffect(() => {
+    if (cartItems && cartItems.length > 0) {
+      fetchVendorDetails();
+    } else {
+      setVendorDetails(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartItems]);
 
   // Regenerate QR code when payment method is online and amount/address changes
   useEffect(() => {
@@ -538,9 +640,15 @@ const Checkout = () => {
                                     <span className="font-mono text-gray-900 text-sm">{qrCodeData.orderId}</span>
                                   </div>
                                   <div className="flex justify-between">
+                                    <span className="text-gray-600">Account Name:</span>
+                                    <span className="font-semibold text-gray-900 text-sm">
+                                      {qrCodeData.accountName || vendorDetails?.bankDetails?.accountHolderName || vendorDetails?.businessName || 'RestroBazaar'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
                                     <span className="text-gray-600">UPI ID:</span>
                                     <span className="font-mono text-gray-900 text-sm">
-                                      {import.meta.env.VITE_RAZORPAY_MERCHANT_VPA || 'restrobazaar@razorpay'}
+                                      {qrCodeData.merchantVPA || vendorDetails?.bankDetails?.upiId || import.meta.env.VITE_UPI_ID || 'yourname@paytm'}
                                     </span>
                                   </div>
                                 </>
@@ -632,6 +740,43 @@ const Checkout = () => {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* GST Number Section */}
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          id="hasGST"
+                          checked={hasGST}
+                          onChange={(e) => {
+                            setHasGST(e.target.checked);
+                            if (!e.target.checked) {
+                              setGstNumber('');
+                            }
+                          }}
+                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                        />
+                        <label htmlFor="hasGST" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          I have a GST Number
+                        </label>
+                      </div>
+                      {hasGST && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            GST Number *
+                          </label>
+                          <input
+                            type="text"
+                            value={gstNumber}
+                            onChange={(e) => setGstNumber(e.target.value.toUpperCase().trim())}
+                            placeholder="Enter GST Number (e.g., 27DJSPK2679K1ZB)"
+                            className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white"
+                            maxLength={15}
+                          />
+                          <p className="text-xs text-gray-500 mt-1">GST number will be included in your invoice</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Selected Address Details */}
@@ -816,17 +961,21 @@ const Checkout = () => {
                     <span>GST</span>
                     <span className="font-medium">₹{gstAmount.toFixed(2)}</span>
                   </div>
-                  {/* GST Breakdown */}
-                  {gstBreakdown.some(item => item.gstPercentage > 0) && (
+                  {/* SGST/CGST Breakdown */}
+                  {sgstCgstBreakdown.length > 0 && (
                     <div className="pl-2 border-l-2 border-gray-200 space-y-1">
-                      {gstBreakdown
-                        .filter(item => item.gstPercentage > 0)
-                        .map((item, index) => (
-                          <div key={item.itemId || index} className="flex justify-between text-xs text-gray-600">
-                            <span>{item.productName} ({item.gstPercentage}%):</span>
-                            <span>₹{item.gstAmount.toFixed(2)}</span>
+                      {sgstCgstBreakdown.map((group, index) => (
+                        <div key={`gst-group-${index}`} className="space-y-0.5">
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>SGST ({group.sgstRate}%):</span>
+                            <span>₹{group.sgstAmount.toFixed(2)}</span>
                           </div>
-                        ))}
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>CGST ({group.cgstRate}%):</span>
+                            <span>₹{group.cgstAmount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                   <div className="flex justify-between text-sm text-gray-700">

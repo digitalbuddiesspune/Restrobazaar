@@ -302,6 +302,43 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
     });
 
     const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
+    
+    // Group items by GST percentage and calculate SGST/CGST
+    const gstGroups = {};
+    gstBreakdown.forEach(item => {
+      if (item.gstPercentage > 0 && item.gstAmount > 0) {
+        const gstKey = item.gstPercentage.toFixed(2);
+        if (!gstGroups[gstKey]) {
+          gstGroups[gstKey] = {
+            percentage: item.gstPercentage,
+            totalGst: 0
+          };
+        }
+        gstGroups[gstKey].totalGst += item.gstAmount;
+      }
+    });
+    
+    // Convert groups to array and calculate SGST/CGST for each
+    const sgstCgstBreakdown = Object.keys(gstGroups)
+      .sort((a, b) => parseFloat(b) - parseFloat(a))
+      .map(gstKey => {
+        const group = gstGroups[gstKey];
+        const totalGst = parseFloat(group.totalGst.toFixed(2));
+        const sgstAmount = parseFloat((totalGst / 2).toFixed(2));
+        const cgstAmount = parseFloat((totalGst / 2).toFixed(2));
+        const sgstRate = parseFloat((group.percentage / 2).toFixed(2));
+        const cgstRate = sgstRate;
+        
+        return {
+          gstPercentage: group.percentage,
+          sgstRate,
+          cgstRate,
+          sgstAmount,
+          cgstAmount,
+          totalGst
+        };
+      });
+    
     const shippingCharges = 0; // Free shipping
     const totalAmount = cartTotal + gstAmount + shippingCharges;
 
@@ -309,6 +346,7 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       cartTotal,
       gstAmount,
       gstBreakdown,
+      sgstCgstBreakdown,
       shippingCharges,
       totalAmount,
     };
@@ -999,23 +1037,69 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                   ).toLocaleString()}
                 </span>
               </div>
-              {/* GST Breakdown */}
+              {/* SGST/CGST Breakdown */}
               {(() => {
-                const gstBreakdown = isEditMode
-                  ? calculateBillingDetails().gstBreakdown
-                  : order.items?.filter(item => item.gstPercentage > 0).map(item => ({
-                    productName: item.productName,
-                    gstPercentage: item.gstPercentage || 0,
-                    gstAmount: item.gstAmount || 0,
-                  }));
+                // Calculate SGST/CGST breakdown for both edit mode and view mode
+                let sgstCgstBreakdown = [];
+                
+                if (isEditMode) {
+                  sgstCgstBreakdown = calculateBillingDetails().sgstCgstBreakdown || [];
+                } else {
+                  // Group order items by GST percentage
+                  const gstGroups = {};
+                  if (order.items && order.items.length > 0) {
+                    order.items.forEach(item => {
+                      const gstPercentage = item.gstPercentage || 0;
+                      const gstAmount = item.gstAmount || 0;
+                      
+                      if (gstPercentage > 0 && gstAmount > 0) {
+                        const gstKey = gstPercentage.toFixed(2);
+                        if (!gstGroups[gstKey]) {
+                          gstGroups[gstKey] = {
+                            percentage: gstPercentage,
+                            totalGst: 0
+                          };
+                        }
+                        gstGroups[gstKey].totalGst += gstAmount;
+                      }
+                    });
+                  }
+                  
+                  // Convert groups to array and calculate SGST/CGST for each
+                  sgstCgstBreakdown = Object.keys(gstGroups)
+                    .sort((a, b) => parseFloat(b) - parseFloat(a))
+                    .map(gstKey => {
+                      const group = gstGroups[gstKey];
+                      const totalGst = parseFloat(group.totalGst.toFixed(2));
+                      const sgstAmount = parseFloat((totalGst / 2).toFixed(2));
+                      const cgstAmount = parseFloat((totalGst / 2).toFixed(2));
+                      const sgstRate = parseFloat((group.percentage / 2).toFixed(2));
+                      const cgstRate = sgstRate;
+                      
+                      return {
+                        gstPercentage: group.percentage,
+                        sgstRate,
+                        cgstRate,
+                        sgstAmount,
+                        cgstAmount,
+                        totalGst
+                      };
+                    });
+                }
 
-                if (gstBreakdown && gstBreakdown.length > 0) {
+                if (sgstCgstBreakdown && sgstCgstBreakdown.length > 0) {
                   return (
                     <div className="pl-2 border-l-2 border-gray-200 space-y-0.5 mt-0.5">
-                      {gstBreakdown.map((item, index) => (
-                        <div key={index} className="flex justify-between text-[10px] text-gray-600">
-                          <span>{item.productName} ({item.gstPercentage}%):</span>
-                          <span>₹{item.gstAmount?.toFixed(2) || '0.00'}</span>
+                      {sgstCgstBreakdown.map((group, index) => (
+                        <div key={`gst-group-${index}`} className="space-y-0.5">
+                          <div className="flex justify-between text-[10px] text-gray-600">
+                            <span>SGST ({group.sgstRate}%):</span>
+                            <span>₹{group.sgstAmount?.toFixed(2) || '0.00'}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-gray-600">
+                            <span>CGST ({group.cgstRate}%):</span>
+                            <span>₹{group.cgstAmount?.toFixed(2) || '0.00'}</span>
+                          </div>
                         </div>
                       ))}
                     </div>

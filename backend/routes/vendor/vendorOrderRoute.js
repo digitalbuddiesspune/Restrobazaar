@@ -9,7 +9,7 @@ import {
   getVendorOrderStats,
   createOrderForUser,
 } from '../../controller/vendor/vendorOrderController.js';
-import { getVendorUsers } from '../../controller/vendor/vendorUserController.js';
+import { getVendorUsers, createVendorUser } from '../../controller/vendor/vendorUserController.js';
 import {
   getUserAddresses,
   createUserAddress,
@@ -28,6 +28,7 @@ vendorOrderRouter.patch('/vendor/orders/:id/items', authenticate, authorize('ven
 
 // Vendor user routes - For creating orders on behalf of users
 vendorOrderRouter.get('/vendor/users', authenticate, authorize('vendor'), getVendorUsers);
+vendorOrderRouter.post('/vendor/new-user', authenticate, authorize('vendor'), createVendorUser);
 vendorOrderRouter.post('/vendor/orders/create-for-user', authenticate, authorize('vendor'), createOrderForUser);
 
 // Vendor address routes - For managing user addresses

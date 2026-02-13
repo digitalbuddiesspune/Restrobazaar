@@ -54,17 +54,17 @@ export const authAPI = {
   },
 
   // OTP endpoints
-  sendOTPForSignup: async (phone, email) => {
+  sendOTPForSignup: async (data) => {
     return apiRequest('/users/send-otp-signup', {
       method: 'POST',
-      body: JSON.stringify({ phone, email }),
+      body: JSON.stringify(data),
     });
   },
 
-  verifyOTPAndSignup: async (name, email, phone, password, otp) => {
+  verifyOTPAndSignup: async (data) => {
     return apiRequest('/users/verify-otp-signup', {
       method: 'POST',
-      body: JSON.stringify({ name, email, phone, password, otp }),
+      body: JSON.stringify(data),
     });
   },
 
@@ -95,6 +95,20 @@ export const userAPI = {
     return apiRequest(`/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(userData),
+    });
+  },
+};
+
+// Vendor API (public endpoints for fetching vendor info)
+export const vendorAPI = {
+  getVendorById: async (vendorId) => {
+    return authenticatedApiRequest(`/vendors/${vendorId}`, {
+      method: 'GET',
+    });
+  },
+  getVendorBankDetails: async (vendorId) => {
+    return apiRequest(`/vendors/${vendorId}/bank-details`, {
+      method: 'GET',
     });
   },
 };
@@ -162,16 +176,17 @@ const authenticatedApiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
     
     if (!response.ok) {
-      // Handle 401 - redirect to login
+      // Handle 401 - session expired or invalid (backend already clears cookie)
       if (response.status === 401) {
-        // Clear user info if unauthorized
         try {
           const { removeUserInfo } = await import('./auth');
           removeUserInfo();
         } catch (e) {
           console.error('Error clearing user info:', e);
         }
-        window.location.href = '/signin';
+        // Redirect to signin with hint so page can show "Session expired" message
+        window.location.href = '/signin?session=expired';
+        return;
       }
       throw {
         response: {
@@ -180,20 +195,19 @@ const authenticatedApiRequest = async (endpoint, options = {}) => {
         },
       };
     }
-    
+
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-// Vendor API sathi (cookie-only, localStorage nahi)
+// Vendor API (cookie + optional localStorage token)
 const vendorAuthenticatedApiRequest = async (endpoint, options = {}) => {
   const config = {
-    credentials: 'include', // Cookie automatically send hotay
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      // Authorization header nahi - cookie use kara
       ...options.headers,
     },
     ...options,
@@ -202,11 +216,19 @@ const vendorAuthenticatedApiRequest = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, config);
     const data = await response.json();
-    
+
     if (!response.ok) {
-      // Handle 401 - redirect to vendor login
+      // Handle 401 - clear vendor token and redirect to vendor login
       if (response.status === 401) {
-        window.location.href = '/vendor/login';
+        try {
+          localStorage.removeItem('token');
+          const { removeUserInfo } = await import('./auth');
+          removeUserInfo();
+        } catch (e) {
+          console.error('Error clearing vendor auth:', e);
+        }
+        window.location.href = '/vendor/login?session=expired';
+        return;
       }
       throw {
         response: {
@@ -215,7 +237,7 @@ const vendorAuthenticatedApiRequest = async (endpoint, options = {}) => {
         },
       };
     }
-    
+
     return data;
   } catch (error) {
     throw error;
@@ -496,6 +518,7 @@ export const orderAPI = {
   getUserOrders: async (filters = {}) => {
     const queryParams = new URLSearchParams();
     if (filters.status) queryParams.append('status', filters.status);
+    if (filters.cityId) queryParams.append('cityId', filters.cityId);
     if (filters.page) queryParams.append('page', filters.page);
     if (filters.limit) queryParams.append('limit', filters.limit);
     

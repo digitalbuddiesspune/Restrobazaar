@@ -84,6 +84,7 @@ const VendorAdminDashboard = () => {
     cityId: "",
     priceType: "single",
     defaultPrice: 0,
+    sequenceNumber: 0,
     productPurchasedFrom: "",
     purchasedMode: "",
     purchasedAmount: "",
@@ -211,6 +212,7 @@ const VendorAdminDashboard = () => {
       cityId: cityId,
       priceType: product.priceType,
       defaultPrice: product.defaultPrice || 0,
+      sequenceNumber: product.sequenceNumber || 0,
       productPurchasedFrom: product.productPurchasedFrom || "",
       purchasedMode: product.purchasedMode || "",
       purchasedAmount: product.purchasedAmount || "",
@@ -312,6 +314,7 @@ const VendorAdminDashboard = () => {
         cityId: vendorInfo?.cityId || productForm.cityId,
         priceType: productForm.priceType,
         defaultPrice: parseFloat(productForm.defaultPrice) || 0,
+        sequenceNumber: parseFloat(productForm.sequenceNumber) || 0,
         productPurchasedFrom: productForm.productPurchasedFrom || undefined,
         purchasedMode: productForm.purchasedMode || undefined,
         purchasedAmount: productForm.purchasedAmount || undefined,
@@ -354,6 +357,7 @@ const VendorAdminDashboard = () => {
         cityId: vendorInfo?.cityId || "",
         priceType: "single",
         defaultPrice: 0,
+        sequenceNumber: 0,
         productPurchasedFrom: "",
         purchasedMode: "",
         purchasedAmount: "",
@@ -805,6 +809,7 @@ const VendorAdminDashboard = () => {
                                 productId: product._id,
                                 cityId: defaultCityId,
                                 priceType: "single",
+                                sequenceNumber: 0,
                                 pricing: {
                                   single: {
                                     price: "",
@@ -1068,6 +1073,9 @@ const VendorAdminDashboard = () => {
                       Min Order Qty
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sequence
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1159,6 +1167,9 @@ const VendorAdminDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {product.minimumOrderQuantity || 1}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {product.sequenceNumber || 0}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -1201,7 +1212,7 @@ const VendorAdminDashboard = () => {
                   {paginatedProducts.length === 0 && (
                     <tr>
                       <td
-                        colSpan="8"
+                        colSpan="9"
                         className="px-6 py-4 text-center text-gray-500"
                       >
                         {vendorProductsLoading ? "Loading products..." : "No products found. Add products from the Product Catalog!"}
@@ -1551,6 +1562,26 @@ const VendorAdminDashboard = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Sequence Number *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="1"
+                      value={productForm.sequenceNumber}
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          sequenceNumber: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Purchased From
                     </label>
                     <input
@@ -1764,6 +1795,7 @@ const VendorAdminDashboard = () => {
                       cityId: vendorInfo?.cityId || "",
                       priceType: "single",
                       defaultPrice: 0,
+                      sequenceNumber: 0,
                       productPurchasedFrom: "",
                       purchasedMode: "",
                       purchasedAmount: "",
