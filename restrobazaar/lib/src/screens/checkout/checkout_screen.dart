@@ -129,10 +129,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
-  Future<void> _applyCoupon(
-    CartState cartState, {
-    String? overrideCode,
-  }) async {
+  Future<void> _applyCoupon(CartState cartState, {String? overrideCode}) async {
     final code = (overrideCode ?? _couponController.text).trim().toUpperCase();
     if (code.isEmpty) {
       setState(() {
@@ -264,13 +261,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       0,
       (sum, line) => sum + line.amount,
     );
+    final sgstCgstBreakdown = _buildSgstCgstBreakdown(gstBreakdownLines);
     final shipping = calculateShippingCharges(cartState.subtotal);
     final totalBeforeCoupon = cartState.subtotal + gst + shipping;
     final discountedTotal = totalBeforeCoupon - _couponDiscount;
-    final double totalAmount =
-        (discountedTotal < 0 ? 0 : discountedTotal).toDouble();
-    final upiData =
-        _paymentMethod == 'online' ? _buildUpiData(totalAmount) : null;
+    final double totalAmount = (discountedTotal < 0 ? 0 : discountedTotal)
+        .toDouble();
+    final upiData = _paymentMethod == 'online'
+        ? _buildUpiData(totalAmount)
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -303,7 +302,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             _BillingDetailsCard(
               cartState: cartState,
               gst: gst,
-              gstBreakdown: gstBreakdownLines,
+              sgstCgstBreakdown: sgstCgstBreakdown,
               shipping: shipping,
               totalAmount: totalAmount,
               coupons: _availableCoupons,
@@ -517,7 +516,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           return ChoiceChip(
                             label: Text(type),
                             selected: addressType == type,
-                            onSelected: (_) => setState(() => addressType = type),
+                            onSelected: (_) =>
+                                setState(() => addressType = type),
                           );
                         }).toList(),
                       ),
@@ -541,7 +541,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             );
                             await ref
                                 .read(checkoutControllerProvider.notifier)
-                                .upsertAddress(newAddress, isEdit: address != null);
+                                .upsertAddress(
+                                  newAddress,
+                                  isEdit: address != null,
+                                );
                             if (!mounted) return;
                             Navigator.of(context).pop();
                           },
@@ -617,7 +620,11 @@ class _ProgressSteps extends StatelessWidget {
 }
 
 class _StepCircle extends StatelessWidget {
-  const _StepCircle({required this.label, required this.title, required this.active});
+  const _StepCircle({
+    required this.label,
+    required this.title,
+    required this.active,
+  });
 
   final String label;
   final String title;
@@ -710,10 +717,7 @@ class _AddressCard extends StatelessWidget {
             children: [
               const Text(
                 'Delivery To',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
               TextButton.icon(
                 onPressed: onAdd,
@@ -726,9 +730,7 @@ class _AddressCard extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFdc2626),
-                ),
+                child: CircularProgressIndicator(color: Color(0xFFdc2626)),
               ),
             )
           else if (checkoutState.addresses.isEmpty)
@@ -746,16 +748,12 @@ class _AddressCard extends StatelessWidget {
                 final lineParts = [
                   address.addressLine1,
                   address.addressLine2 ?? '',
-                ]
-                    .where((part) => part.trim().isNotEmpty)
-                    .toList();
+                ].where((part) => part.trim().isNotEmpty).toList();
                 final addressLine = lineParts.join(', ');
                 final cityParts = [
                   address.city ?? '',
                   address.state ?? '',
-                ]
-                    .where((part) => part.trim().isNotEmpty)
-                    .toList();
+                ].where((part) => part.trim().isNotEmpty).toList();
                 final cityLine = cityParts.join(', ');
                 final pincode = address.pincode?.trim() ?? '';
                 return Container(
@@ -897,10 +895,7 @@ class _PaymentSection extends StatelessWidget {
         children: [
           const Text(
             'Payment Method',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           _PaymentTile(
@@ -930,10 +925,7 @@ class _PaymentSection extends StatelessWidget {
                 children: [
                   const Text(
                     'Scan to pay',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                   const SizedBox(height: 10),
                   Center(
@@ -983,10 +975,7 @@ class _PaymentSection extends StatelessWidget {
                   const SizedBox(height: 6),
                   const Text(
                     'Use any UPI app to scan and pay. After payment, your order will be confirmed.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF6b7280),
-                    ),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF6b7280)),
                   ),
                 ],
               ),
@@ -1021,9 +1010,7 @@ class _AddressField extends StatelessWidget {
         validator: validator,
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 14,
@@ -1122,11 +1109,52 @@ class _GstBreakdownLine {
   final double amount;
 }
 
+class _SgstCgstBreakdownLine {
+  const _SgstCgstBreakdownLine({
+    required this.gstPercentage,
+    required this.sgstRate,
+    required this.cgstRate,
+    required this.sgstAmount,
+    required this.cgstAmount,
+  });
+
+  final double gstPercentage;
+  final double sgstRate;
+  final double cgstRate;
+  final double sgstAmount;
+  final double cgstAmount;
+}
+
+List<_SgstCgstBreakdownLine> _buildSgstCgstBreakdown(
+  List<_GstBreakdownLine> lines,
+) {
+  final Map<String, double> groupedGstAmounts = {};
+  for (final line in lines) {
+    if (line.percentage <= 0 || line.amount <= 0) continue;
+    final key = line.percentage.toStringAsFixed(2);
+    groupedGstAmounts[key] = (groupedGstAmounts[key] ?? 0) + line.amount;
+  }
+
+  return groupedGstAmounts.entries.map((entry) {
+    final gstPercentage = double.parse(entry.key);
+    final totalGst = double.parse(entry.value.toStringAsFixed(2));
+    final half = double.parse((totalGst / 2).toStringAsFixed(2));
+    final halfRate = double.parse((gstPercentage / 2).toStringAsFixed(2));
+    return _SgstCgstBreakdownLine(
+      gstPercentage: gstPercentage,
+      sgstRate: halfRate,
+      cgstRate: halfRate,
+      sgstAmount: half,
+      cgstAmount: half,
+    );
+  }).toList()..sort((a, b) => b.gstPercentage.compareTo(a.gstPercentage));
+}
+
 class _BillingDetailsCard extends StatelessWidget {
   const _BillingDetailsCard({
     required this.cartState,
     required this.gst,
-    required this.gstBreakdown,
+    required this.sgstCgstBreakdown,
     required this.shipping,
     required this.totalAmount,
     required this.coupons,
@@ -1150,7 +1178,7 @@ class _BillingDetailsCard extends StatelessWidget {
 
   final CartState cartState;
   final double gst;
-  final List<_GstBreakdownLine> gstBreakdown;
+  final List<_SgstCgstBreakdownLine> sgstCgstBreakdown;
   final double shipping;
   final double totalAmount;
   final List<CouponModel> coupons;
@@ -1186,8 +1214,9 @@ class _BillingDetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryLabel =
-        showPaymentSection ? 'CONFIRM ORDER' : 'CONTINUE TO PAYMENT';
+    final primaryLabel = showPaymentSection
+        ? 'CONFIRM ORDER'
+        : 'CONTINUE TO PAYMENT';
     final disableAction =
         primaryDisabled || (showPaymentSection && placingOrder);
 
@@ -1210,18 +1239,13 @@ class _BillingDetailsCard extends StatelessWidget {
         children: [
           const Text(
             'BILLING DETAILS',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade200),
-              ),
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1418,32 +1442,56 @@ class _BillingDetailsCard extends StatelessWidget {
             label: 'Cart Total (Excl. of all taxes)',
             value: formatCurrency(cartState.subtotal),
           ),
-          _SummaryRow(label: 'GST', value: formatCurrency(gst)),
-          if (gstBreakdown.isNotEmpty)
+          if (sgstCgstBreakdown.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(left: 8, top: 4, bottom: 4),
               child: Column(
-                children: gstBreakdown
+                children: sgstCgstBreakdown
                     .map(
                       (line) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${line.name} (${_formatPercentage(line.percentage)}%):',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF6b7280),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'CGST (${_formatPercentage(line.cgstRate)}%):',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF6b7280),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                Text(
+                                  formatCurrency(line.cgstAmount),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF6b7280),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              formatCurrency(line.amount),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF6b7280),
-                              ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'SGST (${_formatPercentage(line.sgstRate)}%):',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF6b7280),
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  formatCurrency(line.sgstAmount),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF6b7280),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -1452,11 +1500,14 @@ class _BillingDetailsCard extends StatelessWidget {
                     .toList(),
               ),
             ),
+          if (sgstCgstBreakdown.isEmpty)
+            _SummaryRow(label: 'GST', value: formatCurrency(gst)),
           _SummaryRow(
             label: 'Shipping Charges',
             value: shipping == 0 ? 'Free' : formatCurrency(shipping),
-            valueColor:
-                shipping == 0 ? const Color(0xFF16A34A) : const Color(0xFF111827),
+            valueColor: shipping == 0
+                ? const Color(0xFF16A34A)
+                : const Color(0xFF111827),
           ),
           if (appliedCoupon != null)
             _SummaryRow(
@@ -1469,10 +1520,7 @@ class _BillingDetailsCard extends StatelessWidget {
             children: [
               const Text(
                 'Total Amount',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
               ),
               const Spacer(),
               Text(
@@ -1555,10 +1603,7 @@ class _SummaryRow extends StatelessWidget {
         children: [
           Text(label, style: style),
           const Spacer(),
-          Text(
-            value,
-            style: style.copyWith(color: valueColor ?? style.color),
-          ),
+          Text(value, style: style.copyWith(color: valueColor ?? style.color)),
         ],
       ),
     );

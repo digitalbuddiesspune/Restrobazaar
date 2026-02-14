@@ -858,6 +858,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   final showQr = paymentMethod == 'online' || paymentMethod == 'upi';
   final upiUrl = _buildUpiUrl(totalAmount, formattedOrderId);
   final qrBytes = showQr ? await _buildQrBytes(upiUrl) : null;
+  final sgstCgstBreakdown = _buildSgstCgstBreakdownFromItems(order.items);
 
   final pdf = pw.Document();
   pdf.addPage(
@@ -1046,7 +1047,19 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
               _summaryLine('Cart Total (Excl. of all taxes):', _rs(subtotal)),
-              _summaryLine('GST:', _rs(gstAmount)),
+              if (sgstCgstBreakdown.isNotEmpty) ...[
+                for (final line in sgstCgstBreakdown) ...[
+                  _summaryLine(
+                    'CGST (${_formatTaxPercent(line.cgstRate)}%):',
+                    _rs(line.cgstAmount),
+                  ),
+                  _summaryLine(
+                    'SGST (${_formatTaxPercent(line.sgstRate)}%):',
+                    _rs(line.sgstAmount),
+                  ),
+                ],
+              ] else
+                _summaryLine('GST:', _rs(gstAmount)),
               _summaryLine('Shipping Charges:', _rs(shipping)),
               if (order.couponAmount != null && order.couponAmount! > 0)
                 _summaryLine(
@@ -1213,6 +1226,53 @@ double _calculateGstFromItems(List<CartItem> items) {
     return sum + gstAmount;
   });
   return double.parse(total.toStringAsFixed(2));
+}
+
+class _TaxBreakdownLine {
+  const _TaxBreakdownLine({
+    required this.cgstRate,
+    required this.sgstRate,
+    required this.cgstAmount,
+    required this.sgstAmount,
+  });
+
+  final double cgstRate;
+  final double sgstRate;
+  final double cgstAmount;
+  final double sgstAmount;
+}
+
+List<_TaxBreakdownLine> _buildSgstCgstBreakdownFromItems(List<CartItem> items) {
+  final Map<String, double> groupedGstAmounts = {};
+  for (final item in items) {
+    if (item.gstPercentage <= 0) continue;
+    final itemTotal = item.unitPriceForQuantity(item.quantity) * item.quantity;
+    final gstAmount = (itemTotal * item.gstPercentage) / 100;
+    if (gstAmount <= 0) continue;
+    final key = item.gstPercentage.toStringAsFixed(2);
+    groupedGstAmounts[key] = (groupedGstAmounts[key] ?? 0) + gstAmount;
+  }
+
+  final lines = groupedGstAmounts.entries.map((entry) {
+    final gstPercentage = double.parse(entry.key);
+    final totalGst = double.parse(entry.value.toStringAsFixed(2));
+    final halfRate = double.parse((gstPercentage / 2).toStringAsFixed(2));
+    final halfAmount = double.parse((totalGst / 2).toStringAsFixed(2));
+    return _TaxBreakdownLine(
+      cgstRate: halfRate,
+      sgstRate: halfRate,
+      cgstAmount: halfAmount,
+      sgstAmount: halfAmount,
+    );
+  }).toList();
+
+  lines.sort((a, b) => b.cgstRate.compareTo(a.cgstRate));
+  return lines;
+}
+
+String _formatTaxPercent(double value) {
+  final isWhole = value == value.roundToDouble();
+  return isWhole ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
 }
 
 String _rs(num value) => 'Rs. ${value.toStringAsFixed(2)}';
