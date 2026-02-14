@@ -19,6 +19,7 @@ class OrderModel {
     this.couponCode,
     this.gstNumber,
     this.billingDetails,
+    this.vendor,
     this.deliveryAddress,
   });
 
@@ -38,6 +39,7 @@ class OrderModel {
   final String? couponCode;
   final String? gstNumber;
   final OrderBillingDetails? billingDetails;
+  final OrderVendorInfo? vendor;
   final AddressModel? deliveryAddress;
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -80,6 +82,12 @@ class OrderModel {
               'price': merged['price'] ?? 0,
               'quantity': merged['quantity'] ?? 1,
               'gstPercentage': merged['gstPercentage'] ?? merged['gst'] ?? 0,
+              'gstAmount': merged['gstAmount'],
+              'hsnCode':
+                  merged['hsnCode'] ??
+                  merged['hsn'] ??
+                  merged['product']?['hsnCode'] ??
+                  merged['vendorProduct']?['productId']?['hsnCode'],
               'minimumOrderQuantity': merged['minimumOrderQuantity'] ?? 1,
             }),
           );
@@ -120,6 +128,9 @@ class OrderModel {
       billingDetails: billing.isNotEmpty
           ? OrderBillingDetails.fromJson(billing)
           : null,
+      vendor: json['vendorId'] is Map<String, dynamic>
+          ? OrderVendorInfo.fromJson(json['vendorId'] as Map<String, dynamic>)
+          : null,
       deliveryAddress: json['deliveryAddress'] is Map<String, dynamic>
           ? AddressModel.fromJson(
               json['deliveryAddress'] as Map<String, dynamic>,
@@ -148,6 +159,69 @@ class OrderBillingDetails {
       gstAmount: _toDouble(json['gstAmount']) ?? 0,
       shippingCharges: _toDouble(json['shippingCharges']) ?? 0,
       totalAmount: _toDouble(json['totalAmount']) ?? 0,
+    );
+  }
+}
+
+class OrderVendorInfo {
+  const OrderVendorInfo({
+    required this.businessName,
+    this.email,
+    this.gstNumber,
+    this.state,
+    this.bankDetails,
+  });
+
+  final String businessName;
+  final String? email;
+  final String? gstNumber;
+  final String? state;
+  final OrderVendorBankDetails? bankDetails;
+
+  factory OrderVendorInfo.fromJson(Map<String, dynamic> json) {
+    final address = json['address'];
+    final state = address is Map<String, dynamic>
+        ? address['state']?.toString()
+        : null;
+    return OrderVendorInfo(
+      businessName: (json['businessName'] ?? 'AK Enterprises').toString(),
+      email: json['email']?.toString(),
+      gstNumber: json['gstNumber']?.toString(),
+      state: state,
+      bankDetails: json['bankDetails'] is Map<String, dynamic>
+          ? OrderVendorBankDetails.fromJson(
+              json['bankDetails'] as Map<String, dynamic>,
+            )
+          : null,
+    );
+  }
+}
+
+class OrderVendorBankDetails {
+  const OrderVendorBankDetails({
+    this.bankName,
+    this.accountHolderName,
+    this.accountNumber,
+    this.branch,
+    this.ifsc,
+    this.upiId,
+  });
+
+  final String? bankName;
+  final String? accountHolderName;
+  final String? accountNumber;
+  final String? branch;
+  final String? ifsc;
+  final String? upiId;
+
+  factory OrderVendorBankDetails.fromJson(Map<String, dynamic> json) {
+    return OrderVendorBankDetails(
+      bankName: json['bankName']?.toString(),
+      accountHolderName: json['accountHolderName']?.toString(),
+      accountNumber: json['accountNumber']?.toString(),
+      branch: json['branch']?.toString(),
+      ifsc: json['ifsc']?.toString(),
+      upiId: json['upiId']?.toString(),
     );
   }
 }

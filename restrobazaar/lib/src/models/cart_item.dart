@@ -18,6 +18,8 @@ class CartItem {
     this.pricing,
     this.minimumOrderQuantity = 1,
     this.gstPercentage = 0,
+    this.gstAmount,
+    this.hsnCode,
     this.availableStock,
     this.unit,
   });
@@ -38,6 +40,8 @@ class CartItem {
   final PricingModel? pricing;
   final int minimumOrderQuantity;
   final double gstPercentage;
+  final double? gstAmount;
+  final String? hsnCode;
   final int? availableStock;
   final String? unit;
 
@@ -55,8 +59,9 @@ class CartItem {
         }
       }
       if (best != null) return best.price;
-      final fallback = pricing!.bulk
-          .reduce((a, b) => a.minQty <= b.minQty ? a : b);
+      final fallback = pricing!.bulk.reduce(
+        (a, b) => a.minQty <= b.minQty ? a : b,
+      );
       return fallback.price;
     }
     return price;
@@ -69,6 +74,8 @@ class CartItem {
     double? price,
     PricingModel? pricing,
     double? gstPercentage,
+    double? gstAmount,
+    String? hsnCode,
   }) {
     return CartItem(
       id: id ?? this.id,
@@ -87,6 +94,8 @@ class CartItem {
       pricing: pricing ?? this.pricing,
       minimumOrderQuantity: minimumOrderQuantity,
       gstPercentage: gstPercentage ?? this.gstPercentage,
+      gstAmount: gstAmount ?? this.gstAmount,
+      hsnCode: hsnCode ?? this.hsnCode,
       availableStock: availableStock,
       unit: unit,
     );
@@ -113,6 +122,10 @@ class CartItem {
       gstPercentage: json['gstPercentage'] is num
           ? (json['gstPercentage'] as num).toDouble()
           : double.tryParse(json['gstPercentage']?.toString() ?? '') ?? 0,
+      gstAmount: json['gstAmount'] is num
+          ? (json['gstAmount'] as num).toDouble()
+          : double.tryParse(json['gstAmount']?.toString() ?? ''),
+      hsnCode: json['hsnCode']?.toString(),
       selectedSlab: json['selectedSlab'] is Map<String, dynamic>
           ? PriceSlab.fromJson(json['selectedSlab'] as Map<String, dynamic>)
           : null,
@@ -163,6 +176,8 @@ class CartItem {
       pricing: vendorProduct.pricing,
       minimumOrderQuantity: vendorProduct.minimumOrderQuantity ?? 1,
       gstPercentage: vendorProduct.gst ?? 0,
+      gstAmount: null,
+      hsnCode: null,
       availableStock: vendorProduct.availableStock,
       unit: product?.unit,
     );
@@ -186,6 +201,8 @@ class CartItem {
       'pricing': pricing?.toJson(),
       'minimumOrderQuantity': minimumOrderQuantity,
       'gstPercentage': gstPercentage,
+      'gstAmount': gstAmount,
+      'hsnCode': hsnCode,
       'availableStock': availableStock,
       'unit': unit,
     };

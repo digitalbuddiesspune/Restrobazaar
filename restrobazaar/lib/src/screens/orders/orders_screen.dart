@@ -15,6 +15,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../controllers/order_providers.dart';
 import '../../core/formatters.dart';
 import '../../core/order_id_formatter.dart';
+import '../../models/address.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';
 import '../../repositories/repository_providers.dart';
@@ -839,318 +840,375 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
       _calculateGstFromItems(order.items);
   final shipping =
       order.billingDetails?.shippingCharges ?? order.shippingCharges ?? 0;
+  final couponDiscount = order.couponAmount ?? 0;
   final totalAmount =
       order.billingDetails?.totalAmount ??
       (order.totalAmount != 0
           ? order.totalAmount
-          : subtotal + gstAmount + shipping);
-  final paymentStatus = order.paymentStatus?.isNotEmpty == true
-      ? _titleCase(order.paymentStatus!)
-      : 'Pending';
+          : subtotal + gstAmount + shipping - couponDiscount);
+
+  final vendor = order.vendor;
+  final vendorName = vendor?.businessName.isNotEmpty == true
+      ? vendor!.businessName
+      : 'AK Enterprises';
+  final vendorEmail = vendor?.email?.isNotEmpty == true
+      ? vendor!.email!
+      : 'pune@restrobazaar.com';
+  final vendorGst = vendor?.gstNumber?.isNotEmpty == true
+      ? vendor!.gstNumber!
+      : '27DJSPK2679K1ZB';
+  final vendorState = vendor?.state?.isNotEmpty == true
+      ? vendor!.state!
+      : 'Maharashtra';
+  final stateCode = _stateCode(vendorState);
+  final bank = vendor?.bankDetails;
+  final bankName = bank?.bankName?.isNotEmpty == true
+      ? bank!.bankName!
+      : 'Kotak Mahindra Bank';
+  final bankIfsc = bank?.ifsc?.isNotEmpty == true ? bank!.ifsc! : 'KKBK0001767';
+  final accountName = bank?.accountHolderName?.isNotEmpty == true
+      ? bank!.accountHolderName!
+      : vendorName;
+  final accountNumber = bank?.accountNumber?.isNotEmpty == true
+      ? bank!.accountNumber!
+      : '9545235223';
+  final upiId = bank?.upiId?.isNotEmpty == true
+      ? bank!.upiId!
+      : '9545235223@kotak';
+
   final formattedOrderId = _displayOrderId(order);
+  final orderNumberForDisplay = formattedOrderId.replaceAll('#', '');
   final invoiceNumber = order.invoiceNumber?.isNotEmpty == true
       ? order.invoiceNumber!
       : 'RBZ-$formattedOrderId';
-  final orderNumber = order.orderNumber?.isNotEmpty == true
-      ? order.orderNumber!
-      : formattedOrderId;
-  final paymentMethod = order.paymentMethod?.toLowerCase() ?? '';
-  final showQr = paymentMethod == 'online' || paymentMethod == 'upi';
-  final upiUrl = _buildUpiUrl(totalAmount, formattedOrderId);
-  final qrBytes = showQr ? await _buildQrBytes(upiUrl) : null;
-  final sgstCgstBreakdown = _buildSgstCgstBreakdownFromItems(order.items);
+  final paymentStatus = order.paymentStatus?.toLowerCase() == 'completed'
+      ? 'Paid'
+      : 'Unpaid';
+  final paymentModeText = _paymentModeText(order.paymentMethod);
+  final placeOfSupply = '$stateCode - $vendorState';
+  final gstDisplay = order.gstNumber?.trim().isNotEmpty == true
+      ? order.gstNumber!.trim()
+      : 'URP';
+  final customerName = customer?.name.isNotEmpty == true
+      ? customer!.name
+      : 'N/A';
+  final customerPhone = customer?.phone.isNotEmpty == true
+      ? customer!.phone
+      : '';
+  final customerAddress = _buildInvoiceAddress(customer);
+
+  final upiUrl =
+      'upi://pay?pa=${Uri.encodeComponent(upiId)}&pn=${Uri.encodeComponent(accountName)}&am=${totalAmount.toStringAsFixed(2)}&cu=INR&tn=${Uri.encodeComponent(invoiceNumber)}';
+  final qrBytes = await _buildQrBytes(upiUrl);
+  final groupedTaxes = _buildSgstCgstBreakdownFromItems(order.items);
+
+  final invoiceRows = <List<String>>[
+    ['Invoice No:', invoiceNumber],
+    ['Order No:', orderNumberForDisplay],
+    ['Order Status:', _statusText(order.status)],
+    ['Payment Mode:', paymentModeText],
+    ['Place of Supply:', placeOfSupply],
+    ['Invoice Date:', _formatInvoiceDate(invoiceDate)],
+    ['Order Date:', _formatInvoiceDate(invoiceDate)],
+    ['Payment Status:', paymentStatus],
+  ];
+
+  final orderRows = order.items.asMap().entries.map((entry) {
+    final item = entry.value;
+    final taxableValue = item.lineTotal;
+    final itemGstAmount =
+        item.gstAmount ?? ((taxableValue * item.gstPercentage) / 100);
+    final amount = taxableValue + itemGstAmount;
+    final hsn = item.hsnCode?.isNotEmpty == true ? item.hsnCode! : '39231090';
+    return <String>[
+      '${entry.key + 1}',
+      item.productName,
+      hsn,
+      item.quantity.toString(),
+      _n(item.price),
+      _n(taxableValue),
+      _n(item.gstPercentage),
+      _n(itemGstAmount),
+      _n(amount),
+    ];
+  }).toList();
+
+  final summaryRows = <_InvoiceSummaryRow>[
+    _InvoiceSummaryRow('Sub Total:', _n(subtotal)),
+    ...groupedTaxes.expand(
+      (line) => [
+        _InvoiceSummaryRow(
+          'SGST (${_formatTaxPercent(line.sgstRate)}%):',
+          _n(line.sgstAmount),
+        ),
+        _InvoiceSummaryRow(
+          'CGST (${_formatTaxPercent(line.cgstRate)}%):',
+          _n(line.cgstAmount),
+        ),
+      ],
+    ),
+    _InvoiceSummaryRow(
+      'Shipping Charges:',
+      shipping == 0 ? 'Free' : _n(shipping),
+    ),
+    if (couponDiscount > 0)
+      _InvoiceSummaryRow('Coupon Discount:', '-${_n(couponDiscount)}'),
+    _InvoiceSummaryRow('Total Amount:', _n(totalAmount), isTotal: true),
+  ];
+
+  final amountInWords = _numberToWords(totalAmount);
 
   final pdf = pw.Document();
   pdf.addPage(
     pw.MultiPage(
       pageTheme: const pw.PageTheme(
-        margin: pw.EdgeInsets.all(28),
+        margin: pw.EdgeInsets.fromLTRB(26, 24, 26, 24),
         textDirection: pw.TextDirection.ltr,
       ),
-      build: (context) => [
+      build: (_) => [
         pw.Center(
-          child: pw.Column(
-            children: [
-              pw.Text(
-                'RestroBazaar',
-                style: pw.TextStyle(
-                  fontSize: 26,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColor.fromInt(const Color(0xFFdc2626).value),
-                ),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'Your Trusted Packaging Solutions Partner',
-                style: pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
-              ),
-              pw.SizedBox(height: 2),
-              pw.Text(
-                'By: AK Enterprises | Email: support@restrobazaar.com | GST No: 27DJSPK2679K1Z5 | State Code: 27',
-                style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
-              ),
-            ],
+          child: pw.Text(
+            'RESTROBAZAAR',
+            style: pw.TextStyle(
+              fontSize: 22,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromInt(const Color(0xFFdc2626).value),
+            ),
           ),
         ),
-        pw.SizedBox(height: 10),
+        pw.SizedBox(height: 2),
+        pw.Center(
+          child: pw.Text(
+            'Your Trusted Packaging Solutions Partner',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+        ),
+        pw.SizedBox(height: 2),
+        pw.Center(
+          child: pw.Text(
+            'By: $vendorName | Email: $vendorEmail | GST No: $vendorGst | State Code: $stateCode',
+            style: const pw.TextStyle(fontSize: 8),
+          ),
+        ),
+        pw.SizedBox(height: 8),
+        pw.Divider(color: PdfColors.black, thickness: 1),
         pw.Center(
           child: pw.Text(
             'TAX INVOICE',
             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
           ),
         ),
-        pw.SizedBox(height: 14),
-        pw.Container(
-          padding: const pw.EdgeInsets.all(8),
-          decoration: pw.BoxDecoration(
-            border: pw.Border.all(color: PdfColors.grey400, width: 0.6),
-          ),
-          child: pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+        pw.Divider(color: PdfColors.black, thickness: 1),
+        pw.SizedBox(height: 8),
+
+        _invoiceSectionHeader('Invoice Details'),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey700, width: 0.5),
+          columnWidths: const {
+            0: pw.FlexColumnWidth(1.3),
+            1: pw.FlexColumnWidth(2.7),
+          },
+          children: invoiceRows
+              .map(
+                (row) => pw.TableRow(
                   children: [
-                    pw.Text(
-                      'Invoice Details:',
-                      style: pw.TextStyle(
-                        fontSize: 12,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.SizedBox(height: 6),
-                    _detailLine('Invoice No:', invoiceNumber),
-                    _detailLine('Order No:', orderNumber),
-                    _detailLine(
-                      'Order Status:',
-                      _statusText(order.status),
-                      boldValue: true,
-                    ),
-                    _detailLine(
-                      'Payment Mode:',
-                      _paymentLabel(order.paymentMethod),
-                    ),
-                    _detailLine('Invoice Date:', _formatDate(invoiceDate)),
-                    _detailLine('Order Date:', _formatDate(invoiceDate)),
-                    _detailLine('Payment Status:', paymentStatus),
+                    _invoiceTableCell(row[0], isHeader: false),
+                    _invoiceTableCell(row[1], bold: true),
                   ],
                 ),
-              ),
-              pw.SizedBox(width: 20),
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Bill To',
-                      style: pw.TextStyle(
-                        fontSize: 12,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Text(
-                      customer != null && customer.name.isNotEmpty
-                          ? customer.name
-                          : 'Not provided',
-                      style: const pw.TextStyle(fontSize: 12),
-                    ),
-                    if (customer != null && customer.addressLine1.isNotEmpty)
-                      pw.Text(
-                        customer.addressLine1,
-                        style: const pw.TextStyle(fontSize: 12),
-                      ),
-                    if (customer?.addressLine2?.isNotEmpty == true)
-                      pw.Text(
-                        customer!.addressLine2!,
-                        style: const pw.TextStyle(fontSize: 12),
-                      ),
-                    if (customer != null &&
-                        (customer.city?.isNotEmpty == true ||
-                            customer.state?.isNotEmpty == true))
-                      pw.Text(
-                        '${customer.city ?? ''}${customer.city != null && customer.state != null ? ', ' : ''}${customer.state ?? ''}',
-                        style: const pw.TextStyle(fontSize: 12),
-                      ),
-                    if (customer?.pincode?.isNotEmpty == true)
-                      pw.Text(
-                        'Pincode: ${customer!.pincode}',
-                        style: const pw.TextStyle(fontSize: 12),
-                      ),
-                    if (customer != null && customer.phone.isNotEmpty)
-                      pw.Text(
-                        'Phone: ${customer.phone}',
-                        style: const pw.TextStyle(fontSize: 12),
-                      ),
-                    if (order.gstNumber?.isNotEmpty == true)
-                      pw.Text(
-                        'GSTIN: ${order.gstNumber}',
-                        style: const pw.TextStyle(fontSize: 12),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        pw.SizedBox(height: 18),
-        pw.Text(
-          'Order Items:',
-          style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+              )
+              .toList(),
         ),
         pw.SizedBox(height: 8),
-        if (order.items.isEmpty)
-          pw.Text(
-            'No items found for this order.',
-            style: pw.TextStyle(color: PdfColors.grey600),
-          )
-        else
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
-            columnWidths: {
-              0: const pw.FixedColumnWidth(40),
-              1: const pw.FlexColumnWidth(3),
-              2: const pw.FlexColumnWidth(1),
-              3: const pw.FlexColumnWidth(1.2),
-              4: const pw.FlexColumnWidth(1.2),
-            },
-            children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                children: [
-                  _tableHeaderCell('S.No.'),
-                  _tableHeaderCell('Item'),
-                  _tableHeaderCell('Qty'),
-                  _tableHeaderCell('Unit Price'),
-                  _tableHeaderCell('Total'),
-                ],
-              ),
-              ...order.items.asMap().entries.map((entry) {
-                final item = entry.value;
-                return pw.TableRow(
-                  children: [
-                    _tableCell('${entry.key + 1}'),
-                    _tableCell(item.productName),
-                    _tableCell(item.quantity.toString()),
-                    _tableCell(_rs(item.price)),
-                    _tableCell(_rs(item.lineTotal)),
-                  ],
-                );
-              }),
-            ],
-          ),
-        pw.SizedBox(height: 12),
-        pw.Align(
-          alignment: pw.Alignment.centerRight,
+
+        _invoiceSectionHeader('Bill To'),
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 4),
           child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              _summaryLine('Cart Total (Excl. of all taxes):', _rs(subtotal)),
-              if (sgstCgstBreakdown.isNotEmpty) ...[
-                for (final line in sgstCgstBreakdown) ...[
-                  _summaryLine(
-                    'CGST (${_formatTaxPercent(line.cgstRate)}%):',
-                    _rs(line.cgstAmount),
-                  ),
-                  _summaryLine(
-                    'SGST (${_formatTaxPercent(line.sgstRate)}%):',
-                    _rs(line.sgstAmount),
-                  ),
-                ],
-              ] else
-                _summaryLine('GST:', _rs(gstAmount)),
-              _summaryLine('Shipping Charges:', _rs(shipping)),
-              if (order.couponAmount != null && order.couponAmount! > 0)
-                _summaryLine(
-                  'Coupon Discount:',
-                  '-${_rs(order.couponAmount!)}',
+              pw.Text(
+                'Customer Name/ Restaurant Name: $customerName',
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+              if (customerPhone.isNotEmpty)
+                pw.Text(
+                  'Phone: $customerPhone',
+                  style: const pw.TextStyle(fontSize: 8),
                 ),
-              pw.SizedBox(height: 6),
-              pw.Row(
-                mainAxisSize: pw.MainAxisSize.min,
-                children: [
-                  pw.Text(
-                    'Total Amount: ',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.Text(
-                    _rs(totalAmount),
-                    style: pw.TextStyle(
-                      fontSize: 16,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColor.fromInt(const Color(0xFFdc2626).value),
-                    ),
-                  ),
-                ],
+              pw.Text(
+                'Address: $customerAddress',
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+              pw.Text(
+                'GST No: $gstDisplay',
+                style: const pw.TextStyle(fontSize: 8),
               ),
             ],
           ),
         ),
-        pw.SizedBox(height: 14),
-        pw.Text(
-          'Payment Information:',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
+        pw.SizedBox(height: 8),
+
+        _invoiceSectionHeader('Order Details'),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey700, width: 0.5),
+          columnWidths: const {
+            0: pw.FixedColumnWidth(28),
+            1: pw.FlexColumnWidth(2.5),
+            2: pw.FixedColumnWidth(46),
+            3: pw.FixedColumnWidth(28),
+            4: pw.FixedColumnWidth(34),
+            5: pw.FixedColumnWidth(42),
+            6: pw.FixedColumnWidth(28),
+            7: pw.FixedColumnWidth(40),
+            8: pw.FixedColumnWidth(46),
+          },
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+              children: [
+                _InvoiceHeaderCell('Sr\nNo'),
+                _InvoiceHeaderCell('Item Name'),
+                _InvoiceHeaderCell('HSN'),
+                _InvoiceHeaderCell('Qty'),
+                _InvoiceHeaderCell('Rate'),
+                _InvoiceHeaderCell('Taxable\nValue'),
+                _InvoiceHeaderCell('GST\n%'),
+                _InvoiceHeaderCell('GST\nAmount'),
+                _InvoiceHeaderCell('Amount'),
+              ],
+            ),
+            ...orderRows.map(
+              (row) => pw.TableRow(
+                children: [
+                  _invoiceTableCell(row[0], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[1], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[2], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[3], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[4], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[5], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[6], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[7], align: pw.TextAlign.center),
+                  _invoiceTableCell(row[8], align: pw.TextAlign.center),
+                ],
+              ),
+            ),
+          ],
         ),
         pw.SizedBox(height: 6),
-        pw.Text('Payment Method: ${_paymentLabel(order.paymentMethod)}'),
-        pw.Text('Payment Status: $paymentStatus'),
-        if (showQr && qrBytes != null) ...[
-          pw.SizedBox(height: 12),
-          pw.Text(
-            'Scan to pay (UPI):',
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Center(
-            child: pw.Container(
-              padding: const pw.EdgeInsets.all(8),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey300, width: 0.6),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Expanded(child: pw.SizedBox()),
+            pw.SizedBox(
+              width: 210,
+              child: pw.Table(
+                border: pw.TableBorder.all(
+                  color: PdfColors.grey700,
+                  width: 0.5,
+                ),
+                columnWidths: const {
+                  0: pw.FlexColumnWidth(2),
+                  1: pw.FlexColumnWidth(1),
+                },
+                children: summaryRows
+                    .map(
+                      (row) => pw.TableRow(
+                        decoration: row.isTotal
+                            ? const pw.BoxDecoration(color: PdfColors.grey800)
+                            : null,
+                        children: [
+                          _invoiceTableCell(
+                            row.label,
+                            color: row.isTotal
+                                ? PdfColors.white
+                                : PdfColors.black,
+                          ),
+                          _invoiceTableCell(
+                            row.value,
+                            align: pw.TextAlign.right,
+                            bold: true,
+                            color: row.isTotal
+                                ? PdfColors.white
+                                : PdfColors.black,
+                          ),
+                        ],
+                      ),
+                    )
+                    .toList(),
               ),
-              child: pw.Image(pw.MemoryImage(qrBytes), width: 120, height: 120),
             ),
-          ),
-          pw.SizedBox(height: 6),
-          pw.Text('UPI ID: 9545235223@kotak'),
-          pw.Text('Amount: ${_rs(totalAmount)}'),
-        ],
-        pw.SizedBox(height: 24),
-        pw.Divider(color: PdfColors.grey400, thickness: 0.6),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Text(
+          'Amount in Words:',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+        ),
+        pw.Text(amountInWords, style: const pw.TextStyle(fontSize: 8)),
         pw.SizedBox(height: 10),
-        pw.Center(
-          child: pw.Column(
-            children: [
-              pw.Text(
-                'Thank you for your business!',
-                style: pw.TextStyle(
-                  fontStyle: pw.FontStyle.italic,
-                  fontSize: 11,
-                ),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Expanded(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Bank Details:',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 9,
+                    ),
+                  ),
+                  pw.SizedBox(height: 3),
+                  pw.Text(
+                    'Bank: $bankName',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                  pw.Text(
+                    'IFSC Code: $bankIfsc',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                  pw.Text(
+                    'Account Name: $accountName',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                  pw.Text(
+                    'Account No: $accountNumber',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                  pw.Text(
+                    'UPI ID: $upiId',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                ],
               ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'This is a computer-generated invoice and does not require a signature.',
-                style: pw.TextStyle(
-                  fontSize: 9,
-                  color: PdfColors.grey700,
-                  fontStyle: pw.FontStyle.italic,
-                ),
+            ),
+            if (qrBytes != null)
+              pw.Column(
+                children: [
+                  pw.Text(
+                    'Scan to Pay',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
+                  pw.SizedBox(height: 3),
+                  pw.Image(pw.MemoryImage(qrBytes), width: 110, height: 110),
+                ],
               ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'For any queries, please contact us at support@restrobazaar.com',
-                style: pw.TextStyle(
-                  fontSize: 9,
-                  color: PdfColors.grey700,
-                  fontStyle: pw.FontStyle.italic,
-                ),
-              ),
-            ],
-          ),
+          ],
+        ),
+        pw.SizedBox(height: 10),
+        pw.Text(
+          'This is a computer generated Invoice.',
+          style: pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
+        ),
+        pw.Text(
+          'Reverse Charge: No',
+          style: pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
         ),
       ],
     ),
@@ -1159,64 +1217,184 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   return pdf.save();
 }
 
-pw.Widget _detailLine(String label, String value, {bool boldValue = false}) {
-  return pw.Padding(
-    padding: const pw.EdgeInsets.only(bottom: 3),
-    child: pw.RichText(
-      text: pw.TextSpan(
-        children: [
-          pw.TextSpan(
-            text: '$label ',
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.TextSpan(
-            text: value,
-            style: pw.TextStyle(
-              fontSize: 12,
-              fontWeight: boldValue ? pw.FontWeight.bold : pw.FontWeight.normal,
-            ),
-          ),
-        ],
+pw.Widget _invoiceSectionHeader(String title) {
+  return pw.Container(
+    color: PdfColors.grey800,
+    width: double.infinity,
+    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+    child: pw.Text(
+      title,
+      style: pw.TextStyle(
+        color: PdfColors.white,
+        fontSize: 9,
+        fontWeight: pw.FontWeight.bold,
       ),
     ),
   );
 }
 
-pw.Widget _tableHeaderCell(String value) {
+pw.Widget _invoiceTableCell(
+  String value, {
+  bool bold = false,
+  bool isHeader = false,
+  pw.TextAlign align = pw.TextAlign.left,
+  PdfColor color = PdfColors.black,
+}) {
   return pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
     child: pw.Text(
       value,
-      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+      textAlign: align,
+      style: pw.TextStyle(
+        fontSize: isHeader ? 8 : 7.8,
+        fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        color: color,
+      ),
     ),
   );
 }
 
-pw.Widget _tableCell(String value) {
-  return pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-    child: pw.Text(value, style: const pw.TextStyle(fontSize: 11)),
-  );
+String _paymentModeText(String? paymentMethod) {
+  final method = paymentMethod?.toLowerCase() ?? '';
+  if (method == 'cod' || method == 'cash on delivery') return 'Cash';
+  if (method == 'online' || method == 'upi') return 'UPI / Bank Transfer';
+  return 'UPI / Cash / Bank Transfer';
 }
 
-pw.Widget _summaryLine(String label, String value) {
-  return pw.Padding(
-    padding: const pw.EdgeInsets.only(bottom: 6),
-    child: pw.Row(
-      mainAxisSize: pw.MainAxisSize.min,
-      children: [
-        pw.Text(
-          label,
-          style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
-        ),
-        pw.SizedBox(width: 6),
-        pw.Text(
-          value,
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-      ],
-    ),
-  );
+String _buildInvoiceAddress(AddressModel? customer) {
+  if (customer == null) return 'N/A';
+  final parts = <String>[
+    if (customer.addressLine1.isNotEmpty) customer.addressLine1,
+    if (customer.addressLine2?.isNotEmpty == true) customer.addressLine2!,
+    if (customer.city?.isNotEmpty == true) customer.city!,
+    if (customer.state?.isNotEmpty == true) customer.state!,
+    if (customer.pincode?.isNotEmpty == true) customer.pincode!,
+  ];
+  return parts.isEmpty ? 'N/A' : parts.join(', ');
+}
+
+String _formatInvoiceDate(DateTime date) {
+  return DateFormat('d-MMM-yyyy').format(date);
+}
+
+String _stateCode(String state) {
+  const map = {
+    'Maharashtra': '27',
+    'Gujarat': '24',
+    'Karnataka': '29',
+    'Tamil Nadu': '33',
+    'Delhi': '07',
+    'West Bengal': '19',
+    'Rajasthan': '08',
+    'Uttar Pradesh': '09',
+    'Punjab': '03',
+    'Haryana': '06',
+  };
+  return map[state] ?? '27';
+}
+
+String _n(num value) => value.toStringAsFixed(2);
+
+class _InvoiceHeaderCell extends pw.StatelessWidget {
+  _InvoiceHeaderCell(this.text);
+
+  final String text;
+
+  @override
+  pw.Widget build(pw.Context context) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+      child: pw.Text(
+        text,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(fontSize: 7.2, fontWeight: pw.FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class _InvoiceSummaryRow {
+  const _InvoiceSummaryRow(this.label, this.value, {this.isTotal = false});
+
+  final String label;
+  final String value;
+  final bool isTotal;
+}
+
+String _numberToWords(double value) {
+  final ones = [
+    '',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+    'Sixteen',
+    'Seventeen',
+    'Eighteen',
+    'Nineteen',
+  ];
+  final tens = [
+    '',
+    '',
+    'Twenty',
+    'Thirty',
+    'Forty',
+    'Fifty',
+    'Sixty',
+    'Seventy',
+    'Eighty',
+    'Ninety',
+  ];
+
+  String convertHundreds(int n) {
+    if (n == 0) return '';
+    if (n < 20) return ones[n];
+    if (n < 100) {
+      final t = n ~/ 10;
+      final o = n % 10;
+      return tens[t] + (o > 0 ? ' ${ones[o]}' : '');
+    }
+    final h = n ~/ 100;
+    final rem = n % 100;
+    return '${ones[h]} Hundred${rem > 0 ? ' ${convertHundreds(rem)}' : ''}';
+  }
+
+  String convertIndian(int n) {
+    if (n == 0) return 'Zero';
+    if (n < 1000) return convertHundreds(n);
+    if (n < 100000) {
+      final thousand = n ~/ 1000;
+      final rem = n % 1000;
+      return '${convertHundreds(thousand)} Thousand${rem > 0 ? ' ${convertHundreds(rem)}' : ''}';
+    }
+    if (n < 10000000) {
+      final lakh = n ~/ 100000;
+      final rem = n % 100000;
+      return '${convertHundreds(lakh)} Lakh${rem > 0 ? ' ${convertIndian(rem)}' : ''}';
+    }
+    final crore = n ~/ 10000000;
+    final rem = n % 10000000;
+    return '${convertHundreds(crore)} Crore${rem > 0 ? ' ${convertIndian(rem)}' : ''}';
+  }
+
+  final rupees = value.floor();
+  final paise = ((value - rupees) * 100).round();
+  var result = '${convertIndian(rupees)} Rupees';
+  if (paise > 0) {
+    result += ' and ${convertHundreds(paise)} Paisa';
+  }
+  return '$result Only';
 }
 
 double _calculateGstFromItems(List<CartItem> items) {
