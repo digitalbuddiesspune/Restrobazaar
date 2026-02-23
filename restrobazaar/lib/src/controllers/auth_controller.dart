@@ -255,6 +255,31 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> updateBusinessDetails({
+    String? restaurantName,
+    String? gstNumber,
+  }) async {
+    final currentUser = state.user;
+    if (currentUser == null) return false;
+
+    try {
+      final updated = await _repository.updateUserProfile(
+        userId: currentUser.id,
+        restaurantName: restaurantName,
+        gstNumber: gstNumber,
+      );
+      if (updated != null) {
+        await _storage.setJson(userInfoKey, updated.toJson());
+        state = state.copyWith(user: updated, error: null);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      state = state.copyWith(error: error.toString());
+      return false;
+    }
+  }
+
   Future<void> _registerDeviceToken() async {
     if (!state.isAuthenticated) return;
     try {

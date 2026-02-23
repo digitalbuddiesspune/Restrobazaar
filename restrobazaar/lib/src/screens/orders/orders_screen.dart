@@ -851,12 +851,11 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   final vendorName = vendor?.businessName.isNotEmpty == true
       ? vendor!.businessName
       : 'AK Enterprises';
+  const invoiceIssuedBy = 'AK Enterprises';
   final vendorEmail = vendor?.email?.isNotEmpty == true
       ? vendor!.email!
       : 'pune@restrobazaar.com';
-  final vendorGst = vendor?.gstNumber?.isNotEmpty == true
-      ? vendor!.gstNumber!
-      : '27DJSPK2679K1ZB';
+  const vendorGst = '27DJSPK2679K1ZB';
   final vendorState = vendor?.state?.isNotEmpty == true
       ? vendor!.state!
       : 'Maharashtra';
@@ -986,7 +985,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
         pw.SizedBox(height: 2),
         pw.Center(
           child: pw.Text(
-            'By: $vendorName | Email: $vendorEmail | GST No: $vendorGst | State Code: $stateCode',
+            'By: $invoiceIssuedBy | Email: $vendorEmail | GST No: $vendorGst | State Code: $stateCode',
             style: const pw.TextStyle(fontSize: 8),
           ),
         ),

@@ -8,6 +8,7 @@ import '../../controllers/cart_controller.dart';
 import '../../controllers/checkout_controller.dart';
 import '../../core/api_client.dart';
 import '../../core/formatters.dart';
+import '../../core/providers.dart';
 import '../../core/shipping.dart';
 import '../../models/address.dart';
 import '../../models/cart_item.dart';
@@ -26,8 +27,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _paymentMethod = 'cod';
   static const _merchantVpa = '9545235223@kotak';
   static const _merchantName = 'RestroBazaar';
+  static const _customerHasGstKey = 'customerHasGST';
+  static const _customerGstNumberKey = 'customerGSTNumber';
+  static final RegExp _gstPattern = RegExp(r'^[0-9A-Z]{15}$');
   bool _showPaymentSection = true;
+  bool _hasGst = false;
   final TextEditingController _couponController = TextEditingController();
+  final TextEditingController _gstController = TextEditingController();
   List<CouponModel> _availableCoupons = [];
   bool _showCoupons = false;
   bool _loadingCoupons = false;
@@ -43,9 +49,219 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      ref.read(authControllerProvider.notifier).refreshUser(force: true);
       ref.read(checkoutControllerProvider.notifier).loadAddresses();
+      _loadCustomerGstPreference();
       _refreshCoupons(ref.read(cartControllerProvider));
     });
+  }
+
+  Future<void> _loadCustomerGstPreference() async {
+    final storage = ref.read(localStorageProvider);
+    await storage.init();
+    final savedHasGst = storage.getString(_customerHasGstKey) == 'true';
+    final savedGst = storage.getString(_customerGstNumberKey) ?? '';
+    if (!mounted) return;
+    setState(() {
+      _hasGst = savedHasGst;
+      _gstController.text = savedGst.toUpperCase();
+    });
+  }
+
+  Future<void> _persistCustomerGstPreference() async {
+    final storage = ref.read(localStorageProvider);
+    await storage.init();
+    await storage.setString(_customerHasGstKey, _hasGst.toString());
+    final gst = _gstController.text.trim().toUpperCase();
+    if (_hasGst && gst.isNotEmpty) {
+      await storage.setString(_customerGstNumberKey, gst);
+    } else {
+      await storage.remove(_customerGstNumberKey);
+    }
+  }
+
+  bool _isValidGst(String value) {
+    return _gstPattern.hasMatch(value);
+  }
+
+  Future<bool> _confirmGstAtOrderTime() async {
+    final user = ref.read(authControllerProvider).user;
+    final currentRestaurantName = user?.restaurantName?.trim() ?? '';
+    final currentProfileGst = user?.gstNumber?.trim().toUpperCase() ?? '';
+    final initialGst = _gstController.text.trim().isNotEmpty
+        ? _gstController.text.trim().toUpperCase()
+        : currentProfileGst;
+
+    final gstController = TextEditingController(text: initialGst);
+    final restaurantController = TextEditingController(
+      text: currentRestaurantName,
+    );
+    var hasGst = _hasGst || initialGst.isNotEmpty;
+    String? errorText;
+
+    final result = await showDialog<_GstDialogResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('GST Details'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Do you have a GST Number?',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    RadioListTile<bool>(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text('Yes'),
+                      value: true,
+                      groupValue: hasGst,
+                      activeColor: const Color(0xFFdc2626),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          hasGst = value ?? false;
+                          errorText = null;
+                        });
+                      },
+                    ),
+                    RadioListTile<bool>(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text('No'),
+                      value: false,
+                      groupValue: hasGst,
+                      activeColor: const Color(0xFFdc2626),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          hasGst = value ?? false;
+                          errorText = null;
+                        });
+                      },
+                    ),
+                    if (hasGst) ...[
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: gstController,
+                        textCapitalization: TextCapitalization.characters,
+                        maxLength: 15,
+                        decoration: const InputDecoration(
+                          labelText: 'GST Number',
+                          hintText: 'Enter GST Number (15 characters)',
+                          border: OutlineInputBorder(),
+                          counterText: '',
+                        ),
+                        onChanged: (_) {
+                          setDialogState(() => errorText = null);
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: restaurantController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Restaurant Name',
+                        hintText: 'Enter restaurant name for invoice',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (_) {
+                        setDialogState(() => errorText = null);
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'If available, these details are prefilled from signup.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF6b7280)),
+                    ),
+                    if (errorText != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorText!,
+                        style: const TextStyle(
+                          color: Color(0xFFdc2626),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final gst = gstController.text.trim().toUpperCase();
+                    final restaurant = restaurantController.text.trim();
+                    if (hasGst) {
+                      if (gst.isEmpty) {
+                        setDialogState(() {
+                          errorText = 'Please enter GST number, or select No.';
+                        });
+                        return;
+                      }
+                      if (!_isValidGst(gst)) {
+                        setDialogState(() {
+                          errorText = 'Please enter a valid 15-character GST.';
+                        });
+                        return;
+                      }
+                    }
+                    Navigator.of(dialogContext).pop(
+                      _GstDialogResult(
+                        hasGst: hasGst,
+                        gstNumber: hasGst ? gst : '',
+                        restaurantName: restaurant,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFdc2626),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return false;
+
+    setState(() {
+      _hasGst = result.hasGst;
+      _gstController.text = result.gstNumber;
+    });
+    await _persistCustomerGstPreference();
+
+    final updatedRestaurant = result.restaurantName.trim();
+    final existingRestaurant = currentRestaurantName;
+    final existingGst = currentProfileGst;
+    final nextGst = result.hasGst ? result.gstNumber.trim() : existingGst;
+    final shouldUpdateProfile =
+        updatedRestaurant != existingRestaurant ||
+        (result.hasGst && nextGst != existingGst);
+    if (shouldUpdateProfile) {
+      await ref
+          .read(authControllerProvider.notifier)
+          .updateBusinessDetails(
+            restaurantName: updatedRestaurant,
+            gstNumber: result.hasGst ? nextGst : null,
+          );
+    }
+
+    return true;
   }
 
   String? _singleVendorId(List<CartItem> items) {
@@ -186,6 +402,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   void dispose() {
     _couponController.dispose();
+    _gstController.dispose();
     super.dispose();
   }
 
@@ -326,6 +543,32 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               placingOrder: checkoutState.placingOrder,
               errorMessage: checkoutState.error,
               onPrimaryAction: () async {
+                final proceed = await _confirmGstAtOrderTime();
+                if (!proceed) return;
+
+                final gstNumber = _gstController.text.trim().toUpperCase();
+                if (_hasGst) {
+                  if (gstNumber.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Please enter your GST number or uncheck GST option.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  if (!_isValidGst(gstNumber)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Please enter a valid 15-character GST number.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                }
                 final order = await checkoutNotifier.placeOrder(
                   cartItems: cartState.items,
                   cartTotal: cartState.subtotal,
@@ -333,6 +576,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   shippingCharges: shipping,
                   totalAmount: totalAmount,
                   couponCode: _appliedCoupon?.code,
+                  gstNumber: _hasGst && gstNumber.isNotEmpty ? gstNumber : null,
                   paymentMethod: _paymentMethod,
                 );
                 if (!mounted) return;
@@ -985,6 +1229,18 @@ class _PaymentSection extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GstDialogResult {
+  const _GstDialogResult({
+    required this.hasGst,
+    required this.gstNumber,
+    required this.restaurantName,
+  });
+
+  final bool hasGst;
+  final String gstNumber;
+  final String restaurantName;
 }
 
 class _AddressField extends StatelessWidget {

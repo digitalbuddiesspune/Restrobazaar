@@ -124,6 +124,7 @@ class CheckoutController extends StateNotifier<CheckoutState> {
     required String paymentMethod,
     double? totalAmount,
     String? couponCode,
+    String? gstNumber,
     String? paymentId,
     String? transactionId,
   }) async {
@@ -146,6 +147,7 @@ class CheckoutController extends StateNotifier<CheckoutState> {
         'gstAmount': gstAmount,
         'shippingCharges': shippingCharges,
         'couponCode': couponCode,
+        'gstNumber': gstNumber,
         'paymentId': paymentId,
         'transactionId': transactionId,
       };

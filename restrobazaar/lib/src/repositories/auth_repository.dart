@@ -195,6 +195,27 @@ class AuthRepository {
     return null;
   }
 
+  Future<UserModel?> updateUserProfile({
+    required String userId,
+    String? restaurantName,
+    String? gstNumber,
+  }) async {
+    final response = await _client.requestJson(
+      '/users/$userId',
+      method: 'PUT',
+      data: {
+        if (restaurantName != null) 'restaurantName': restaurantName,
+        if (gstNumber != null) 'gstNumber': gstNumber,
+      },
+    );
+
+    if (response['success'] == true &&
+        response['data'] is Map<String, dynamic>) {
+      return UserModel.fromJson(response['data'] as Map<String, dynamic>);
+    }
+    return null;
+  }
+
   Future<void> logout() async {
     await _client.request('/users/logout', method: 'POST');
   }

@@ -4,6 +4,8 @@ class UserModel {
     required this.name,
     this.email,
     this.phone,
+    this.restaurantName,
+    this.gstNumber,
     this.city,
     this.createdAt,
     this.updatedAt,
@@ -14,6 +16,8 @@ class UserModel {
   final String name;
   final String? email;
   final String? phone;
+  final String? restaurantName;
+  final String? gstNumber;
   final String? city;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -25,6 +29,8 @@ class UserModel {
       name: (json['name'] ?? '').toString(),
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
+      restaurantName: json['restaurantName']?.toString(),
+      gstNumber: json['gstNumber']?.toString(),
       city: json['city']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
@@ -42,6 +48,8 @@ class UserModel {
       'name': name,
       'email': email,
       'phone': phone,
+      'restaurantName': restaurantName,
+      'gstNumber': gstNumber,
       'city': city,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),

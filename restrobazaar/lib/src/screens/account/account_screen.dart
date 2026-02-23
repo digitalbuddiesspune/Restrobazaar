@@ -21,7 +21,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authControllerProvider.notifier).refreshUser();
+      ref.read(authControllerProvider.notifier).refreshUser(force: true);
     });
   }
 
@@ -98,6 +98,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     value: user.phone?.isNotEmpty == true
                         ? user.phone!
                         : 'Add phone number',
+                  ),
+                  _InfoTile(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'GST Number',
+                    value: user.gstNumber?.trim().isNotEmpty == true
+                        ? user.gstNumber!.trim()
+                        : 'Not provided',
                   ),
                   if (user.city?.isNotEmpty == true)
                     _InfoTile(
@@ -209,8 +216,10 @@ class _HeaderCard extends StatelessWidget {
                 // ),
                 const SizedBox(height: 6),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _AccountScreenState._accent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -232,8 +241,7 @@ class _HeaderCard extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: _AccountScreenState._accent,
               foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -293,12 +301,7 @@ class _SectionCard extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 12,
                 children: children
-                    .map(
-                      (child) => SizedBox(
-                        width: itemWidth,
-                        child: child,
-                      ),
-                    )
+                    .map((child) => SizedBox(width: itemWidth, child: child))
                     .toList(),
               ),
             ],
@@ -458,10 +461,7 @@ class _AuthPrompt extends StatelessWidget {
             children: [
               const Text(
                 'Sign in to manage your account',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -599,7 +599,11 @@ String _roleLabel(String role) {
 }
 
 String _initials(String name) {
-  final parts = name.trim().split(' ').where((part) => part.isNotEmpty).toList();
+  final parts = name
+      .trim()
+      .split(' ')
+      .where((part) => part.isNotEmpty)
+      .toList();
   if (parts.length >= 2) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
