@@ -57,6 +57,13 @@ class CatalogRepository {
       query['q'] = search;
     }
 
+    // Client requirement: in category/subcategory views,
+    // products should follow database sequenceNumber.
+    if (categoryId != null && categoryId.isNotEmpty) {
+      query['sortBy'] = 'sequenceNumber';
+      query['sortOrder'] = 'asc';
+    }
+
     final bool hasCategory = categoryId != null && categoryId.isNotEmpty;
     final bool hasCity = cityId != null && cityId.isNotEmpty;
 

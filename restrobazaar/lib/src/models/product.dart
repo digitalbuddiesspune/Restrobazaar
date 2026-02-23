@@ -206,6 +206,7 @@ class VendorProductModel {
     this.availableStock,
     this.gst,
     this.minimumOrderQuantity,
+    this.sequenceNumber,
     this.subCategory,
     this.defaultPrice,
     this.originalPrice,
@@ -221,6 +222,7 @@ class VendorProductModel {
   final int? availableStock;
   final double? gst;
   final int? minimumOrderQuantity;
+  final int? sequenceNumber;
   final String? subCategory;
   final double? defaultPrice;
   final double? originalPrice;
@@ -274,6 +276,9 @@ class VendorProductModel {
       minimumOrderQuantity: minimumOrderRaw is num
           ? minimumOrderRaw.toInt()
           : int.tryParse(minimumOrderRaw?.toString() ?? ''),
+      sequenceNumber: json['sequenceNumber'] is num
+          ? (json['sequenceNumber'] as num).toInt()
+          : int.tryParse(json['sequenceNumber']?.toString() ?? ''),
       subCategory:
           json['subCategory']?.toString() ??
           productJson?['subCategory']?.toString(),
@@ -309,6 +314,7 @@ class VendorProductModel {
       'availableStock': availableStock,
       'gst': gst,
       'minimumOrderQuantity': minimumOrderQuantity,
+      'sequenceNumber': sequenceNumber,
       'subCategory': subCategory,
       'originalPrice': originalPrice,
     };

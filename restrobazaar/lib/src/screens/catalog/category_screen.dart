@@ -93,14 +93,25 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => Center(child: Text(error.toString())),
             data: (products) {
-              final filtered = _selectedSubCategory == 'all'
-                  ? products
-                  : products.where((p) {
-                      final sub =
-                          p.subCategory ?? p.product?.subCategory ?? '';
-                      return sub.trim().toLowerCase() ==
-                          _selectedSubCategory.trim().toLowerCase();
-                    }).toList();
+              final filtered =
+                  (_selectedSubCategory == 'all'
+                        ? products
+                        : products.where((p) {
+                            final sub =
+                                p.subCategory ?? p.product?.subCategory ?? '';
+                            return sub.trim().toLowerCase() ==
+                                _selectedSubCategory.trim().toLowerCase();
+                          }).toList())
+                    ..sort((a, b) {
+                      final aSeq = a.sequenceNumber ?? 1 << 30;
+                      final bSeq = b.sequenceNumber ?? 1 << 30;
+                      if (aSeq != bSeq) return aSeq.compareTo(bSeq);
+                      final aName = (a.product?.productName ?? '')
+                          .toLowerCase();
+                      final bName = (b.product?.productName ?? '')
+                          .toLowerCase();
+                      return aName.compareTo(bName);
+                    });
 
               return Container(
                 color: Colors.grey.shade50,
@@ -450,7 +461,9 @@ String _titleCase(String value) {
   final words = value.trim().split(RegExp(r'\s+'));
   return words
       .where((word) => word.isNotEmpty)
-      .map((word) =>
-          '${word[0].toUpperCase()}${word.length > 1 ? word.substring(1).toLowerCase() : ''}')
+      .map(
+        (word) =>
+            '${word[0].toUpperCase()}${word.length > 1 ? word.substring(1).toLowerCase() : ''}',
+      )
       .join(' ');
 }
