@@ -151,26 +151,23 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     const vendorState = vendorData.address?.state || '';
     const vendorStateCode = vendorState ? getStateCode(vendorState) : '';
 
-    // Get customer information
+    // Get customer information (address from deliveryAddress)
     const customer = order.deliveryAddress || {};
-    const customerName = customer.name || 'Customer Name';
     const customerPhone = customer.phone || '';
     const customerAddressLine1 = customer.addressLine1 || '';
     const customerAddressLine2 = customer.addressLine2 || '';
     const customerCity = customer.city || '';
     const customerState = customer.state || '';
     const customerPincode = customer.pincode || '';
-    // Get GST number from deliveryAddress - prioritize customer entered GST
-    // Check order.deliveryAddress.gstNumber first (from checkout), then fallback
-    const customerGSTIN = (order.deliveryAddress?.gstNumber) || 
-                          (customer.gstNumber) || 
-                          (order.gstNumber) || 
+    // Display name: Restaurant Name if available, else Customer Name (from user or address)
+    const customerName = (order.userId?.restaurantName && order.userId.restaurantName.trim())
+      ? order.userId.restaurantName.trim()
+      : (order.userId?.name || customer.name || 'Customer Name');
+    // GST number: from deliveryAddress (set at checkout from user profile), or from user, or order
+    const customerGSTIN = (order.deliveryAddress?.gstNumber && order.deliveryAddress.gstNumber.trim()) ||
+                          (order.userId?.gstNumber && order.userId.gstNumber.trim()) ||
+                          (order.gstNumber && order.gstNumber.trim()) ||
                           '';
-    
-    // Debug: Log GST number retrieval (remove in production if needed)
-    if (order.deliveryAddress?.gstNumber) {
-      console.log('GST Number found in order.deliveryAddress:', order.deliveryAddress.gstNumber);
-    }
     
     // Build full address string
     const addressParts = [customerAddressLine1];
@@ -369,7 +366,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
     doc.setFont(undefined, 'normal');
-    doc.text(`Customer Name/ Restaurant Name: ${customerName}`, leftMargin + 3, yPos);
+    doc.text(`Customer Name / Restaurant Name: ${customerName}`, leftMargin + 3, yPos);
     yPos += 4;
     if (customerPhone) {
       doc.text(`Phone: ${customerPhone}`, leftMargin + 3, yPos);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onToggleCollapse, isCollapsed }) => {
+const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar }) => {
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
@@ -20,27 +20,6 @@ const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onTogg
                   strokeLinejoin="round"
                   strokeWidth={2}
                   d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-
-            {/* Sidebar Toggle Button (Desktop) */}
-            <button
-              onClick={onToggleCollapse}
-              className="hidden lg:flex p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <svg
-                className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
                 />
               </svg>
             </button>

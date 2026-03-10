@@ -1,4 +1,21 @@
 import { useState, useEffect } from 'react';
+import {
+  IconDashboard,
+  IconProducts,
+  IconAddProduct,
+  IconOrders,
+  IconUnpaidCustomers,
+  IconOrderRecord,
+  IconCreateOrder,
+  IconCreateUser,
+  IconCoupons,
+  IconUser,
+  IconLogout,
+  IconVisitWebsite,
+  IconProductCatalog,
+} from '../icons/SidebarIcons.jsx';
+
+const iconClass = 'w-5 h-5 flex-shrink-0';
 
 const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
   const setActiveTab = navigateToTab;
@@ -6,22 +23,22 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
   const [orderDropdownOpen, setOrderDropdownOpen] = useState(false);
 
   const menuItems = [
-    { id: 'create-user', label: 'Create User', icon: '👥' },
-    { id: 'coupons', label: 'Coupons', icon: '🎫' },
-    { id: 'account', label: 'Account', icon: '👤' },
+    { id: 'create-user', label: 'Create User', Icon: IconCreateUser },
+    { id: 'coupons', label: 'Coupons', Icon: IconCoupons },
+    { id: 'account', label: 'Account', Icon: IconUser },
   ];
 
   const productSubItems = [
-    { id: 'products', label: 'My Products', icon: '📦' },
-    { id: 'catalog', label: 'Product Catalog', icon: '🛍️' },
-    { id: 'add-product', label: 'Add Product', icon: '➕' },
+    { id: 'products', label: 'My Products', Icon: IconProducts },
+    { id: 'catalog', label: 'Product Catalog', Icon: IconProductCatalog },
+    { id: 'add-product', label: 'Add Product', Icon: IconAddProduct },
   ];
 
   const orderSubItems = [
-    { id: 'orders', label: 'All Orders', icon: '📋' },
-    { id: 'unpaid-customers', label: 'Unpaid Customers', icon: '💳' },
-    { id: 'order-records', label: 'Order Records', icon: '📄' },
-    { id: 'create-order', label: 'Create Order', icon: '🛒' },
+    { id: 'orders', label: 'All Orders', Icon: IconOrders },
+    { id: 'unpaid-customers', label: 'Unpaid Customers', Icon: IconUnpaidCustomers },
+    { id: 'order-records', label: 'Order Records', Icon: IconOrderRecord },
+    { id: 'create-order', label: 'Create Order', Icon: IconCreateOrder },
   ];
 
   const isProductActive = ['products', 'catalog', 'add-product'].includes(activeTab);
@@ -30,6 +47,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
   // Auto-expand dropdowns when a sub-item is active
   useEffect(() => {
     if (isProductActive && !isCollapsed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProductDropdownOpen(true);
     }
     if (isOrderActive && !isCollapsed) {
@@ -119,7 +137,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
             }`}
             title={isCollapsed ? 'Dashboard' : ''}
           >
-            <span className="text-base">📊</span>
+            <IconDashboard className={iconClass} />
             {!isCollapsed && <span className="font-medium">Dashboard</span>}
           </button>
 
@@ -142,7 +160,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
               }`}
               title={isCollapsed ? 'Products' : ''}
             >
-              <span className="text-base">📦</span>
+              <IconProducts className={iconClass} />
               {!isCollapsed && (
                 <>
                   <span className="font-medium flex-1 text-left">Products</span>
@@ -175,7 +193,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
                         : 'text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
                     }`}
                   >
-                    <span className="text-sm">{subItem.icon}</span>
+                    <subItem.Icon className={iconClass} />
                     <span className="font-medium">{subItem.label}</span>
                   </button>
                 ))}
@@ -202,7 +220,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
               }`}
               title={isCollapsed ? 'Orders' : ''}
             >
-              <span className="text-base">📋</span>
+              <IconOrders className={iconClass} />
               {!isCollapsed && (
                 <>
                   <span className="font-medium flex-1 text-left">Orders</span>
@@ -235,7 +253,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
                         : 'text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
                     }`}
                   >
-                    <span className="text-sm">{subItem.icon}</span>
+                    <subItem.Icon className={iconClass} />
                     <span className="font-medium">{subItem.label}</span>
                   </button>
                 ))}
@@ -258,7 +276,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
               }`}
               title={isCollapsed ? item.label : ''}
             >
-              <span className="text-base">{item.icon}</span>
+              <item.Icon className={iconClass} />
               {!isCollapsed && <span className="font-medium">{item.label}</span>}
             </button>
           ))}
@@ -273,7 +291,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg text-white hover:bg-[#e50914] hover:text-white transition-all duration-200 text-sm`}
             title={isCollapsed ? 'Visit Website' : 'Visit RestroBazaar Website'}
           >
-            <span className="text-base">🌐</span>
+            <IconVisitWebsite className={iconClass} />
             {!isCollapsed && <span className="font-medium">Visit Website</span>}
           </a>
         </div>
@@ -285,7 +303,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg text-white hover:bg-[#e50914] hover:text-white transition-all duration-200 text-sm`}
             title={isCollapsed ? 'Logout' : ''}
           >
-            <span className="text-base">🚪</span>
+            <IconLogout className={iconClass} />
             {!isCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>

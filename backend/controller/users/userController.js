@@ -424,12 +424,19 @@ export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.userId || req.user?.id;
+    const userRole = req.user?.role;
 
-    // Prevent users from deleting themselves
+    // Only admin/super_admin can delete other users; prevent self-delete
     if (userId === id) {
       return res.status(400).json({
         success: false,
         message: "You cannot delete your own account",
+      });
+    }
+    if (!["admin", "super_admin", "city_admin"].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete users",
       });
     }
 

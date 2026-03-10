@@ -79,7 +79,7 @@ export const getAllOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
-      .populate('userId', 'name email phone city')
+      .populate('userId', 'name email phone city restaurantName gstNumber')
       .populate('vendorServiceCityId', 'name displayName');
 
     // Get total count

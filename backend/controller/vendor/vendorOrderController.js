@@ -117,7 +117,7 @@ export const getVendorOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
-      .populate('userId', 'name email phone')
+      .populate('userId', 'name email phone restaurantName gstNumber')
       .populate('vendorServiceCityId', 'name displayName');
 
     // Filter order items to show only vendor's products
@@ -215,7 +215,7 @@ export const getVendorOrderById = async (req, res) => {
 
     // Find order with populated productId to get HSN codes
     const order = await Order.findById(orderId)
-      .populate('userId', 'name email phone')
+      .populate('userId', 'name email phone restaurantName gstNumber')
       .populate('items.productId', 'hsnCode productName');
 
     if (!order) {
@@ -392,7 +392,7 @@ export const updateVendorOrderStatus = async (req, res) => {
     await order.save();
 
     // Populate before sending response
-    await order.populate('userId', 'name email phone');
+    await order.populate('userId', 'name email phone restaurantName gstNumber');
 
     res.status(200).json({
       success: true,
@@ -463,7 +463,7 @@ export const updateVendorPaymentStatus = async (req, res) => {
     await order.save();
 
     // Populate before sending response
-    await order.populate('userId', 'name email phone');
+    await order.populate('userId', 'name email phone restaurantName gstNumber');
 
     res.status(200).json({
       success: true,
@@ -478,6 +478,18 @@ export const updateVendorPaymentStatus = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+// Helper: get product ID as string (handles populated object { _id } or raw ID)
+const getProductIdString = (productId) => {
+  if (productId == null) return null;
+  if (typeof productId === 'string') return productId;
+  if (typeof productId === 'object' && productId._id != null) return productId._id.toString();
+  if (typeof productId === 'object' && typeof productId.toString === 'function') {
+    const s = productId.toString();
+    return s !== '[object Object]' ? s : null;
+  }
+  return null;
 };
 
 // @desc    Update order items (for vendor)
@@ -525,17 +537,17 @@ export const updateVendorOrderItems = async (req, res) => {
 
     // Validate that all items belong to this vendor
     for (const item of items) {
-      const productId = item.productId?.toString() || item.productId;
-      if (!vendorProductIds.includes(productId)) {
+      const productId = getProductIdString(item.productId);
+      if (!productId || !vendorProductIds.includes(productId)) {
         return res.status(403).json({
           success: false,
-          message: `Product ${productId} does not belong to this vendor`,
+          message: `Product ${productId || 'unknown'} does not belong to this vendor`,
         });
       }
     }
 
     // Fetch VendorProduct records to get GST percentages
-    const productIds = items.map(item => item.productId?.toString() || item.productId);
+    const productIds = items.map((item) => getProductIdString(item.productId)).filter(Boolean);
     const vendorProductsForGst = await VendorProduct.find({
       productId: { $in: productIds },
       vendorId: vendorId,
@@ -550,19 +562,19 @@ export const updateVendorOrderItems = async (req, res) => {
 
     // Prepare updated items with GST calculation per product
     const updatedItems = items.map((item) => {
-      const productId = item.productId?.toString() || item.productId;
-      const price = item.price || vendorProductPrices[productId] || 0;
+      const productIdStr = getProductIdString(item.productId);
+      const price = item.price || vendorProductPrices[productIdStr] || 0;
       const quantity = parseInt(item.quantity) || 1;
       const itemTotal = price * quantity;
       
       // Get GST percentage for this product (default to 0 if not found)
-      const gstPercentage = productGstMap[productId] || 0;
+      const gstPercentage = productGstMap[productIdStr] || 0;
       
       // Calculate GST amount for this item
       const gstAmount = (itemTotal * gstPercentage) / 100;
       
       return {
-        productId: item.productId,
+        productId: new mongoose.Types.ObjectId(productIdStr),
         productName: item.productName || 'Product',
         productImage: item.productImage || '',
         quantity: quantity,
@@ -604,7 +616,7 @@ export const updateVendorOrderItems = async (req, res) => {
     await order.save();
 
     // Populate before sending response
-    await order.populate('userId', 'name email phone');
+    await order.populate('userId', 'name email phone restaurantName gstNumber');
 
     res.status(200).json({
       success: true,
@@ -970,7 +982,7 @@ export const createOrderForUser = async (req, res) => {
     });
 
     // Populate order with user details
-    await order.populate('userId', 'name email phone');
+    await order.populate('userId', 'name email phone restaurantName gstNumber');
 
     res.status(201).json({
       success: true,

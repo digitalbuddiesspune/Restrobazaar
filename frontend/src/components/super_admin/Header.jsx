@@ -1,15 +1,14 @@
 import { useState } from 'react';
 
-const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onToggleCollapse, isCollapsed }) => {
+const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar }) => {
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
       <div className="px-4 py-2">
-        <div className="flex items-center justify-between">
-          {/* Hamburger Menu & Search Bar */}
-          <div className="flex items-center space-x-3 flex-1">
-            {/* Hamburger Button (Mobile) */}
+        <div className="flex items-center justify-between relative">
+          {/* Left: Hamburger (Mobile) */}
+          <div className="flex-shrink-0 w-10 lg:w-12">
             <button
               onClick={onToggleSidebar}
               className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
@@ -23,15 +22,23 @@ const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onTogg
                 />
               </svg>
             </button>
+          </div>
 
-            {/* Sidebar Toggle Button (Desktop) */}
-            <button
-              onClick={onToggleCollapse}
-              className="hidden lg:flex p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
+          {/* Center: Search Bar */}
+          <div className="absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-2">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search products, cities, categories, vendors..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (onSearch) onSearch(e.target.value);
+                }}
+                className="w-full px-3 py-1.5 pl-9 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
               <svg
-                className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
+                className="absolute left-2.5 top-2 h-4 w-4 text-gray-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -40,43 +47,14 @@ const Header = ({ onSearch, searchQuery, setSearchQuery, onToggleSidebar, onTogg
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-            </button>
-
-            {/* Search Bar */}
-            <div className="flex-1 max-w-2xl">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search products, cities, categories, vendors..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (onSearch) onSearch(e.target.value);
-                  }}
-                  className="w-full px-3 py-1.5 pl-9 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <svg
-                  className="absolute left-2.5 top-2 h-4 w-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
             </div>
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-2 ml-3">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             {/* Notifications */}
             <div className="relative">
               <button

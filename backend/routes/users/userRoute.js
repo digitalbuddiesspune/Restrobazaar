@@ -3,6 +3,7 @@ import {
   getCurrentUser,
   getUserById,
   updateUser,
+  deleteUser,
   getUserCart,
   updateUserCart,
   userSignup,
@@ -49,6 +50,7 @@ userRouter.delete("/users/wishlist/:productId", authenticate, removeFromWishlist
 // Parameterized routes (must come after specific routes)
 userRouter.get("/users/:id", authenticate, getUserById);
 userRouter.put("/users/:id", authenticate, updateUser);
+userRouter.delete("/users/:id", authenticate, deleteUser);
 userRouter.get("/users/:id/cart", authenticate, getUserCart);
 userRouter.patch("/users/:id/cart", authenticate, updateUserCart);
 

@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
+import {
+  IconDashboard,
+  IconOrderRecord,
+  IconProducts,
+  IconAddProduct,
+  IconUser,
+  IconLogout,
+  IconVisitWebsite,
+  IconAddCity,
+  IconViewCity,
+  IconCategories,
+  IconVendors,
+} from '../icons/SidebarIcons';
+
+const iconClass = 'w-5 h-5 flex-shrink-0';
 
 const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
   const setActiveTab = navigateToTab;
   const mainMenuItems = [
-    { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'order-records', label: 'Order Records', icon: '📄' },
+    { id: 'overview', label: 'Overview', Icon: IconDashboard },
+    { id: 'order-records', label: 'Order Records', Icon: IconOrderRecord },
   ];
 
   // Sections with sub-items
@@ -12,45 +27,45 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
     {
       id: 'products',
       label: 'Products',
-      icon: '📦',
+      Icon: IconProducts,
       subItems: [
-        { id: 'products', label: 'View Products', icon: '👁️' },
-        { id: 'add-product', label: 'Add Product', icon: '➕' },
+        { id: 'products', label: 'View Products', Icon: IconProducts },
+        { id: 'add-product', label: 'Add Product', Icon: IconAddProduct },
       ],
     },
     {
       id: 'cities',
       label: 'Cities',
-      icon: '🏙️',
+      Icon: IconViewCity,
       subItems: [
-        { id: 'cities', label: 'View Cities', icon: '👁️' },
-        { id: 'add-city', label: 'Add City', icon: '➕' },
+        { id: 'cities', label: 'View Cities', Icon: IconViewCity },
+        { id: 'add-city', label: 'Add City', Icon: IconAddCity },
       ],
     },
     {
       id: 'categories',
       label: 'Categories',
-      icon: '📁',
+      Icon: IconCategories,
       subItems: [
-        { id: 'categories', label: 'View Categories', icon: '👁️' },
-        { id: 'add-category', label: 'Add Category', icon: '➕' },
+        { id: 'categories', label: 'View Categories', Icon: IconCategories },
+        { id: 'add-category', label: 'Add Category', Icon: IconAddProduct },
       ],
     },
     {
       id: 'vendors',
       label: 'Vendors',
-      icon: '👥',
+      Icon: IconVendors,
       subItems: [
-        { id: 'vendors', label: 'View Vendors', icon: '👁️' },
-        { id: 'add-vendor', label: 'Add Vendor', icon: '➕' },
+        { id: 'vendors', label: 'View Vendors', Icon: IconVendors },
+        { id: 'add-vendor', label: 'Add Vendor', Icon: IconAddProduct },
       ],
     },
     {
       id: 'users',
       label: 'Users',
-      icon: '👤',
+      Icon: IconUser,
       subItems: [
-        { id: 'users', label: 'View Users', icon: '👁️' },
+        { id: 'users', label: 'View Users', Icon: IconUser },
       ],
     },
     {
@@ -189,7 +204,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
               }`}
               title={isCollapsed ? item.label : ''}
             >
-              <span className="text-base">{item.icon}</span>
+              <item.Icon className={iconClass} />
               {!isCollapsed && <span className="font-medium">{item.label}</span>}
             </button>
           ))}
@@ -217,7 +232,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
                   }`}
                   title={isCollapsed ? section.label : ''}
                 >
-                  <span className="text-base">{section.icon}</span>
+                  {section.Icon ? <section.Icon className={iconClass} /> : <span className="text-base">{section.icon}</span>}
                   {!isCollapsed && (
                     <>
                       <span className="font-medium flex-1 text-left">{section.label}</span>
@@ -246,7 +261,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
                             : 'text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
                         }`}
                       >
-                        <span className="text-sm">{subItem.icon}</span>
+                        {subItem.Icon ? <subItem.Icon className={iconClass} /> : <span className="text-sm">{subItem.icon}</span>}
                         <span className="font-medium">{subItem.label}</span>
                       </button>
                     ))}
@@ -266,7 +281,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg text-white hover:bg-red-600 hover:text-white transition-all duration-200 text-sm`}
             title={isCollapsed ? 'Visit Website' : 'Visit RestroBazaar Website'}
           >
-            <span className="text-base">🌐</span>
+            <IconVisitWebsite className={iconClass} />
             {!isCollapsed && <span className="font-medium">Visit Website</span>}
           </a>
         </div>
@@ -278,7 +293,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'space-x-2'} px-3 py-2 rounded-lg text-white hover:bg-red-600 hover:text-white transition-all duration-200 text-sm`}
             title={isCollapsed ? 'Logout' : ''}
           >
-            <span className="text-base">🚪</span>
+            <IconLogout className={iconClass} />
             {!isCollapsed && <span className="font-medium">Logout</span>}
           </button>
         </div>

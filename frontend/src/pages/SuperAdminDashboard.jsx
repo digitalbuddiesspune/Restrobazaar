@@ -124,6 +124,8 @@ const SuperAdminDashboard = () => {
   const [vendors, setVendors] = useState([]);
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userEditForm, setUserEditForm] = useState({ name: "", phone: "", restaurantName: "", gstNumber: "" });
   const [testimonials, setTestimonials] = useState([]);
   const [editingTestimonialId, setEditingTestimonialId] = useState(null);
 
@@ -618,6 +620,47 @@ const SuperAdminDashboard = () => {
       console.error("Error fetching users:", err);
     } finally {
       setUsersLoading(false);
+    }
+  };
+
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setUserEditForm({
+      name: user.name || "",
+      phone: user.phone || "",
+      restaurantName: user.restaurantName || "",
+      gstNumber: user.gstNumber || "",
+    });
+  };
+
+  const handleSaveUserEdit = async () => {
+    if (!editingUser?._id) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await axios.put(`${baseUrl}/users/${editingUser._id}`, userEditForm, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEditingUser(null);
+      setUserEditForm({ name: "", phone: "", restaurantName: "", gstNumber: "" });
+      fetchUsers(userFilters);
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to update user");
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    if (!window.confirm(`Delete user "${user.name || user.phone}"? This cannot be undone.`)) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await axios.delete(`${baseUrl}/users/${user._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (editingUser?._id === user._id) setEditingUser(null);
+      fetchUsers(userFilters);
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to delete user");
     }
   };
 
@@ -3532,7 +3575,78 @@ const SuperAdminDashboard = () => {
                 )}
               </div>
 
-              <UsersTable users={users} loading={usersLoading} />
+              <UsersTable
+                users={users}
+                loading={usersLoading}
+                onEdit={handleEditUser}
+                onDelete={handleDeleteUser}
+              />
+
+              {/* Edit User Modal */}
+              {editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                  <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit User</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                        <input
+                          value={userEditForm.name}
+                          onChange={(e) => setUserEditForm((f) => ({ ...f, name: e.target.value }))}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                        <input
+                          value={userEditForm.phone}
+                          onChange={(e) => setUserEditForm((f) => ({ ...f, phone: e.target.value }))}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Phone"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Restaurant Name</label>
+                        <input
+                          value={userEditForm.restaurantName}
+                          onChange={(e) => setUserEditForm((f) => ({ ...f, restaurantName: e.target.value }))}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Restaurant or business name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">GST Number</label>
+                        <input
+                          value={userEditForm.gstNumber}
+                          onChange={(e) => setUserEditForm((f) => ({ ...f, gstNumber: e.target.value }))}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="GST Number"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingUser(null);
+                          setUserEditForm({ name: "", phone: "", restaurantName: "", gstNumber: "" });
+                        }}
+                        className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveUserEdit}
+                        className="px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

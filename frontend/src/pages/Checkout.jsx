@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectCartItems, selectCartTotal, clearCart } from '../store/slices/cartSlice';
-import { addressAPI, orderAPI, userCouponAPI, vendorAPI } from '../utils/api';
+import { addressAPI, orderAPI, userAPI, userCouponAPI, vendorAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import { calculateShippingCharges } from '../utils/shipping';
 import Modal from '../components/Modal';
@@ -35,8 +35,7 @@ const Checkout = () => {
   const [showCoupons, setShowCoupons] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [vendorDetails, setVendorDetails] = useState(null);
-  const [hasGST, setHasGST] = useState(false);
-  const [gstNumber, setGstNumber] = useState('');
+  const [currentUser, setCurrentUser] = useState(null); // User profile (gstNumber, restaurantName from model)
   const [addressForm, setAddressForm] = useState({
     name: '',
     phone: '',
@@ -349,7 +348,7 @@ const Checkout = () => {
         paymentId: qrCodeData?.paymentId || null,
         transactionId: qrCodeData?.transactionId || null,
         couponCode: appliedCoupon?.code || null,
-        gstNumber: hasGST && gstNumber ? gstNumber.trim() : null, // Include GST number if provided
+        gstNumber: currentUser?.gstNumber?.trim() || null, // From user profile
       };
 
       // Create order
@@ -414,25 +413,17 @@ const Checkout = () => {
     }
   }, [paymentMethod, selectedAddress, totalAmount, addresses, vendorDetails]);
 
-  // Load GST number from localStorage on mount
-  useEffect(() => {
-    const savedHasGST = localStorage.getItem('customerHasGST') === 'true';
-    const savedGstNumber = localStorage.getItem('customerGSTNumber') || '';
-    setHasGST(savedHasGST);
-    setGstNumber(savedGstNumber);
-  }, []);
-
-  // Save GST number to localStorage when changed
-  useEffect(() => {
-    localStorage.setItem('customerHasGST', hasGST.toString());
-    if (hasGST && gstNumber) {
-      localStorage.setItem('customerGSTNumber', gstNumber);
-    } else {
-      localStorage.removeItem('customerGSTNumber');
+  // Fetch current user (for gstNumber from profile)
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await userAPI.getCurrentUser();
+      if (res?.data) setCurrentUser(res.data);
+    } catch (err) {
+      console.warn('Could not fetch user profile for GST:', err);
     }
-  }, [hasGST, gstNumber]);
+  };
 
-  // Fetch addresses and coupons on component mount
+  // Fetch addresses, user profile, and coupons on component mount
   useEffect(() => {
     // Check authentication first
     if (!isAuthenticated()) {
@@ -440,8 +431,9 @@ const Checkout = () => {
       return;
     }
 
-    // Fetch addresses
+    // Fetch addresses and current user (for GST from profile)
     fetchAddresses();
+    fetchCurrentUser();
 
     // Fetch vendor details and coupons if cart has items
     if (cartItems && cartItems.length > 0) {
@@ -741,43 +733,6 @@ const Checkout = () => {
                           </option>
                         ))}
                       </select>
-                    </div>
-
-                    {/* GST Number Section */}
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <input
-                          type="checkbox"
-                          id="hasGST"
-                          checked={hasGST}
-                          onChange={(e) => {
-                            setHasGST(e.target.checked);
-                            if (!e.target.checked) {
-                              setGstNumber('');
-                            }
-                          }}
-                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-                        />
-                        <label htmlFor="hasGST" className="text-sm font-medium text-gray-700 cursor-pointer">
-                          I have a GST Number
-                        </label>
-                      </div>
-                      {hasGST && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            GST Number *
-                          </label>
-                          <input
-                            type="text"
-                            value={gstNumber}
-                            onChange={(e) => setGstNumber(e.target.value.toUpperCase().trim())}
-                            placeholder="Enter GST Number (e.g., 27DJSPK2679K1ZB)"
-                            className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white"
-                            maxLength={15}
-                          />
-                          <p className="text-xs text-gray-500 mt-1">GST number will be included in your invoice</p>
-                        </div>
-                      )}
                     </div>
 
                     {/* Selected Address Details */}

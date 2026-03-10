@@ -270,7 +270,7 @@ export const createOrder = async (req, res) => {
     });
 
     // Populate order with user details
-    await order.populate('userId', 'name email phone');
+    await order.populate('userId', 'name email phone restaurantName gstNumber');
 
     sendNotificationToUser({
       userId,
@@ -340,7 +340,7 @@ export const getUserOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('userId', 'name email phone')
+      .populate('userId', 'name email phone restaurantName gstNumber')
       .populate('items.productId', 'hsnCode productName')
       .populate('vendorServiceCityId', 'name displayName')
       .populate('vendorId', 'businessName email gstNumber address bankDetails');
@@ -374,7 +374,7 @@ export const getOrderById = async (req, res) => {
   try {
     const userId = req.user.userId;
     const order = await Order.findOne({ _id: req.params.id, userId })
-      .populate('userId', 'name email phone')
+      .populate('userId', 'name email phone restaurantName gstNumber')
       .populate('items.productId', 'hsnCode productName');
 
     if (!order) {

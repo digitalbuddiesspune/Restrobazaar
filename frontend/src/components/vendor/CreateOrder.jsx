@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useVendorProfile } from '../../hooks/useVendorQueries';
 import { vendorProductService } from '../../services/vendorService';
+import { calculateShippingCharges } from '../../utils/shipping';
 
 const CreateOrder = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -494,13 +495,39 @@ const CreateOrder = () => {
     });
     
     const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
-    const shippingCharges = 0; // Free shipping
+    // Group by GST percentage and compute SGST/CGST (half each) per rate
+    const gstGroups = {};
+    gstBreakdown.forEach(item => {
+      if (item.gstPercentage > 0 && item.gstAmount > 0) {
+        const key = item.gstPercentage.toFixed(2);
+        if (!gstGroups[key]) {
+          gstGroups[key] = { percentage: item.gstPercentage, totalGst: 0 };
+        }
+        gstGroups[key].totalGst += item.gstAmount;
+      }
+    });
+    const sgstCgstBreakdown = Object.keys(gstGroups)
+      .sort((a, b) => parseFloat(b) - parseFloat(a))
+      .map(key => {
+        const group = gstGroups[key];
+        const totalGst = parseFloat(group.totalGst.toFixed(2));
+        const half = parseFloat((totalGst / 2).toFixed(2));
+        const sgstCgstRate = group.percentage / 2; // SGST/CGST each show half of total rate (18% → 9%, 5% → 2.5%, 12% → 6%)
+        return {
+          percentage: group.percentage,
+          sgstCgstRate,
+          sgstAmount: half,
+          cgstAmount: half,
+        };
+      });
+    const shippingCharges = calculateShippingCharges(cartTotal);
     const totalAmount = cartTotal + gstAmount + shippingCharges;
     
     return {
       cartTotal: parseFloat(cartTotal.toFixed(2)),
       gstAmount: parseFloat(gstAmount.toFixed(2)),
       gstBreakdown,
+      sgstCgstBreakdown,
       shippingCharges,
       totalAmount: parseFloat(totalAmount.toFixed(2)),
     };
@@ -1196,25 +1223,34 @@ const CreateOrder = () => {
               <span className="text-gray-900">₹{calculateTotals.cartTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-600">GST:</span>
+              <span className="text-gray-600">GST (total GST amount):</span>
               <span className="text-gray-900">₹{calculateTotals.gstAmount.toFixed(2)}</span>
             </div>
-            {/* GST Breakdown */}
-            {calculateTotals.gstBreakdown && calculateTotals.gstBreakdown.some(item => item.gstPercentage > 0) && (
+            {/* SGST / CGST breakdown: show half-rate per slab (18%→9%, 5%→2.5%, 12%→6%) */}
+            {calculateTotals.sgstCgstBreakdown && calculateTotals.sgstCgstBreakdown.length > 0 && (
               <div className="pl-2 border-l-2 border-gray-200 space-y-0.5">
-                {calculateTotals.gstBreakdown
-                  .filter(item => item.gstPercentage > 0)
-                  .map((item, index) => (
-                    <div key={item.itemId || index} className="flex justify-between text-xs text-gray-600">
-                      <span>{item.productName} ({item.gstPercentage}%):</span>
-                      <span>₹{item.gstAmount.toFixed(2)}</span>
+                {calculateTotals.sgstCgstBreakdown.map((group, index) => {
+                  const rateLabel = group.sgstCgstRate % 1 === 0 ? group.sgstCgstRate : group.sgstCgstRate.toFixed(1);
+                  return (
+                    <div key={`gst-${group.percentage}-${index}`} className="space-y-0.5">
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>SGST ({rateLabel}%):</span>
+                        <span>₹{group.sgstAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>CGST ({rateLabel}%):</span>
+                        <span>₹{group.cgstAmount.toFixed(2)}</span>
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             )}
             <div className="flex justify-between text-xs">
               <span className="text-gray-600">Shipping:</span>
-              <span className="text-gray-900">₹{calculateTotals.shippingCharges.toFixed(2)}</span>
+              <span className="text-gray-900">
+                {calculateTotals.shippingCharges === 0 ? 'Free' : `₹${calculateTotals.shippingCharges.toFixed(2)}`}
+              </span>
             </div>
             <div className="flex justify-between text-sm font-bold pt-1 border-t border-gray-200">
               <span>Total:</span>
