@@ -1,6 +1,22 @@
 import jsPDF from 'jspdf';
 import { formatOrderId } from './orderIdFormatter';
 
+const INVOICE_LOGO_URL =
+  'https://res.cloudinary.com/debhhnzgh/image/upload/v1767956041/RestroLogo_vmcnsl.png?v=2';
+
+// Fetch image as base64 data URL (for logo, QR, etc.)
+const fetchImageAsDataURL = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+};
+
 // Fetch QR code image as base64 data URL for UPI payment
 const fetchUPIQRAsDataURL = async (upiUrl) => {
   const url = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=5&data=${encodeURIComponent(upiUrl)}`;
@@ -209,12 +225,25 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     
 
     // ========== HEADER SECTION ==========
-    // "RESTROBAZAAR" in red, bold, larger font
-    doc.setFontSize(20);
-    doc.setTextColor(220, 38, 38); // Red color
-    doc.setFont(undefined, 'bold');
-    doc.text('RESTROBAZAAR', pageWidth / 2, yPos, { align: 'center' });
-    yPos += 6;
+    const logoWidth = 48;
+    const logoHeight = 14;
+    let logoRendered = false;
+    try {
+      const logoDataUrl = await fetchImageAsDataURL(INVOICE_LOGO_URL);
+      const logoX = (pageWidth - logoWidth) / 2;
+      doc.addImage(logoDataUrl, 'PNG', logoX, yPos - 2, logoWidth, logoHeight);
+      yPos += logoHeight + 2;
+      logoRendered = true;
+    } catch (logoErr) {
+      console.warn('Could not load invoice logo, using text fallback:', logoErr);
+    }
+    if (!logoRendered) {
+      doc.setFontSize(20);
+      doc.setTextColor(220, 38, 38);
+      doc.setFont(undefined, 'bold');
+      doc.text('RESTROBAZAAR', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 6;
+    }
 
     // Tagline
     doc.setFontSize(10);
