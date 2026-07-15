@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { CITY_STORAGE_KEY, CITY_ID_KEY } from './CitySelectionPopup'
@@ -111,6 +112,7 @@ const Header = () => {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
   const handleCityChange = (e) => {
     const cityId = e.target.value;
     if (cityId) {
@@ -319,7 +321,7 @@ const Header = () => {
               
               {/* Logo Image */}
               <img 
-                src="https://res.cloudinary.com/debhhnzgh/image/upload/v1767956041/RestroLogo_vmcnsl.png?v=2" 
+                src="https://res.cloudinary.com/debhhnzgh/image/upload/v1784103820/copy_of_img_1150_y1cx4l.png" 
                 alt="RestroBazaar Logo" 
                 className="h-10 sm:h-7 md:h-8 lg:h-10 xl:h-12 w-auto rounded-lg object-contain max-w-full"
               />
