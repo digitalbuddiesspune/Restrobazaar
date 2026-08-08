@@ -15,7 +15,8 @@ import 'src/core/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
+  // isOptional: empty/missing .env must not block app startup (native splash hang).
+  await dotenv.load(fileName: '.env', isOptional: true);
 
   final enableNotifications =
       !(defaultTargetPlatform == TargetPlatform.iOS || kIsWeb);
@@ -27,7 +28,7 @@ Future<void> main() async {
   final baseUrl =
       dotenv.env[apiBaseUrlKey] ??
       dotenv.env['API_BASE_URL'] ??
-      'https://api.sanskrutee.in/api/v1';
+      'https://api.restrobazaar.in/api/v1';
 
   final appDir = await getApplicationDocumentsDirectory();
   final cookieJar = PersistCookieJar(
