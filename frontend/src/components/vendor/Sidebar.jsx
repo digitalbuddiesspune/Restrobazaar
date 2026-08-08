@@ -78,7 +78,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
           {isCollapsed ? (
             <span className="text-lg font-bold">R</span>
           ) : (
-            <h1 className="text-lg font-bold">RestroBazaar</h1>
+            <h1 className="text-sm font-bold">RestroBazaar</h1>
           )}
         </div>
 

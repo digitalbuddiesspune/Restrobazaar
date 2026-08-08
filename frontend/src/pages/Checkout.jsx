@@ -5,7 +5,10 @@ import { selectCartItems, selectCartTotal, clearCart } from '../store/slices/car
 import { addressAPI, orderAPI, userAPI, userCouponAPI, vendorAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
 import { calculateShippingCharges } from '../utils/shipping';
+import { verifyDeliveryForSelectedCity } from '../utils/location';
+import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import Modal from '../components/Modal';
+import NotDeliverablePopup from '../components/NotDeliverablePopup';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '../components/Button';
 import { formatOrderId } from '../utils/orderIdFormatter';
@@ -36,6 +39,13 @@ const Checkout = () => {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [vendorDetails, setVendorDetails] = useState(null);
   const [currentUser, setCurrentUser] = useState(null); // User profile (gstNumber, restaurantName from model)
+  const [showNotDeliverable, setShowNotDeliverable] = useState(false);
+  const [locationCity, setLocationCity] = useState('');
+  const [selectedCityName] = useState(
+    () => localStorage.getItem(CITY_STORAGE_KEY) || ''
+  );
+  const [verifyingLocation, setVerifyingLocation] = useState(false);
+  const [locationGateError, setLocationGateError] = useState('');
   const [addressForm, setAddressForm] = useState({
     name: '',
     phone: '',
@@ -47,6 +57,31 @@ const Checkout = () => {
     landmark: '',
     addressType: 'home', // home, work, other
   });
+
+  const ensureDeliverableLocation = async ({ forceRefresh = false } = {}) => {
+    setVerifyingLocation(true);
+    setLocationGateError('');
+    try {
+      const result = await verifyDeliveryForSelectedCity(selectedCityName, {
+        forceRefresh,
+      });
+
+      if (!result.ok) {
+        if (result.reason === 'city_mismatch') {
+          setLocationCity(result.locationCity || '');
+          setShowNotDeliverable(true);
+        } else {
+          setLocationGateError(result.message);
+        }
+        return false;
+      }
+
+      setLocationCity(result.locationCity || '');
+      return true;
+    } finally {
+      setVerifyingLocation(false);
+    }
+  };
 
   // Fetch vendor details
   const fetchVendorDetails = async () => {
@@ -248,11 +283,15 @@ const Checkout = () => {
     }
   };
 
-  const handleContinueToPayment = () => {
+  const handleContinueToPayment = async () => {
     if (!selectedAddress) {
       alert('Please select a delivery address');
       return;
     }
+
+    const canDeliver = await ensureDeliverableLocation({ forceRefresh: true });
+    if (!canDeliver) return;
+
     // Show payment section
     setShowPaymentSection(true);
     // Scroll to top to show payment section prominently
@@ -333,6 +372,9 @@ const Checkout = () => {
       }, 100);
       return;
     }
+
+    const canDeliver = await ensureDeliverableLocation({ forceRefresh: true });
+    if (!canDeliver) return;
 
     setPlacingOrder(true);
     try {
@@ -492,11 +534,13 @@ const Checkout = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+            {/* Left column: payment + address stacked (avoids blank gap when COD is selected) */}
+            <div className="lg:col-span-2 space-y-4">
             {/* Payment Section - Show at top when active */}
             {showPaymentSection && (
-              <div id="payment-section" className="lg:col-span-2 order-first">
-                <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+              <div id="payment-section">
+                <div className="bg-white rounded-lg shadow-md p-4">
                   <h2 className="text-lg font-bold text-gray-900 mb-3">Select Payment Method</h2>
 
                   <div className="space-y-2">
@@ -668,8 +712,8 @@ const Checkout = () => {
               </div>
             )}
 
-            {/* Left Section - Delivery Address */}
-            <div className={`lg:col-span-2 ${showPaymentSection ? 'order-last' : ''}`}>
+            {/* Delivery Address */}
+            <div>
               <div className="bg-white rounded-lg shadow-md p-4">
                 <div className="flex justify-between items-center mb-3">
                   <h2 className="text-lg font-bold text-gray-900">Delivery To</h2>
@@ -804,6 +848,7 @@ const Checkout = () => {
                   </div>
                 )}
               </div>
+            </div>
             </div>
 
             {/* Right Section - Billing Details */}
@@ -958,16 +1003,21 @@ const Checkout = () => {
                   </div>
                 </div>
 
+                {locationGateError && (
+                  <p className="mb-3 text-sm text-red-600 text-center">{locationGateError}</p>
+                )}
+
                 {!showPaymentSection ? (
                   <Button
                     variant="primary"
                     size="md"
                     fullWidth
                     onClick={handleContinueToPayment}
-                    disabled={!selectedAddress}
+                    disabled={!selectedAddress || verifyingLocation}
+                    loading={verifyingLocation}
                     className="mb-3"
                   >
-                    CONTINUE TO PAYMENT
+                    {verifyingLocation ? 'CHECKING LOCATION…' : 'CONTINUE TO PAYMENT'}
                   </Button>
                 ) : (
                   <Button
@@ -975,11 +1025,11 @@ const Checkout = () => {
                     size="md"
                     fullWidth
                     onClick={handleConfirmOrder}
-                    disabled={!paymentMethod || placingOrder}
-                    loading={placingOrder}
+                    disabled={!paymentMethod || placingOrder || verifyingLocation}
+                    loading={placingOrder || verifyingLocation}
                     className="mb-3"
                   >
-                    CONFIRM ORDER
+                    {verifyingLocation ? 'CHECKING LOCATION…' : 'CONFIRM ORDER'}
                   </Button>
                 )}
 
@@ -1205,6 +1255,13 @@ const Checkout = () => {
           </Button>
         </div>
       </Modal>
+
+      <NotDeliverablePopup
+        isOpen={showNotDeliverable}
+        onClose={() => setShowNotDeliverable(false)}
+        selectedCity={selectedCityName}
+        locationCity={locationCity}
+      />
     </div>
   );
 };

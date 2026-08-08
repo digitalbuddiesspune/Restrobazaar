@@ -46,6 +46,17 @@ const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue', comp
         </svg>
       )
     },
+    purple: {
+      gradient: 'from-violet-500 via-purple-600 to-fuchsia-600',
+      shadow: 'hover:shadow-purple-500/30',
+      iconColor: 'text-purple-600',
+      textColor: 'text-purple-100',
+      bgIcon: (
+        <svg className="w-16 h-16 sm:w-20 sm:h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )
+    },
   };
 
   const style = cardStyles[color] || cardStyles.blue;
@@ -72,15 +83,17 @@ const StatsCard = ({ title, value, icon, trend, trendValue, color = 'blue', comp
         {/* Text content */}
         <div className="flex flex-col flex-1">
           <p className={`${style.textColor} text-xs font-semibold tracking-wide`}>{title}</p>
-          <h3 className="text-lg sm:text-2xl font-extrabold text-white tracking-tight mt-0.5">{value || 0}</h3>
-          {trend && (
+          <h3 className="text-base sm:text-xl font-extrabold text-white tracking-tight mt-0.5">{value || 0}</h3>
+          {trend ? (
             <div className="flex items-center mt-1">
               <span className={`text-xs font-semibold ${trend === 'up' ? 'text-white' : 'text-white/90'}`}>
                 {trend === 'up' ? '↑' : '↓'} {trendValue}
               </span>
               <span className={`${style.textColor} text-xs ml-1.5 opacity-90`}>{comparisonText}</span>
             </div>
-          )}
+          ) : comparisonText ? (
+            <span className={`${style.textColor} text-xs mt-1 opacity-90`}>{comparisonText}</span>
+          ) : null}
         </div>
       </div>
     </div>

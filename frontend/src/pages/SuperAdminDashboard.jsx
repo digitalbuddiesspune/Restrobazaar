@@ -109,6 +109,7 @@ const SuperAdminDashboard = () => {
     pending: 0,
     delivered: 0,
     cancelled: 0,
+    totalPending: 0,
   });
 
   // Filter state for today's orders
@@ -325,8 +326,25 @@ const SuperAdminDashboard = () => {
         params,
       });
 
+      // Aged pending: pending since yesterday or earlier (so they are not missed in today's queue)
+      const agedEnd = new Date(todayStart);
+      agedEnd.setMilliseconds(-1); // end of yesterday
+      const agedParams = {
+        orderStatus: 'pending',
+        endDate: agedEnd.toISOString(),
+        limit: 10000,
+      };
+      if (filters.cityId) agedParams.cityId = filters.cityId;
+      if (filters.vendorId) agedParams.vendorId = filters.vendorId;
+
+      const agedResponse = await axios.get(`${baseUrl}/admin/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: agedParams,
+      });
+
       if (response.data?.success) {
         const orders = response.data.data || [];
+        const agedOrders = agedResponse.data?.success ? (agedResponse.data.data || []) : [];
 
         // Count orders by status - handle both Order_status and orderStatus field names
         const stats = {
@@ -343,6 +361,10 @@ const SuperAdminDashboard = () => {
             const status = order.Order_status || order.orderStatus || '';
             return status.toLowerCase() === 'cancelled';
           }).length,
+          totalPending: agedOrders.filter((order) => {
+            const status = (order.Order_status || order.orderStatus || '').toLowerCase();
+            return status === 'pending';
+          }).length,
         };
 
         setTodayOrdersStats(stats);
@@ -355,6 +377,7 @@ const SuperAdminDashboard = () => {
         pending: 0,
         delivered: 0,
         cancelled: 0,
+        totalPending: 0,
       });
     }
   };
@@ -1499,8 +1522,16 @@ const SuperAdminDashboard = () => {
     navigate("/super_admin/login");
   };
 
+  // Smaller fonts across the entire admin panel
+  useEffect(() => {
+    document.documentElement.classList.add('admin-compact');
+    return () => {
+      document.documentElement.classList.remove('admin-compact');
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50 scrollbar-hide">
+    <div className="admin-panel min-h-screen bg-gray-50 scrollbar-hide">
       <Sidebar
         activeTab={activeTab}
         navigateToTab={(tab) => {
@@ -1566,7 +1597,7 @@ const SuperAdminDashboard = () => {
           {activeTab === "overview" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>
+                <h1 className="text-base font-bold text-gray-900">Dashboard Overview</h1>
               </div>
               <OverviewStats
                 stats={stats}
@@ -1630,7 +1661,7 @@ const SuperAdminDashboard = () => {
           {/* Add Product Tab - OLD */}
           {false && activeTab === "add-product-old" && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-6">
+              <h2 className="text-base font-bold mb-6">
                 {editingProductId ? "Edit Product" : "Add New Product"}
               </h2>
               <form onSubmit={handleProductSubmit} className="space-y-6">
@@ -2225,7 +2256,7 @@ const SuperAdminDashboard = () => {
           {/* Add Category Tab - OLD */}
           {false && activeTab === "add-category-old" && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-6">
+              <h2 className="text-base font-bold mb-6">
                 {editingCategoryId ? "Edit Category" : "Add New Category"}
               </h2>
               <form onSubmit={handleCategorySubmit} className="space-y-4">
@@ -2441,7 +2472,7 @@ const SuperAdminDashboard = () => {
           {/* Add Vendor Tab - OLD */}
           {false && activeTab === "add-vendor-old" && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-6">Add New Vendor</h2>
+              <h2 className="text-base font-bold mb-6">Add New Vendor</h2>
               <form onSubmit={handleVendorSubmit} className="space-y-6">
                 {/* Basic Information */}
                 <div className="border-b pb-4">
@@ -3160,7 +3191,7 @@ const SuperAdminDashboard = () => {
             return (
               <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="p-6 border-b bg-gray-100">
-                  <h2 className="text-xl font-bold">All Products</h2>
+                  <h2 className="text-base font-bold">All Products</h2>
                 </div>
                 <div className="overflow-x-auto scrollbar-hide">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -3327,7 +3358,7 @@ const SuperAdminDashboard = () => {
           {false && activeTab === "cities-old" && (
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="p-6 border-b bg-gray-100">
-                <h2 className="text-xl font-bold">All Cities</h2>
+                <h2 className="text-base font-bold">All Cities</h2>
               </div>
               <div className="overflow-x-auto scrollbar-hide">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -3402,7 +3433,7 @@ const SuperAdminDashboard = () => {
           {false && activeTab === "categories-old" && (
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="p-6 border-b bg-gray-100">
-                <h2 className="text-xl font-bold">All Categories</h2>
+                <h2 className="text-base font-bold">All Categories</h2>
               </div>
               <div className="overflow-x-auto scrollbar-hide">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -3478,7 +3509,11 @@ const SuperAdminDashboard = () => {
               {orderStatusFilter && (
                 <div className="mb-4 flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <span className="text-sm text-blue-800">
-                    Filtered by: <span className="font-semibold capitalize">{orderStatusFilter}</span> orders
+                    Filtered by:{' '}
+                    <span className="font-semibold capitalize">
+                      {orderStatusFilter === 'total-pending' ? 'Total Pending (1+ days)' : orderStatusFilter}
+                    </span>{' '}
+                    orders
                   </span>
                   <button
                     onClick={() => setOrderStatusFilter(null)}
@@ -3887,7 +3922,7 @@ const SuperAdminDashboard = () => {
           {false && activeTab === "vendors-old" && (
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="p-6 border-b bg-gray-100">
-                <h2 className="text-xl font-bold">All Vendors</h2>
+                <h2 className="text-base font-bold">All Vendors</h2>
               </div>
               <div className="overflow-x-auto scrollbar-hide">
                 <table className="min-w-full divide-y divide-gray-200">

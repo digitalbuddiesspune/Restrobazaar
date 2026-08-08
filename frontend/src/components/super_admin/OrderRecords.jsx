@@ -31,21 +31,37 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
     fetchCities();
   }, []);
 
+  const buildOrderQueryParams = (base = {}) => {
+    const params = new URLSearchParams(base);
+    const isTotalPending = filters.orderStatus === 'total-pending';
+
+    if (isTotalPending) {
+      params.append('orderStatus', 'pending');
+      // Pending from yesterday or earlier
+      const endOfYesterday = new Date();
+      endOfYesterday.setHours(0, 0, 0, 0);
+      endOfYesterday.setMilliseconds(-1);
+      params.append('endDate', endOfYesterday.toISOString());
+    } else {
+      if (filters.orderStatus) params.append('orderStatus', filters.orderStatus);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+    }
+
+    if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.cityId) params.append('cityId', filters.cityId);
+    return params;
+  };
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
       setError('');
 
-      const params = new URLSearchParams({
+      const params = buildOrderQueryParams({
         page: page.toString(),
         limit: itemsPerPage.toString(),
       });
-
-      if (filters.orderStatus) params.append('orderStatus', filters.orderStatus);
-      if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
-      if (filters.startDate) params.append('startDate', filters.startDate);
-      if (filters.endDate) params.append('endDate', filters.endDate);
-      if (filters.cityId) params.append('cityId', filters.cityId);
 
       const endpoint = `${baseUrl}/admin/orders`;
 
@@ -186,7 +202,12 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
   // Set initial filter when component mounts or initialOrderStatus changes
   useEffect(() => {
     if (initialOrderStatus) {
-      setFilters((prev) => ({ ...prev, orderStatus: initialOrderStatus }));
+      setFilters((prev) => ({
+        ...prev,
+        orderStatus: initialOrderStatus,
+        // Clear manual endDate so total-pending can apply its own cutoff
+        endDate: initialOrderStatus === 'total-pending' ? '' : prev.endDate,
+      }));
     }
   }, [initialOrderStatus]);
 
@@ -204,17 +225,10 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
   // Fetch all orders for export (without pagination)
   const fetchAllOrdersForExport = async () => {
     try {
-      const params = new URLSearchParams();
-
-      if (filters.orderStatus) params.append('orderStatus', filters.orderStatus);
-      if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
-      if (filters.startDate) params.append('startDate', filters.startDate);
-      if (filters.endDate) params.append('endDate', filters.endDate);
-      if (filters.cityId) params.append('cityId', filters.cityId);
-
-      // Set a very high limit to get all orders
-      params.append('limit', '10000');
-      params.append('page', '1');
+      const params = buildOrderQueryParams({
+        limit: '10000',
+        page: '1',
+      });
 
       const endpoint = `${baseUrl}/admin/orders`;
 
@@ -388,7 +402,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900">Order Records</h1>
+        <h1 className="text-base font-bold text-gray-900">Order Records</h1>
         <div className="flex items-center gap-4">
          
           <button
@@ -430,6 +444,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
             >
               <option value="">All Status</option>
               <option value="pending">Pending</option>
+              <option value="total-pending">Total Pending (1+ days)</option>
               <option value="confirmed">Confirmed</option>
               <option value="processing">Processing</option>
               <option value="shipped">Shipped</option>

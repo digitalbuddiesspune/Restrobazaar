@@ -2,7 +2,9 @@ import jsPDF from 'jspdf';
 import { formatOrderId } from './orderIdFormatter';
 
 const INVOICE_LOGO_URL =
-  'https://res.cloudinary.com/debhhnzgh/image/upload/v1767956041/RestroLogo_vmcnsl.png?v=2';
+  'https://res.cloudinary.com/debhhnzgh/image/upload/v1784103820/copy_of_img_1150_y1cx4l.png';
+
+const COMPANY_NAME = 'AK PACKAGING SOLUTIONS';
 
 // Fetch image as base64 data URL (for logo, QR, etc.)
 const fetchImageAsDataURL = async (url) => {
@@ -160,8 +162,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     const rightMargin = pageWidth - 10;
     const contentWidth = pageWidth - 20;
 
-    // Get vendor information
-    const vendorName = vendorData.businessName || 'RestroBazaar';
+    // Get vendor / company information (legal name on invoice is always COMPANY_NAME)
     const vendorEmail = vendorData.email || '';
     const vendorGSTIN = vendorData.gstNumber || '';
     const vendorState = vendorData.address?.state || '';
@@ -225,8 +226,9 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     
 
     // ========== HEADER SECTION ==========
-    const logoWidth = 48;
-    const logoHeight = 14;
+    // New brand logo is wide (~5.2:1); keep it centered and readable on A4
+    const logoWidth = 58;
+    const logoHeight = 12;
     let logoRendered = false;
     try {
       const logoDataUrl = await fetchImageAsDataURL(INVOICE_LOGO_URL);
@@ -238,10 +240,10 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
       console.warn('Could not load invoice logo, using text fallback:', logoErr);
     }
     if (!logoRendered) {
-      doc.setFontSize(20);
+      doc.setFontSize(18);
       doc.setTextColor(220, 38, 38);
       doc.setFont(undefined, 'bold');
-      doc.text('RESTROBAZAAR', pageWidth / 2, yPos, { align: 'center' });
+      doc.text(COMPANY_NAME, pageWidth / 2, yPos, { align: 'center' });
       yPos += 6;
     }
 
@@ -252,9 +254,9 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
     doc.text('Your Trusted Packaging Solutions Partner', pageWidth / 2, yPos, { align: 'center' });
     yPos += 6;
 
-    // Vendor information
+    // Company information
     doc.setFontSize(9);
-    const vendorInfo = `By: AK Enterprises | Email: ${vendorEmail} | GST No: 27DJSPK2679K1ZB | State Code: ${vendorStateCode}`;
+    const vendorInfo = `By: ${COMPANY_NAME} | Email: ${vendorEmail} | GST No: 27DJSPK2679K1ZB | State Code: ${vendorStateCode}`;
     doc.text(vendorInfo, pageWidth / 2, yPos, { align: 'center' });
     yPos += 5;
 
@@ -826,7 +828,7 @@ export const generateInvoicePDF = async (order, vendor = {}) => {
 
     const bankDetails = vendorData.bankDetails || {};
     const bankName = bankDetails.bankName || '';
-    const accountName = bankDetails.accountHolderName || vendorData.businessName || '';
+    const accountName = bankDetails.accountHolderName || vendorData.businessName || COMPANY_NAME;
     const bankAccountNo = bankDetails.accountNumber || '';
     const branch = bankDetails.branch || '';
     const bankIFSC = bankDetails.ifsc || '';

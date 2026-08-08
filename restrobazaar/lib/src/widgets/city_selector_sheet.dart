@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../controllers/city_controller.dart';
 import '../models/city.dart';
+import '../services/location_service.dart';
 
 class CitySelectorSheet extends ConsumerStatefulWidget {
   const CitySelectorSheet({super.key, this.onSelected});
@@ -15,6 +16,8 @@ class CitySelectorSheet extends ConsumerStatefulWidget {
 
 class _CitySelectorSheetState extends ConsumerState<CitySelectorSheet> {
   String? _pendingCityId;
+  bool _checkingLocation = false;
+  String? _locationError;
 
   @override
   void initState() {
@@ -22,6 +25,74 @@ class _CitySelectorSheetState extends ConsumerState<CitySelectorSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(cityControllerProvider.notifier).loadCities();
     });
+  }
+
+  Future<void> _confirmCity(CityModel city) async {
+    setState(() {
+      _checkingLocation = true;
+      _locationError = null;
+    });
+
+    final result = await LocationService.instance.verifyDeliveryForSelectedCity(
+      city.displayName,
+    );
+
+    if (!mounted) return;
+
+    if (!result.ok && result.reason == 'city_mismatch') {
+      setState(() => _checkingLocation = false);
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Not deliverable in your current location'),
+          content: Text(
+            result.locationCity != null
+                ? 'You are currently in ${result.locationCity}, but selected ${city.displayName}. Please choose a matching city.'
+                : result.message,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (!result.ok && result.reason == 'location_error') {
+      // Allow selecting city for browsing; checkout will re-check.
+      setState(() {
+        _checkingLocation = false;
+        _locationError = result.message;
+      });
+      final continueAnyway = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Location unavailable'),
+          content: Text(
+            '${result.message}\n\nYou can continue browsing, but location will be required to place an order.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+      if (continueAnyway != true) return;
+    }
+
+    await ref.read(cityControllerProvider.notifier).selectCity(city);
+    widget.onSelected?.call(city);
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -42,7 +113,7 @@ class _CitySelectorSheetState extends ConsumerState<CitySelectorSheet> {
                   'Select your city',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
-                if (state.loading)
+                if (state.loading || _checkingLocation)
                   const Padding(
                     padding: EdgeInsets.only(left: 10),
                     child: SizedBox(
@@ -53,6 +124,18 @@ class _CitySelectorSheetState extends ConsumerState<CitySelectorSheet> {
                   ),
               ],
             ),
+            const SizedBox(height: 8),
+            Text(
+              'We use your location to confirm delivery is available in the selected city.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            if (_locationError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _locationError!,
+                style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+              ),
+            ],
             const SizedBox(height: 12),
             if (state.available.isEmpty && !state.loading)
               const Text('No serviceable cities found'),
@@ -66,9 +149,11 @@ class _CitySelectorSheetState extends ConsumerState<CitySelectorSheet> {
                     return RadioListTile<String>(
                       value: city.id,
                       groupValue: selectedId,
-                      onChanged: (value) {
-                        setState(() => _pendingCityId = value);
-                      },
+                      onChanged: _checkingLocation
+                          ? null
+                          : (value) {
+                              setState(() => _pendingCityId = value);
+                            },
                       title: Text(city.displayName),
                       subtitle: city.state != null ? Text(city.state!) : null,
                     );
@@ -80,26 +165,26 @@ class _CitySelectorSheetState extends ConsumerState<CitySelectorSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _checkingLocation
+                        ? null
+                        : () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: selectedId == null
+                    onPressed: selectedId == null || _checkingLocation
                         ? null
                         : () {
                             final city = state.available.firstWhere(
                               (element) => element.id == selectedId,
                             );
-                            ref
-                                .read(cityControllerProvider.notifier)
-                                .selectCity(city);
-                            widget.onSelected?.call(city);
-                            Navigator.of(context).pop();
+                            _confirmCity(city);
                           },
-                    child: const Text('Confirm'),
+                    child: Text(
+                      _checkingLocation ? 'Checking location…' : 'Confirm',
+                    ),
                   ),
                 ),
               ],

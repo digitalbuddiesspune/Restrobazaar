@@ -72,11 +72,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   value: user.name,
                 ),
                 _InfoTile(
-                  icon: Icons.email_outlined,
-                  label: 'Email Address',
-                  value: user.email ?? 'Add your email',
-                ),
-                _InfoTile(
                   icon: Icons.phone_outlined,
                   label: 'Phone Number',
                   value: user.phone?.isNotEmpty == true

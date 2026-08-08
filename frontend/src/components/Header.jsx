@@ -139,6 +139,17 @@ const Header = () => {
   }
 
   const handleCitySelect = (cityId) => {
+    // Reset cached GPS check so location is re-verified for the new city
+    try {
+      sessionStorage.removeItem('userLocationInfo');
+      sessionStorage.removeItem('userLocationCity');
+      sessionStorage.removeItem('userLocationCoords');
+      sessionStorage.removeItem('userLocationTimestamp');
+      sessionStorage.removeItem('locationPromptSkipped');
+    } catch {
+      // ignore
+    }
+
     if (cityId) {
       const selectedCity = cities.find(c => c._id === cityId);
       if (selectedCity) {

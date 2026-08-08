@@ -20,7 +20,7 @@ const Contact = () => {
               <span className="inline-block px-3 py-1 text-xs font-semibold text-red-600 uppercase tracking-wider bg-red-50 rounded-full mb-4 font-heading">
                 Get in Touch
               </span>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-4">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-heading font-bold text-gray-900 mb-4">
                 Contact <span className="text-red-600">Us</span>
               </h1>
               <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
@@ -196,7 +196,7 @@ const Contact = () => {
                 </div>
                 
                 <div className="relative z-10">
-                  <h2 className="text-2xl sm:text-3xl font-heading font-bold text-gray-900 mb-6">Send us a Message</h2>
+                  <h2 className="text-lg sm:text-xl font-heading font-bold text-gray-900 mb-6">Send us a Message</h2>
                   <form className="space-y-5">
                     <div>
                       <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2 font-body">

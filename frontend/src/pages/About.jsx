@@ -18,7 +18,7 @@ const About = () => {
             <span className="inline-block px-3 py-1 text-xs font-semibold text-red-600 uppercase tracking-wider bg-red-50 rounded-full mb-4 font-heading">
               Our Story
             </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-4">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-heading font-bold text-gray-900 mb-4">
               About <span className="text-red-600">RestroBazaar</span>
             </h1>
           </div>
@@ -61,7 +61,7 @@ const About = () => {
                   <span className="inline-block px-3 py-1 text-xs font-semibold text-red-700 uppercase tracking-wider bg-red-100 rounded-full mb-4 font-heading">
                     Founder's Note
                   </span>
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold mb-6 text-gray-900">
+                  <h2 className="text-lg sm:text-xl font-heading font-bold mb-6 text-gray-900">
                     A Message from Our Team
                   </h2>
                 </div>
@@ -76,11 +76,65 @@ const About = () => {
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-red-200">
-                  <p className="text-lg sm:text-xl font-heading font-semibold text-gray-900">
-                    — Team RestroBazaar
+                  <p className="text-base sm:text-lg font-heading font-semibold text-gray-900">
+                    — Mrs. Pranali Kadam & Mr. Akshay Kadam
+                  </p>
+                  <p className="text-sm text-gray-600 font-body mt-1">
+                    Founders, RestroBazaar
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Founders Section */}
+      <section className="py-12 sm:py-16 lg:py-20 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 sm:mb-14">
+            <span className="inline-block px-3 py-1 text-xs font-semibold text-red-600 uppercase tracking-wider bg-red-50 rounded-full mb-4 font-heading">
+              Leadership
+            </span>
+            <h2 className="text-lg sm:text-xl font-heading font-bold text-gray-900 mb-4">
+              Meet Our <span className="text-red-600">Founders</span>
+            </h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto font-body">
+              The leaders behind RestroBazaar’s vision to simplify packaging for food businesses
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto">
+            {/* Mrs. Pranali Kadam */}
+            <div className="group bg-white rounded-2xl p-6 sm:p-8 border-2 border-red-100 hover:border-red-300 hover:shadow-xl transition-all duration-300 text-center">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg group-hover:scale-105 transition-transform duration-300">
+                <span className="text-2xl font-heading font-bold">PK</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-heading font-bold text-gray-900 mb-1">
+                Mrs. Pranali Kadam
+              </h3>
+              <p className="text-sm font-semibold text-red-600 uppercase tracking-wide mb-3 font-heading">
+                Managing Director (MD)
+              </p>
+              <p className="text-sm sm:text-base text-gray-600 font-body leading-relaxed">
+                Leads RestroBazaar’s overall vision, strategy, and growth — focused on building trusted packaging partnerships for restaurants and food brands.
+              </p>
+            </div>
+
+            {/* Mr. Akshay Kadam */}
+            <div className="group bg-white rounded-2xl p-6 sm:p-8 border-2 border-red-100 hover:border-red-300 hover:shadow-xl transition-all duration-300 text-center">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg group-hover:scale-105 transition-transform duration-300">
+                <span className="text-2xl font-heading font-bold">AK</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-heading font-bold text-gray-900 mb-1">
+                Mr. Akshay Kadam
+              </h3>
+              <p className="text-sm font-semibold text-red-600 uppercase tracking-wide mb-3 font-heading">
+                Chief Operations Officer
+              </p>
+              <p className="text-sm sm:text-base text-gray-600 font-body leading-relaxed">
+                Oversees day-to-day operations, supply reliability, and customer fulfillment — ensuring quality packaging is delivered on time, every time.
+              </p>
             </div>
           </div>
         </div>
@@ -93,7 +147,7 @@ const About = () => {
             <span className="inline-block px-3 py-1 text-xs font-semibold text-red-600 uppercase tracking-wider bg-red-50 rounded-full mb-4 font-heading">
               What We Stand For
             </span>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+            <h2 className="text-lg sm:text-xl font-heading font-bold text-gray-900 mb-4">
               Our Core <span className="text-red-600">Values</span>
             </h2>
             <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
@@ -115,7 +169,7 @@ const About = () => {
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-2xl font-heading font-bold text-gray-900 mb-4 text-center">Trust</h3>
+                <h3 className="text-base sm:text-lg font-heading font-bold text-gray-900 mb-4 text-center">Trust</h3>
                 <p className="text-gray-600 font-body leading-relaxed text-center">
                   Building reliable partnerships through consistent quality and transparent communication.
                 </p>
@@ -136,7 +190,7 @@ const About = () => {
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-2xl font-heading font-bold text-gray-900 mb-4 text-center">Transparency</h3>
+                <h3 className="text-base sm:text-lg font-heading font-bold text-gray-900 mb-4 text-center">Transparency</h3>
                 <p className="text-gray-600 font-body leading-relaxed text-center">
                   Clear pricing, honest communication, and open dialogue with every customer.
                 </p>
@@ -156,7 +210,7 @@ const About = () => {
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-2xl font-heading font-bold text-gray-900 mb-4 text-center">Partnership</h3>
+                <h3 className="text-base sm:text-lg font-heading font-bold text-gray-900 mb-4 text-center">Partnership</h3>
                 <p className="text-gray-600 font-body leading-relaxed text-center">
                   Committed to long-term relationships that grow with your business.
                 </p>

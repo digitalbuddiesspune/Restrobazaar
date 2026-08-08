@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatOrderId } from '../../utils/orderIdFormatter';
+import { getDaysPending, isAgedPendingOrder, AGED_PENDING_DAYS } from '../../utils/orderPending';
 
 const OrdersTable = ({ 
   orders, 
@@ -10,6 +11,7 @@ const OrdersTable = ({
   onPageChange,
   onOrderClick,
   allOrders = [], // All orders to calculate accurate order count per user
+  highlightAgedPending = false,
 }) => {
   const [showStatusDropdown, setShowStatusDropdown] = useState(null);
 
@@ -162,15 +164,26 @@ const OrdersTable = ({
                 Payment
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                Days Pending
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Date
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {orders.map((order) => (
+            {orders.map((order) => {
+              const daysPending = getDaysPending(order.createdAt);
+              const status = (order.orderStatus || 'pending').toLowerCase();
+              const isPending = status === 'pending';
+              const isAged = highlightAgedPending && isAgedPendingOrder(order, AGED_PENDING_DAYS);
+
+              return (
               <tr 
                 key={order._id} 
-                className="hover:bg-gray-50 transition cursor-pointer even:bg-gray-50"
+                className={`hover:bg-gray-50 transition cursor-pointer even:bg-gray-50 ${
+                  isAged ? 'bg-purple-50 even:bg-purple-50' : ''
+                }`}
                 onClick={() => onOrderClick && onOrderClick(order._id)}
               >
                 <td className="px-4 py-2 whitespace-nowrap">
@@ -278,11 +291,29 @@ const OrdersTable = ({
                      
                     </div>
                   </td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {isPending ? (
+                      <span
+                        className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${
+                          daysPending >= 2
+                            ? 'bg-purple-100 text-purple-800'
+                            : daysPending >= 1
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {daysPending === 0 ? 'Today' : `${daysPending} day${daysPending === 1 ? '' : 's'}`}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-500 leading-tight">
                     {formatDate(order.createdAt)}
                   </td>
                 </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>

@@ -328,7 +328,7 @@ const OrderRecords = ({ initialOrderStatus = null, onFilterSet = () => {} }) => 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900">Order Records</h1>
+        <h1 className="text-base font-bold text-gray-900">Order Records</h1>
         <button
           onClick={exportToExcel}
           disabled={downloading || loading}

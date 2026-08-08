@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -238,152 +239,123 @@ class _OrderCard extends StatelessWidget {
     final statusText = _statusText(order.status);
     final items = order.items;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onViewDetails,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade200),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 6),
               ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 16,
-                    runSpacing: 10,
-                    children: [
-                      _OrderInfo(
-                        label: 'Order placed',
-                        value: _formatDate(order.createdAt),
-                      ),
-                      _OrderInfo(
-                        label: 'Total',
-                        value: formatCurrency(order.totalAmount),
-                      ),
-                      _OrderInfo(
-                        label: 'Payment',
-                        value: _paymentLabel(order.paymentMethod),
-                      ),
-                    ],
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Order #${_shortOrderId(order.id)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                    Expanded(
+                      child: Wrap(
+                        spacing: 16,
+                        runSpacing: 10,
+                        children: [
+                          _OrderInfo(
+                            label: 'Order placed',
+                            value: _formatDate(order.createdAt),
+                          ),
+                          _OrderInfo(
+                            label: 'Total',
+                            value: formatCurrency(order.totalAmount),
+                          ),
+                          _OrderInfo(
+                            label: 'Order #',
+                            value: _shortOrderId(order.id),
+                          ),
+                        ],
                       ),
                     ),
-                    TextButton(
-                      onPressed: onViewDetails,
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 32),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    const SizedBox(width: 12),
+                    _StatusChip(label: statusText, style: statusStyle),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (items.isEmpty)
+                      const Text(
+                        'No items found for this order.',
+                        style: TextStyle(color: Color(0xFF6b7280)),
+                      )
+                    else
+                      SizedBox(
+                        height: 64,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            return _ProductThumb(
+                              imageUrl: items[index].productImage,
+                              size: 64,
+                            );
+                          },
+                        ),
                       ),
-                      child: const Text(
-                        'Order details',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Tap to view order details${items.isNotEmpty ? ' · ${items.length} item${items.length == 1 ? '' : 's'}' : ''}',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: onDownloadInvoice,
+                          icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                          label: const Text(
+                            'Invoice',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFFdc2626),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _StatusChip(label: statusText, style: statusStyle),
-                const SizedBox(height: 12),
-                if (items.isEmpty)
-                  const Text(
-                    'No items found for this order.',
-                    style: TextStyle(color: Color(0xFF6b7280)),
-                  )
-                else
-                  Column(
-                    children: items.asMap().entries.map((entry) {
-                      final item = entry.value;
-                      final isLast = entry.key == items.length - 1;
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-                        child: _OrderItemTile(item: item),
-                      );
-                    }).toList(),
-                  ),
-                const SizedBox(height: 14),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    OutlinedButton(
-                      onPressed: onViewDetails,
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        side: BorderSide(color: Colors.grey.shade300),
-                        foregroundColor: Colors.grey.shade800,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                      ),
-                      child: const Text('View order details'),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: onDownloadInvoice,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFdc2626),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                      label: const Text(
-                        'Download invoice',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -470,17 +442,18 @@ class _OrderItemTile extends StatelessWidget {
 }
 
 class _ProductThumb extends StatelessWidget {
-  const _ProductThumb({required this.imageUrl});
+  const _ProductThumb({required this.imageUrl, this.size = 72});
 
   final String imageUrl;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: 72,
-        height: 72,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           border: Border.all(color: Colors.grey.shade200),
@@ -733,6 +706,8 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
   }
 }
 
+const String _invoiceCompanyName = 'AK PACKAGING SOLUTIONS';
+
 Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   final customer = order.deliveryAddress;
   final invoiceDate = order.createdAt ?? DateTime.now();
@@ -747,6 +722,14 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
       order.paymentStatus?.isNotEmpty == true ? _titleCase(order.paymentStatus!) : 'Pending';
   final orderNumber = order.id.isNotEmpty ? order.id : 'N/A';
 
+  pw.MemoryImage? logoImage;
+  try {
+    final logoData = await rootBundle.load('assets/images/restrobazaar_logo.png');
+    logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+  } catch (_) {
+    logoImage = null;
+  }
+
   final pdf = pw.Document();
   pdf.addPage(
     pw.MultiPage(
@@ -758,17 +741,20 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
         pw.Center(
           child: pw.Column(
             children: [
-              pw.Text(
-                'RestroBazaar',
-                style: pw.TextStyle(
-                  fontSize: 26,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColor.fromInt(const Color(0xFFdc2626).value),
+              if (logoImage != null)
+                pw.Image(logoImage, height: 36, fit: pw.BoxFit.contain)
+              else
+                pw.Text(
+                  _invoiceCompanyName,
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColor.fromInt(const Color(0xFFdc2626).value),
+                  ),
                 ),
-              ),
               pw.SizedBox(height: 4),
               pw.Text(
-                'Your Trusted Restaurant Supply Partner',
+                'Your Trusted Packaging Solutions Partner',
                 style: pw.TextStyle(
                   fontSize: 11,
                   color: PdfColors.grey700,
@@ -776,7 +762,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
               ),
               pw.SizedBox(height: 2),
               pw.Text(
-                'Email: support@restrobazaar.com | Phone: +91-XXXXXXXXXX',
+                'By: $_invoiceCompanyName | Email: support@restrobazaar.com',
                 style: pw.TextStyle(
                   fontSize: 10,
                   color: PdfColors.grey700,

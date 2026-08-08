@@ -3,7 +3,7 @@ import { formatOrderId } from '../../utils/orderIdFormatter';
 
 const OverviewStats = ({
   stats,
-  todayOrdersStats = { total: 0, pending: 0, delivered: 0, cancelled: 0 },
+  todayOrdersStats = { total: 0, pending: 0, delivered: 0, cancelled: 0, totalPending: 0 },
   filters = { cityId: '', vendorId: '' },
   onFilterChange = () => { },
   onResetFilters = () => { },
@@ -37,7 +37,7 @@ const OverviewStats = ({
             <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <h2 className="text-xl font-bold text-gray-900">Today's Orders</h2>
+            <h2 className="text-base font-bold text-gray-900">Today's Orders</h2>
           </div>
 
           {/* Filters */}
@@ -70,7 +70,7 @@ const OverviewStats = ({
             )}
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6">
           {/* Today's Total Orders */}
           <div 
             onClick={() => onOrderCardClick(null)}
@@ -91,7 +91,7 @@ const OverviewStats = ({
               </div>
               <div className="flex flex-col">
                 <p className="text-blue-100 text-xs sm:text-sm font-semibold tracking-wide">Total</p>
-                <h3 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.total || 0}</h3>
+                <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.total || 0}</h3>
               </div>
             </div>
           </div>
@@ -114,7 +114,31 @@ const OverviewStats = ({
               </div>
               <div className="flex flex-col">
                 <p className="text-orange-100 text-xs sm:text-sm font-semibold tracking-wide">Pending</p>
-                <h3 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.pending || 0}</h3>
+                <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.pending || 0}</h3>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Pending — older than today so yesterday/2–3 day orders are not missed */}
+          <div 
+            onClick={() => onOrderCardClick('total-pending')}
+            className="relative group overflow-hidden bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-2xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+          >
+            <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 group-hover:scale-125 transition-transform duration-500">
+              <svg className="w-24 h-24 sm:w-32 sm:h-32 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="relative p-3 sm:p-6 flex flex-row items-center gap-3 sm:gap-5 text-left">
+              <div className="p-2 sm:p-3 bg-white rounded-xl shadow-lg ring-2 sm:ring-4 ring-white/20 backdrop-blur-sm">
+                <svg className="w-5 h-5 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <p className="text-purple-100 text-xs sm:text-sm font-semibold tracking-wide">Total Pending</p>
+                <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.totalPending || 0}</h3>
+                <p className="text-purple-100/90 text-[10px] sm:text-xs mt-0.5">1+ days old</p>
               </div>
             </div>
           </div>
@@ -137,7 +161,7 @@ const OverviewStats = ({
               </div>
               <div className="flex flex-col">
                 <p className="text-emerald-100 text-xs sm:text-sm font-semibold tracking-wide">Delivered</p>
-                <h3 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.delivered || 0}</h3>
+                <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.delivered || 0}</h3>
               </div>
             </div>
           </div>
@@ -160,7 +184,7 @@ const OverviewStats = ({
               </div>
               <div className="flex flex-col">
                 <p className="text-red-100 text-xs sm:text-sm font-semibold tracking-wide">Cancelled</p>
-                <h3 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.cancelled || 0}</h3>
+                <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight mt-0.5">{todayOrdersStats.cancelled || 0}</h3>
               </div>
             </div>
           </div>
@@ -173,7 +197,7 @@ const OverviewStats = ({
           <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <h2 className="text-xl font-bold text-gray-900">General Statistics</h2>
+          <h2 className="text-base font-bold text-gray-900">General Statistics</h2>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
           {/* Total Products */}
@@ -189,7 +213,7 @@ const OverviewStats = ({
               </div>
               <div>
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Products</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 leading-none">{stats.products}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 leading-none">{stats.products}</h3>
               </div>
             </div>
           </div>
@@ -207,7 +231,7 @@ const OverviewStats = ({
               </div>
               <div>
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Cities</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 leading-none">{stats.cities}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 leading-none">{stats.cities}</h3>
               </div>
             </div>
           </div>
@@ -225,7 +249,7 @@ const OverviewStats = ({
               </div>
               <div>
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Categories</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 leading-none">{stats.categories}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 leading-none">{stats.categories}</h3>
               </div>
             </div>
           </div>
@@ -243,7 +267,7 @@ const OverviewStats = ({
               </div>
               <div>
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Vendors</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 leading-none">{stats.vendors}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 leading-none">{stats.vendors}</h3>
               </div>
             </div>
           </div>
@@ -261,7 +285,7 @@ const OverviewStats = ({
               </div>
               <div>
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Users</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 leading-none">{stats.users || 0}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 leading-none">{stats.users || 0}</h3>
               </div>
             </div>
           </div>

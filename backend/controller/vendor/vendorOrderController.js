@@ -659,6 +659,7 @@ export const getVendorOrderStats = async (req, res) => {
         data: {
           totalOrders: 0,
           pendingOrders: 0,
+          agedPendingOrders: 0,
           confirmedOrders: 0,
           processingOrders: 0,
           shippedOrders: 0,
@@ -679,10 +680,16 @@ export const getVendorOrderStats = async (req, res) => {
       vendorServiceCityId: { $in: vendorServiceCityIds },
     };
 
+    // Pending from yesterday or earlier (so older queue items are not missed)
+    const agedPendingCutoff = new Date();
+    agedPendingCutoff.setHours(0, 0, 0, 0);
+    agedPendingCutoff.setDate(agedPendingCutoff.getDate() - 1);
+
     // Get counts for each status
     const [
       totalOrders,
       pendingOrders,
+      agedPendingOrders,
       confirmedOrders,
       processingOrders,
       shippedOrders,
@@ -691,6 +698,11 @@ export const getVendorOrderStats = async (req, res) => {
     ] = await Promise.all([
       Order.countDocuments(baseQuery),
       Order.countDocuments({ ...baseQuery, orderStatus: 'pending' }),
+      Order.countDocuments({
+        ...baseQuery,
+        orderStatus: 'pending',
+        createdAt: { $lte: agedPendingCutoff },
+      }),
       Order.countDocuments({ ...baseQuery, orderStatus: 'confirmed' }),
       Order.countDocuments({ ...baseQuery, orderStatus: 'processing' }),
       Order.countDocuments({ ...baseQuery, orderStatus: 'shipped' }),
@@ -723,6 +735,7 @@ export const getVendorOrderStats = async (req, res) => {
       data: {
         totalOrders,
         pendingOrders,
+        agedPendingOrders,
         confirmedOrders,
         processingOrders,
         shippedOrders,

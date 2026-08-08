@@ -2,7 +2,7 @@ const VendorsTable = ({ vendors, handleDelete, handleEdit }) => {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6 border-b bg-gray-100">
-        <h2 className="text-xl font-bold">All Vendors</h2>
+        <h2 className="text-base font-bold">All Vendors</h2>
       </div>
       <div className="overflow-x-auto scrollbar-hide">
         <table className="min-w-full divide-y divide-gray-200">

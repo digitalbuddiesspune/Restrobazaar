@@ -1,7 +1,38 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useVendorProfile } from '../../hooks/useVendorQueries';
+import { useCategories } from '../../hooks/useApiQueries';
 import { vendorProductService } from '../../services/vendorService';
 import { calculateShippingCharges } from '../../utils/shipping';
+
+/** Best bulk slab for a quantity (highest minQty the qty still qualifies for). */
+const findBestMatchingSlab = (bulkSlabs, quantity) => {
+  if (!bulkSlabs || bulkSlabs.length === 0) return null;
+  const sortedSlabs = [...bulkSlabs].sort((a, b) => a.minQty - b.minQty);
+  const matchingSlabs = sortedSlabs.filter((s) => quantity >= s.minQty);
+  if (matchingSlabs.length === 0) return null;
+  return matchingSlabs.sort((a, b) => b.minQty - a.minQty)[0];
+};
+
+/** Unit price for current qty from single/bulk pricing. */
+const getUnitPriceForQuantity = (vendorProduct, quantity) => {
+  if (!vendorProduct) return 0;
+  const priceType = vendorProduct.priceType;
+  const pricing = vendorProduct.pricing;
+
+  if (priceType === 'single') {
+    return Number(pricing?.single?.price ?? vendorProduct.price ?? 0) || 0;
+  }
+
+  if (priceType === 'bulk' && pricing?.bulk?.length > 0) {
+    const slab = findBestMatchingSlab(pricing.bulk, quantity);
+    if (slab) return Number(slab.price) || 0;
+    // Below first slab minQty — use lowest-tier (first) price as fallback
+    const sorted = [...pricing.bulk].sort((a, b) => a.minQty - b.minQty);
+    return Number(sorted[0]?.price) || 0;
+  }
+
+  return Number(vendorProduct.price ?? vendorProduct.sellingPrice ?? 0) || 0;
+};
 
 const CreateOrder = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -19,6 +50,11 @@ const CreateOrder = () => {
   
   // Product filters
   const [productSearch, setProductSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState('all');
+
+  const { data: categoriesData } = useCategories();
+  const categories = categoriesData?.data || [];
   
   // Address related state
   const [addresses, setAddresses] = useState([]);
@@ -46,10 +82,25 @@ const CreateOrder = () => {
   const vendorId = vendor?._id || vendor?.id;
   const vendorCityIds = vendor?.serviceCities?.map(city => city._id || city) || [];
   
-  // Filter products based on search
+  // Subcategories available for the selected category (from loaded products)
+  const subCategories = useMemo(() => {
+    if (categoryFilter === 'all' || !categoryFilter) return [];
+    const unique = new Set(
+      allProducts
+        .filter((p) => {
+          const catId = p.productId?.category?._id || p.productId?.category || p.category?._id || p.category;
+          return String(catId) === String(categoryFilter);
+        })
+        .map((p) => p.productId?.subCategory || p.subCategory)
+        .filter(Boolean)
+    );
+    return Array.from(unique).sort((a, b) => String(a).localeCompare(String(b)));
+  }, [categoryFilter, allProducts]);
+
+  // Filter products based on search + category/subcategory
   useEffect(() => {
     filterProducts();
-  }, [productSearch, allProducts]);
+  }, [productSearch, categoryFilter, subCategoryFilter, allProducts]);
   
   // Debug logging
   useEffect(() => {
@@ -59,19 +110,38 @@ const CreateOrder = () => {
   }, [vendor, vendorId, vendorCityIds]);
   
   const filterProducts = () => {
-    // Only show products when there's a search query
-    if (!productSearch || productSearch.trim().length === 0) {
+    const hasSearch = productSearch && productSearch.trim().length > 0;
+    const hasCategory = categoryFilter && categoryFilter !== 'all';
+
+    // Show products when search or category filter is active
+    if (!hasSearch && !hasCategory) {
       setProducts([]);
       return;
     }
     
     let filtered = [...allProducts];
+
+    if (hasCategory) {
+      filtered = filtered.filter((p) => {
+        const catId = p.productId?.category?._id || p.productId?.category || p.category?._id || p.category;
+        return String(catId) === String(categoryFilter);
+      });
+    }
+
+    if (subCategoryFilter && subCategoryFilter !== 'all') {
+      filtered = filtered.filter((p) => {
+        const sub = p.productId?.subCategory || p.subCategory;
+        return sub === subCategoryFilter;
+      });
+    }
     
     // Filter by product name search
-    filtered = filtered.filter(p => {
-      const productName = p.productId?.productName || p.productName || '';
-      return productName.toLowerCase().includes(productSearch.toLowerCase());
-    });
+    if (hasSearch) {
+      filtered = filtered.filter(p => {
+        const productName = p.productId?.productName || p.productName || '';
+        return productName.toLowerCase().includes(productSearch.toLowerCase());
+      });
+    }
     
     setProducts(filtered);
   };
@@ -350,37 +420,39 @@ const CreateOrder = () => {
     }
   };
 
+  const withUpdatedQuantity = (item, newQuantity) => {
+    const vendorProduct = item.vendorProduct;
+    const price = getUnitPriceForQuantity(vendorProduct, newQuantity);
+    const slab =
+      vendorProduct?.priceType === 'bulk' && vendorProduct?.pricing?.bulk
+        ? findBestMatchingSlab(vendorProduct.pricing.bulk, newQuantity)
+        : null;
+
+    return {
+      ...item,
+      quantity: newQuantity,
+      price,
+      appliedSlabMinQty: slab?.minQty ?? null,
+    };
+  };
+
   const handleAddToCart = (product) => {
     const vendorProduct = product;
     const minimumOrderQuantity = vendorProduct.minimumOrderQuantity || 1;
-    // Get the global Product ID (not VendorProduct ID)
-    const globalProductId = vendorProduct.productId?._id || vendorProduct.productId;
     const vendorProductId = vendorProduct._id; // VendorProduct ID for reference
     
     // Check if item exists by vendorProductId (since same vendor product can only be added once)
     const existingItem = cartItems.find(item => item.vendorProductId === vendorProductId);
     
     if (existingItem) {
-      // Increase by minimum order quantity (use stored value or product value)
+      // Increase by minimum order quantity and re-resolve bulk slab price
       const minQty = existingItem.minimumOrderQuantity || minimumOrderQuantity;
       setCartItems(cartItems.map(item =>
         item.vendorProductId === vendorProductId
-          ? { ...item, quantity: item.quantity + minQty }
+          ? withUpdatedQuantity(item, item.quantity + minQty)
           : item
       ));
     } else {
-      // Add with minimum order quantity
-      // Get price based on priceType
-      let price = 0;
-      if (vendorProduct.priceType === 'single') {
-        price = vendorProduct.pricing?.single?.price || vendorProduct.price || 0;
-      } else if (vendorProduct.priceType === 'bulk' && vendorProduct.pricing?.bulk?.length > 0) {
-        // Use the first bulk price tier for initial calculation
-        price = vendorProduct.pricing.bulk[0].price || 0;
-      } else {
-        price = vendorProduct.price || vendorProduct.sellingPrice || 0;
-      }
-      
       const productName = vendorProduct.productId?.productName || vendorProduct.productName || 'Product';
       // Handle different image formats: object with url, string, or array
       let productImage = '';
@@ -395,6 +467,11 @@ const CreateOrder = () => {
       
       // Get the global Product ID (not VendorProduct ID)
       const globalProductId = vendorProduct.productId?._id || vendorProduct.productId;
+      const price = getUnitPriceForQuantity(vendorProduct, minimumOrderQuantity);
+      const slab =
+        vendorProduct.priceType === 'bulk' && vendorProduct.pricing?.bulk
+          ? findBestMatchingSlab(vendorProduct.pricing.bulk, minimumOrderQuantity)
+          : null;
       
       setCartItems([
         ...cartItems,
@@ -404,9 +481,11 @@ const CreateOrder = () => {
           _id: vendorProduct._id, // Keep for cart operations
           name: productName,
           image: productImage,
-          price: price,
+          price,
           quantity: minimumOrderQuantity,
           minimumOrderQuantity: minimumOrderQuantity,
+          priceType: vendorProduct.priceType || 'single',
+          appliedSlabMinQty: slab?.minQty ?? null,
           vendorProduct: vendorProduct, // Store full product for price calculation
         }
       ]);
@@ -439,7 +518,7 @@ const CreateOrder = () => {
     
     setCartItems(cartItems.map(item =>
       (item.vendorProductId === vendorProductId || item._id === vendorProductId)
-        ? { ...item, quantity: newQuantity }
+        ? withUpdatedQuantity(item, newQuantity)
         : item
     ));
   };
@@ -453,7 +532,7 @@ const CreateOrder = () => {
     
     setCartItems(cartItems.map(item =>
       (item.vendorProductId === vendorProductId || item._id === vendorProductId)
-        ? { ...item, quantity: newQuantity }
+        ? withUpdatedQuantity(item, newQuantity)
         : item
     ));
   };
@@ -472,7 +551,7 @@ const CreateOrder = () => {
     
     setCartItems(cartItems.map(item =>
       (item.vendorProductId === vendorProductId || item._id === vendorProductId)
-        ? { ...item, quantity: newQuantity }
+        ? withUpdatedQuantity(item, newQuantity)
         : item
     ));
   };
@@ -1024,19 +1103,61 @@ const CreateOrder = () => {
             )}
           </div>
           
-          {/* Product Search */}
+          {/* Product filters */}
           {selectedUser && (
-            <div className="mb-3">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Search
-              </label>
-              <input
-                type="text"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search products by name..."
-                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
+            <div className="mb-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => {
+                    setCategoryFilter(e.target.value);
+                    setSubCategoryFilter('all');
+                  }}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                >
+                  <option value="all">All Categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
+                      {cat.name || cat.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Subcategory
+                </label>
+                <select
+                  value={subCategoryFilter}
+                  onChange={(e) => setSubCategoryFilter(e.target.value)}
+                  disabled={categoryFilter === 'all' || subCategories.length === 0}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="all">All Subcategories</option>
+                  {subCategories.map((subCat) => (
+                    <option key={subCat} value={subCat}>
+                      {subCat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Search
+                </label>
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search products by name..."
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
             </div>
           )}
           
@@ -1044,17 +1165,18 @@ const CreateOrder = () => {
             <div className="text-center py-6 text-xs text-gray-500">
               Please select a user first
             </div>
-          ) : !productSearch || productSearch.trim().length === 0 ? (
+          ) : (!productSearch || productSearch.trim().length === 0) &&
+            categoryFilter === 'all' ? (
             <div className="text-center py-6 text-xs text-gray-500">
-              <p>Search for products to display them</p>
-              <p className="text-xs mt-1">Type a product name in the search box above</p>
+              <p>Select a category or search for products</p>
+              <p className="text-xs mt-1">Use the filters above to find products</p>
             </div>
           ) : productsLoading ? (
             <div className="text-center py-6 text-xs text-gray-500">Loading products...</div>
           ) : products.length === 0 ? (
             <div className="text-center py-6 text-xs text-gray-500">
               <p>No products found</p>
-              <p className="text-xs mt-1">Try a different search term</p>
+              <p className="text-xs mt-1">Try a different category, subcategory, or search term</p>
             </div>
           ) : (
             <div className="max-h-64 overflow-y-auto space-y-1.5">
@@ -1168,7 +1290,12 @@ const CreateOrder = () => {
                   )}
                   <div className="flex-1">
                     <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    <div className="text-xs text-gray-600">₹{item.price.toFixed(2)} each</div>
+                    <div className="text-xs text-gray-600">
+                      ₹{item.price.toFixed(2)} each
+                      {item.priceType === 'bulk' && item.appliedSlabMinQty
+                        ? ` (${item.appliedSlabMinQty}+ qty slab)`
+                        : ''}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">

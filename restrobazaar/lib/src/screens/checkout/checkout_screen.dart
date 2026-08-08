@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/checkout_controller.dart';
+import '../../controllers/city_controller.dart';
 import '../../core/api_client.dart';
 import '../../core/formatters.dart';
 import '../../core/shipping.dart';
@@ -13,6 +14,7 @@ import '../../models/address.dart';
 import '../../models/cart_item.dart';
 import '../../models/coupon.dart';
 import '../../repositories/repository_providers.dart';
+import '../../services/location_service.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -37,6 +39,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   double _lastCartTotal = -1;
   String? _lastVendorKey;
   bool _pendingCouponRefresh = false;
+  bool _verifyingLocation = false;
 
   @override
   void initState() {
@@ -45,6 +48,44 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ref.read(checkoutControllerProvider.notifier).loadAddresses();
       _refreshCoupons(ref.read(cartControllerProvider));
     });
+  }
+
+  Future<bool> _ensureDeliverableLocation() async {
+    final selectedCity = ref.read(cityControllerProvider).selected?.displayName;
+    setState(() => _verifyingLocation = true);
+    final result = await LocationService.instance.verifyDeliveryForSelectedCity(
+      selectedCity,
+    );
+    if (!mounted) return false;
+    setState(() => _verifyingLocation = false);
+
+    if (result.ok) return true;
+
+    if (result.reason == 'city_mismatch') {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Not deliverable in your current location'),
+          content: Text(
+            result.locationCity != null && result.selectedCity != null
+                ? 'You are currently in ${result.locationCity}, but shopping for ${result.selectedCity}. Please change your city or move to a deliverable area.'
+                : result.message,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return false;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.message)),
+    );
+    return false;
   }
 
   String? _singleVendorId(List<CartItem> items) {
@@ -179,7 +220,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     });
   }
 
-  void _continueToPayment() {
+  Future<void> _continueToPayment() async {
+    final canDeliver = await _ensureDeliverableLocation();
+    if (!canDeliver || !mounted) return;
     setState(() {
       _showPaymentSection = true;
     });
@@ -317,13 +360,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 _applyCoupon(cartState, overrideCode: coupon.code);
               },
               showPaymentSection: _showPaymentSection,
-              placingOrder: checkoutState.placingOrder,
+              placingOrder: checkoutState.placingOrder || _verifyingLocation,
               errorMessage: checkoutState.error,
               onPrimaryAction: () async {
                 if (!_showPaymentSection) {
-                  _continueToPayment();
+                  await _continueToPayment();
                   return;
                 }
+
+                final canDeliver = await _ensureDeliverableLocation();
+                if (!canDeliver || !mounted) return;
 
                 final order = await checkoutNotifier.placeOrder(
                   cartItems: cartState.items,
@@ -345,7 +391,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 }
               },
               primaryDisabled:
-                  !_showPaymentSection && checkoutState.selectedAddressId == null,
+                  _verifyingLocation ||
+                  (!_showPaymentSection &&
+                      checkoutState.selectedAddressId == null),
             ),
           ],
         ),

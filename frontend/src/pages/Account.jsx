@@ -89,7 +89,7 @@ const Account = () => {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">My Account</h1>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">My Account</h1>
                 <p className="text-gray-600 mt-1 text-sm lg:text-base">Manage your account information and preferences</p>
               </div>
               <button
@@ -136,7 +136,7 @@ const Account = () => {
               {/* Personal Information Card */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Personal Information</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Personal Information</h2>
                  
                 </div>
 
@@ -158,26 +158,6 @@ const Account = () => {
                         <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       <span className="text-gray-900">{user.name || 'N/A'}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address
-                    </label>
-                    <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <svg
-                        className="w-5 h-5 text-gray-400 mr-2"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      <span className="text-gray-900">{user.email || 'N/A'}</span>
                     </div>
                   </div>
 
@@ -228,7 +208,7 @@ const Account = () => {
 
               {/* Account Details Card */}
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Account Details</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-6">Account Details</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -277,7 +257,7 @@ const Account = () => {
 
               {/* Quick Actions */}
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-6">Quick Actions</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     onClick={() => navigate('/orders')}

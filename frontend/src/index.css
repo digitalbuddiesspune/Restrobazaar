@@ -122,3 +122,13 @@
     display: none;
   }
 }
+
+/* Compact type scale for Admin + Vendor dashboards (rem-based Tailwind text sizes) */
+html.admin-compact {
+  font-size: 13px;
+}
+
+html.admin-compact .admin-panel {
+  font-size: 0.875rem; /* ~11.4px body default for unstyled text */
+  line-height: 1.4;
+}

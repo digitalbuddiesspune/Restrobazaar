@@ -48,6 +48,11 @@ import Header from '../components/vendor/Header';
 import StatsCard from '../components/vendor/StatsCard';
 import ProductTable from '../components/vendor/ProductTable';
 import CatalogTable from '../components/vendor/CatalogTable';
+import {
+  countAgedPendingOrders,
+  filterAgedPendingOrders,
+  AGED_PENDING_DAYS,
+} from '../utils/orderPending';
 import ProductForm from '../components/vendor/ProductForm';
 import OrdersTable from '../components/vendor/OrdersTable';
 import OrderDetails from '../components/vendor/OrderDetails';
@@ -164,12 +169,12 @@ const VendorDashboard = () => {
     { enabled: activeTab === 'orders' }
   );
 
-  // Fetch all orders for overview tab to calculate today's orders
+  // Fetch all orders for overview stats + aged "Total Pending" filter
   const {
     data: allOrdersData,
   } = useVendorOrders(
     { limit: 1000 },
-    { enabled: activeTab === 'overview' }
+    { enabled: activeTab === 'overview' || activeTab === 'orders' }
   );
 
   // Fetch unpaid orders for unpaid customers section
@@ -235,7 +240,7 @@ const VendorDashboard = () => {
     };
   }, [vendorProducts]);
 
-  // Calculate today's orders statistics
+  // Calculate today's orders statistics + aged pending (yesterday+)
   const todayOrdersStats = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -252,6 +257,7 @@ const VendorDashboard = () => {
       canceled: todayOrders.filter((order) => order.orderStatus === 'cancelled').length,
       delivered: todayOrders.filter((order) => order.orderStatus === 'delivered').length,
       pending: todayOrders.filter((order) => order.orderStatus === 'pending').length,
+      totalPending: countAgedPendingOrders(allOrders, AGED_PENDING_DAYS),
     };
   }, [allOrders]);
 
@@ -677,8 +683,16 @@ const VendorDashboard = () => {
     }
   }, [activeTab]);
 
+  // Smaller fonts across the entire vendor panel
+  useEffect(() => {
+    document.documentElement.classList.add('admin-compact');
+    return () => {
+      document.documentElement.classList.remove('admin-compact');
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="admin-panel min-h-screen bg-gray-50">
       <Sidebar 
         activeTab={activeTab} 
         navigateToTab={navigateToTab} 
@@ -749,11 +763,11 @@ const VendorDashboard = () => {
           {activeTab === 'overview' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">Dashboard Overview</h1>
+                <h1 className="text-base font-bold text-gray-900">Dashboard Overview</h1>
               </div>
 
               {/* Stats Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <StatsCard
                   title="Today's Canceled Orders"
                   value={todayOrdersStats.canceled}
@@ -820,6 +834,21 @@ const VendorDashboard = () => {
                   comparisonText="vs yesterday"
                   onClick={() => {
                     setOrderStatusFilter('pending');
+                    navigateToTab('orders');
+                  }}
+                />
+                <StatsCard
+                  title="Total Pending"
+                  value={todayOrdersStats.totalPending}
+                  icon={
+                    <svg className="w-5 h-5 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  }
+                  color="purple"
+                  comparisonText="pending 1+ days"
+                  onClick={() => {
+                    setOrderStatusFilter('total-pending');
                     navigateToTab('orders');
                   }}
                 />
@@ -939,7 +968,7 @@ const VendorDashboard = () => {
           {activeTab === 'products' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">My Products</h1>
+                <h1 className="text-base font-bold text-gray-900">My Products</h1>
                 <button
                   onClick={() => {
                     setEditingProduct(null);
@@ -1142,7 +1171,7 @@ const VendorDashboard = () => {
           {activeTab === 'catalog' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">Product Catalog</h1>
+                <h1 className="text-base font-bold text-gray-900">Product Catalog</h1>
               </div>
 
               <CatalogTable
@@ -1189,7 +1218,7 @@ const VendorDashboard = () => {
           {activeTab === 'add-product' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-base font-bold text-gray-900">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
                 </h1>
                 <button
@@ -1219,7 +1248,7 @@ const VendorDashboard = () => {
           {activeTab === 'unpaid-customers' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">Unpaid Customers</h1>
+                <h1 className="text-base font-bold text-gray-900">Unpaid Customers</h1>
               </div>
               <UnpaidCustomersTable
                 orders={unpaidOrders}
@@ -1233,11 +1262,13 @@ const VendorDashboard = () => {
             <div className="space-y-4">
               {!selectedOrderId && (
                 <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                  <h1 className="text-xl font-bold text-gray-900">
+                  <h1 className="text-base font-bold text-gray-900">
                     Orders
                     {orderStatusFilter && (
                       <span className="ml-2 text-sm font-normal text-gray-600">
-                        ({orderStatusFilter.charAt(0).toUpperCase() + orderStatusFilter.slice(1)})
+                        ({orderStatusFilter === 'total-pending'
+                          ? 'Total Pending'
+                          : orderStatusFilter.charAt(0).toUpperCase() + orderStatusFilter.slice(1)})
                       </span>
                     )}
                   </h1>
@@ -1258,6 +1289,9 @@ const VendorDashboard = () => {
                         Pending: <span className="font-semibold text-yellow-600">{orderStats.pendingOrders || 0}</span>
                       </div>
                       <div className="text-gray-600">
+                        Total Pending: <span className="font-semibold text-purple-600">{orderStats.agedPendingOrders ?? todayOrdersStats.totalPending ?? 0}</span>
+                      </div>
+                      <div className="text-gray-600">
                         Delivered: <span className="font-semibold text-green-600">{orderStats.deliveredOrders || 0}</span>
                       </div>
                     </div>
@@ -1276,13 +1310,20 @@ const VendorDashboard = () => {
                 />
               ) : (
                 <OrdersTable
-                  orders={orderStatusFilter ? orders.filter(order => {
-                    const status = order.orderStatus?.toLowerCase() || 'pending';
-                    if (orderStatusFilter === 'cancelled') return status === 'cancelled';
-                    if (orderStatusFilter === 'delivered') return status === 'delivered';
-                    if (orderStatusFilter === 'pending') return status === 'pending';
-                    return true;
-                  }) : orders}
+                  orders={(() => {
+                    if (!orderStatusFilter) return orders;
+                    if (orderStatusFilter === 'total-pending') {
+                      // Prefer full list so older pending are not limited to current page
+                      return filterAgedPendingOrders(allOrders.length ? allOrders : orders, AGED_PENDING_DAYS);
+                    }
+                    return orders.filter((order) => {
+                      const status = order.orderStatus?.toLowerCase() || 'pending';
+                      if (orderStatusFilter === 'cancelled') return status === 'cancelled';
+                      if (orderStatusFilter === 'delivered') return status === 'delivered';
+                      if (orderStatusFilter === 'pending') return status === 'pending';
+                      return true;
+                    });
+                  })()}
                   isLoading={ordersLoading}
                   onUpdateStatus={handleUpdateOrderStatus}
                   currentPage={ordersPage}
@@ -1290,6 +1331,7 @@ const VendorDashboard = () => {
                   onPageChange={setOrdersPage}
                   onOrderClick={(id) => navigateToTab('orders', { orderId: id })}
                   allOrders={allOrders}
+                  highlightAgedPending
                 />
               )}
             </div>
@@ -1324,7 +1366,7 @@ const VendorDashboard = () => {
           {activeTab === 'coupons' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">Coupons</h1>
+                <h1 className="text-base font-bold text-gray-900">Coupons</h1>
                 {!editingCoupon && (
                   <button
                     onClick={() => {
@@ -1397,7 +1439,7 @@ const VendorDashboard = () => {
           {activeTab === 'add-coupon' && editingCoupon !== null && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="text-base font-bold text-gray-900">
                   {editingCoupon._id ? 'Edit Coupon' : 'Create Coupon'}
                 </h1>
                 <button

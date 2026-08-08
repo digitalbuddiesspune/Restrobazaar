@@ -152,7 +152,7 @@ const Orders = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Your Orders</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Your Orders</h1>
               <p className="text-sm text-gray-600 mt-1">
                 {orders.length} order{orders.length !== 1 ? 's' : ''} placed
                 {selectedCityId && (
@@ -196,7 +196,7 @@ const Orders = () => {
                 d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
               />
             </svg>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No orders yet</h3>
             <p className="text-gray-600 mb-6">Start shopping to see your orders here</p>
             <Link
               to="/"
@@ -206,221 +206,114 @@ const Orders = () => {
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {orders.map((order) => (
               <div
                 key={order._id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                role="button"
+                tabIndex={0}
+                onClick={() => handleViewOrder(order)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleViewOrder(order);
+                  }
+                }}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:border-red-300 hover:shadow-md transition-all"
               >
                 {/* Order Header */}
                 <div className="px-3 sm:px-4 py-3 bg-gray-50 border-b border-gray-200">
-                  {/* Mobile: Two fields per row */}
-                  <div className="sm:hidden space-y-2">
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                       <div>
                         <span className="text-xs text-gray-600">Order Placed</span>
-                        <p className="text-xs font-medium text-gray-900 mt-0.5">{formatDate(order.createdAt)}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-gray-600">Ship to</span>
-                        <p className="text-xs font-medium text-gray-900 truncate mt-0.5">
-                          {order.deliveryAddress?.name || 'N/A'}
+                        <p className="text-xs sm:text-sm font-medium text-gray-900">
+                          {formatDate(order.createdAt)}
                         </p>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+                      <div className="hidden sm:block text-gray-300">|</div>
                       <div>
                         <span className="text-xs text-gray-600">Total</span>
-                        <p className="text-xs font-medium text-gray-900 mt-0.5">
+                        <p className="text-xs sm:text-sm font-medium text-gray-900">
                           ₹{order.billingDetails?.totalAmount?.toFixed(2) || '0.00'}
                         </p>
                       </div>
-                      <div>
+                      <div className="hidden sm:block text-gray-300">|</div>
+                      <div className="min-w-0">
                         <span className="text-xs text-gray-600">Order #</span>
-                        <p className="text-xs font-medium text-gray-900 truncate mt-0.5">
+                        <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
                           {formatOrderId(order.orderNumber || order._id)}
                         </p>
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Desktop: Original layout */}
-                  <div className="hidden sm:flex sm:items-center sm:justify-between gap-2">
-                    <div className="flex sm:items-center gap-2 sm:gap-4">
-                      <div>
-                        <span className="text-sm text-gray-600">Order Placed</span>
-                        <p className="text-sm font-medium text-gray-900">{formatDate(order.createdAt)}</p>
-                      </div>
-                      <div className="text-gray-300">|</div>
-                      <div>
-                        <span className="text-sm text-gray-600">Total</span>
-                        <p className="text-sm font-medium text-gray-900">
-                          ₹{order.billingDetails?.totalAmount?.toFixed(2) || '0.00'}
-                        </p>
-                      </div>
-                      <div className="text-gray-300">|</div>
-                      <div>
-                        <span className="text-sm text-gray-600">Ship to</span>
-                        <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
-                          {order.deliveryAddress?.name || 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Order {formatOrderId(order.orderNumber || order._id)}</span>
-                      <Button
-                        variant="text"
-                        size="sm"
-                        onClick={() => handleViewOrder(order)}
-                      >
-                        Order Details
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Content */}
-                <div className="p-3 sm:p-4">
-                  {/* Status Badge */}
-                  <div className="mb-3 sm:mb-4">
                     <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs sm:text-sm font-medium border ${getStatusColor(
+                      className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusColor(
                         order.orderStatus
                       )}`}
                     >
                       {getStatusText(order.orderStatus)}
                     </span>
                   </div>
+                </div>
 
-                  {/* Order Items */}
-                  <div className="space-y-2 sm:space-y-3">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="flex gap-2 sm:gap-4">
-                        {/* Product Image */}
-                        <div className="shrink-0">
-                          {item.productImage ? (
-                            <img
-                              src={item.productImage}
-                              alt={item.productName}
-                              className="w-16 h-16 sm:w-24 sm:h-24 object-contain p-1 bg-white rounded border border-gray-200"
-                              onError={(e) => {
-                                e.target.src = 'https://via.placeholder.com/96?text=No+Image';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white rounded border border-gray-200 flex items-center justify-center">
-                              <svg
-                                className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Product Details */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-xs sm:text-base font-medium text-gray-900 mb-0.5 sm:mb-1 line-clamp-2">
-                            {item.productName}
-                          </h3>
-                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">
-                            Qty: {item.quantity}
-                          </p>
-                          <p className="text-xs sm:text-sm font-semibold text-gray-900">
-                            ₹{item.total.toFixed(2)}
-                          </p>
-                        </div>
+                {/* Product images — one row only; details open on click */}
+                <div className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    {(order.items || []).map((item, index) => (
+                      <div key={index} className="shrink-0">
+                        {item.productImage ? (
+                          <img
+                            src={item.productImage}
+                            alt={item.productName || 'Product'}
+                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain p-1 bg-white rounded-lg border border-gray-200"
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/64?text=No+Image';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center">
+                            <svg
+                              className="w-6 h-6 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                        )}
                       </div>
                     ))}
+                    {(order.items || []).length > 0 && (
+                      <span className="shrink-0 text-xs text-gray-500 ml-1">
+                        {order.items.length} item{order.items.length === 1 ? '' : 's'}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
-                    {/* Mobile: Two buttons per row */}
-                    <div className="sm:hidden grid grid-cols-2 gap-2">
-                      {order.orderStatus === 'delivered' && (
-                        <Button variant="secondary" size="sm" className="text-xs">
-                          Buy Again
-                        </Button>
-                      )}
-                      {order.orderStatus !== 'delivered' && order.orderStatus !== 'cancelled' && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleCancelOrder(order._id)}
-                          disabled={cancellingOrder === order._id}
-                          loading={cancellingOrder === order._id}
-                          className="text-xs"
-                        >
-                          Cancel Order
-                        </Button>
-                      )}
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleViewOrder(order)}
-                        className="text-xs"
-                      >
-                        View Details
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleDownloadInvoice(order)}
-                        className="flex items-center justify-center gap-1.5 text-xs col-span-2"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Download Invoice
-                      </Button>
-                    </div>
-                    
-                    {/* Desktop: Original layout */}
-                    <div className="hidden sm:flex sm:flex-wrap gap-2">
-                      {order.orderStatus === 'delivered' && (
-                        <Button variant="secondary" size="md">
-                          Buy Again
-                        </Button>
-                      )}
-                      {order.orderStatus !== 'delivered' && order.orderStatus !== 'cancelled' && (
-                        <Button
-                          variant="secondary"
-                          size="md"
-                          onClick={() => handleCancelOrder(order._id)}
-                          disabled={cancellingOrder === order._id}
-                          loading={cancellingOrder === order._id}
-                        >
-                          Cancel Order
-                        </Button>
-                      )}
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        onClick={() => handleViewOrder(order)}
-                      >
-                        View Order Details
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="md"
-                        onClick={() => handleDownloadInvoice(order)}
-                        className="flex items-center gap-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Download Invoice
-                      </Button>
-                    </div>
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      Tap to view order details
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadInvoice(order);
+                      }}
+                      className="flex items-center gap-1.5 text-xs"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Invoice
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -562,6 +455,22 @@ const Orders = () => {
 
             {/* Action Buttons */}
             <div className="mt-4 pt-3 border-t border-gray-200 flex flex-col sm:flex-row gap-2">
+              {selectedOrder.orderStatus !== 'delivered' &&
+                selectedOrder.orderStatus !== 'cancelled' && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => {
+                      setShowOrderModal(false);
+                      handleCancelOrder(selectedOrder._id);
+                    }}
+                    disabled={cancellingOrder === selectedOrder._id}
+                    loading={cancellingOrder === selectedOrder._id}
+                    className="text-xs sm:text-sm"
+                  >
+                    Cancel Order
+                  </Button>
+                )}
               <Button
                 variant="secondary"
                 size="sm"

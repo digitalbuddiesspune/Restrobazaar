@@ -41,13 +41,149 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const StaticPageScreen(
-      title: 'About RestroBazaar',
-      paragraphs: [
-        'RestroBazaar is a single destination for restaurants, cafés, bakeries, and cloud kitchens to source reliable food packaging.',
-        'We curate packaging that keeps food fresh, travels well, and represents your brand with pride. Our team focuses on trust, transparency, and long-term partnerships with hospitality businesses.',
-        'Whether you are scaling up delivery or refreshing your dine-in experience, we are here with practical guidance and quality supplies.',
-      ],
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('About RestroBazaar')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            'About RestroBazaar',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'RestroBazaar is a single destination for restaurants, cafés, bakeries, and cloud kitchens to source reliable food packaging.',
+            style: TextStyle(height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'We curate packaging that keeps food fresh, travels well, and represents your brand with pride. Our team focuses on trust, transparency, and long-term partnerships with hospitality businesses.',
+            style: TextStyle(height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Whether you are scaling up delivery or refreshing your dine-in experience, we are here with practical guidance and quality supplies.',
+            style: TextStyle(height: 1.4),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'Our Founders',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'The leadership behind RestroBazaar',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _FounderCard(
+            initials: 'PK',
+            name: 'Mrs. Pranali Kadam',
+            role: 'Managing Director (MD)',
+            description:
+                'Leads RestroBazaar’s overall vision, strategy, and growth — focused on building trusted packaging partnerships for restaurants and food brands.',
+            accent: primary,
+          ),
+          const SizedBox(height: 12),
+          _FounderCard(
+            initials: 'AK',
+            name: 'Mr. Akshay Kadam',
+            role: 'Chief Operations Officer',
+            description:
+                'Oversees day-to-day operations, supply reliability, and customer fulfillment — ensuring quality packaging is delivered on time, every time.',
+            accent: primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FounderCard extends StatelessWidget {
+  const _FounderCard({
+    required this.initials,
+    required this.name,
+    required this.role,
+    required this.description,
+    required this.accent,
+  });
+
+  final String initials;
+  final String name;
+  final String role;
+  final String description;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: accent,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    role,
+                    style: TextStyle(
+                      color: accent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      height: 1.4,
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

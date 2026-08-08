@@ -25,7 +25,7 @@ const UsersTable = ({ users, loading, onEdit, onDelete }) => {
     return (
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-6 border-b bg-gray-100">
-          <h2 className="text-xl font-bold">All Users</h2>
+          <h2 className="text-base font-bold">All Users</h2>
         </div>
         <div className="p-12 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
@@ -38,7 +38,7 @@ const UsersTable = ({ users, loading, onEdit, onDelete }) => {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="p-6 border-b bg-gray-100">
-        <h2 className="text-xl font-bold">All Users ({users.length})</h2>
+        <h2 className="text-base font-bold">All Users ({users.length})</h2>
       </div>
       <div className="overflow-x-auto scrollbar-hide">
         <table className="min-w-full divide-y divide-gray-200">
