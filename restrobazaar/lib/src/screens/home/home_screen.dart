@@ -80,10 +80,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onPressed: () => context.push('/search'),
             icon: const Icon(Icons.search),
           ),
-          IconButton(
-            onPressed: () => context.go('/cart'),
-            icon: const Icon(Icons.shopping_cart_outlined),
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -199,7 +195,7 @@ class _HeroCarouselState extends State<_HeroCarousel> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: SizedBox(
@@ -275,7 +271,7 @@ class _CategoriesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.grey.shade50,
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -290,7 +290,6 @@ const SignInModal = ({ onClose, onSwitchToSignUp }) => {
                   maxLength="10"
                 />
               </div>
-              <p className="text-xs text-gray-500">10-digit mobile number starting with 6, 7, 8, or 9</p>
             </div>
 
             {/* Send OTP Button */}

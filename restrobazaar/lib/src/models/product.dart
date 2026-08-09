@@ -208,6 +208,8 @@ class VendorProductModel {
     this.minimumOrderQuantity,
     this.subCategory,
     this.originalPrice,
+    this.defaultPrice,
+    this.sequenceNumber,
   }) : pricing = pricing ?? const PricingModel();
 
   final String id;
@@ -222,6 +224,8 @@ class VendorProductModel {
   final int? minimumOrderQuantity;
   final String? subCategory;
   final double? originalPrice;
+  final double? defaultPrice;
+  final int? sequenceNumber;
 
   factory VendorProductModel.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic>? productJson = json['productId'] is Map<String, dynamic>
@@ -250,6 +254,9 @@ class VendorProductModel {
     final minimumOrderRaw =
         json['minimumOrderQuantity'] ?? productJson?['minimumOrderQuantity'];
 
+    final sequenceRaw = json['sequenceNumber'];
+    final defaultPriceRaw = json['defaultPrice'] ?? json['originalPrice'];
+
     return VendorProductModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       slug: json['slug']?.toString(),
@@ -272,15 +279,21 @@ class VendorProductModel {
           productJson?['subCategory']?.toString(),
       originalPrice:
           json['originalPrice'] != null ? _toDouble(json['originalPrice']) : null,
+      defaultPrice:
+          defaultPriceRaw != null ? _toDouble(defaultPriceRaw) : null,
+      sequenceNumber: sequenceRaw is num
+          ? sequenceRaw.toInt()
+          : int.tryParse(sequenceRaw?.toString() ?? ''),
     );
   }
 
+  /// Listing price — matches web category cards (bulk shows last slab).
   double? get displayPrice {
     if (priceType == 'single' && pricing.singlePrice != null) {
       return pricing.singlePrice;
     }
     if (priceType == 'bulk' && pricing.bulk.isNotEmpty) {
-      return pricing.bulk.first.price;
+      return pricing.bulk.last.price;
     }
     return null;
   }
@@ -299,6 +312,8 @@ class VendorProductModel {
       'minimumOrderQuantity': minimumOrderQuantity,
       'subCategory': subCategory,
       'originalPrice': originalPrice,
+      'defaultPrice': defaultPrice,
+      'sequenceNumber': sequenceNumber,
     };
   }
 }

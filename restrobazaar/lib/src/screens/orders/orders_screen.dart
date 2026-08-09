@@ -12,6 +12,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../controllers/order_providers.dart';
 import '../../core/formatters.dart';
+import '../../core/order_id_formatter.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';
 
@@ -290,7 +291,7 @@ class _OrderCard extends StatelessWidget {
                           ),
                           _OrderInfo(
                             label: 'Order #',
-                            value: _shortOrderId(order.id),
+                            value: formatOrderId(order.displayId),
                           ),
                         ],
                       ),
@@ -596,7 +597,7 @@ void _showOrderDetails(BuildContext context, OrderModel order) {
                   children: [
                     Expanded(
                       child: Text(
-                        'Order #${_shortOrderId(order.id)}',
+                        'Order ${formatOrderId(order.displayId)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
@@ -688,7 +689,7 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
   try {
     final bytes = await _buildInvoicePdf(order);
     final dir = await getApplicationDocumentsDirectory();
-    final filename = 'Invoice-${_shortOrderId(order.id)}.pdf';
+    final filename = 'Invoice-${formatOrderId(order.displayId)}.pdf';
     final file = File('${dir.path}/$filename');
     await file.writeAsBytes(bytes, flush: true);
     messenger.showSnackBar(
@@ -720,7 +721,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
       order.totalAmount != 0 ? order.totalAmount : subtotal + gstAmount + shipping;
   final paymentStatus =
       order.paymentStatus?.isNotEmpty == true ? _titleCase(order.paymentStatus!) : 'Pending';
-  final orderNumber = order.id.isNotEmpty ? order.id : 'N/A';
+  final orderNumber = formatOrderId(order.displayId);
 
   pw.MemoryImage? logoImage;
   try {
@@ -1087,12 +1088,6 @@ String _paymentLabel(String? method) {
     default:
       return value.isNotEmpty ? _titleCase(value) : 'Not specified';
   }
-}
-
-String _shortOrderId(String id) {
-  if (id.isEmpty) return '—';
-  final trimmed = id.length > 8 ? id.substring(0, 8) : id;
-  return trimmed.toUpperCase();
 }
 
 String _statusText(String status) {

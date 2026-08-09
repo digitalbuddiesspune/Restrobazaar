@@ -49,12 +49,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           },
           decoration: const InputDecoration(hintText: 'Search for products...'),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => context.go('/cart'),
-            icon: const Icon(Icons.shopping_cart_outlined),
-          ),
-        ],
       ),
       body: productsAsync.when(
         data: (products) {
@@ -69,15 +63,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           return LayoutBuilder(
             builder: (context, constraints) {
               const crossAxisCount = 2;
-              const spacing = 12.0;
+              const spacing = 6.0;
               final totalWidth = constraints.maxWidth;
               final itemWidth =
                   (totalWidth - (spacing * (crossAxisCount - 1))) /
                       crossAxisCount;
-              final itemHeight = itemWidth + 170;
+              // Match category / web product card proportions.
+              final itemHeight = itemWidth + 96;
 
               return GridView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(10),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
                   mainAxisSpacing: spacing,

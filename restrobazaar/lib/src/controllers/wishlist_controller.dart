@@ -41,6 +41,26 @@ class WishlistController extends StateNotifier<WishlistState> {
 
   final Ref _ref;
 
+  /// Wishlist list API may omit MOQ / stock / full pricing. Hydrate each item
+  /// from the vendor-product endpoint so cards match category/PDP qty logic.
+  Future<List<VendorProductModel>> _enrichWithFullProducts(
+    List<VendorProductModel> items,
+  ) async {
+    if (items.isEmpty) return items;
+    final catalog = _ref.read(catalogRepositoryProvider);
+    final enriched = await Future.wait(
+      items.map((item) async {
+        try {
+          final full = await catalog.getVendorProductById(item.id);
+          return full ?? item;
+        } catch (_) {
+          return item;
+        }
+      }),
+    );
+    return enriched;
+  }
+
   Future<void> loadWishlist() async {
     final isLoggedIn = _ref.read(authControllerProvider).isAuthenticated;
     if (!isLoggedIn) {
@@ -52,7 +72,8 @@ class WishlistController extends StateNotifier<WishlistState> {
     try {
       final repo = _ref.read(wishlistRepositoryProvider);
       final items = await repo.getWishlist();
-      state = state.copyWith(items: items, loading: false);
+      final fullItems = await _enrichWithFullProducts(items);
+      state = state.copyWith(items: fullItems, loading: false);
     } catch (error) {
       if (error is ApiException && error.statusCode == 401) {
         await _ref.read(authControllerProvider.notifier).logout();

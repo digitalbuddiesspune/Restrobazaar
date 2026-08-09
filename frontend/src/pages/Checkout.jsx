@@ -317,7 +317,7 @@ const Checkout = () => {
   
   const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
   
-  // Group items by GST percentage and calculate SGST/CGST
+  // Group by GST rate and split into IGST + CGST (half each) — no per-item GST lines
   const gstGroups = {};
   gstBreakdown.forEach(item => {
     if (item.gstPercentage > 0 && item.gstAmount > 0) {
@@ -332,23 +332,20 @@ const Checkout = () => {
     }
   });
   
-  // Convert groups to array and calculate SGST/CGST for each
-  const sgstCgstBreakdown = Object.keys(gstGroups)
+  const igstCgstBreakdown = Object.keys(gstGroups)
     .sort((a, b) => parseFloat(b) - parseFloat(a))
     .map(gstKey => {
       const group = gstGroups[gstKey];
       const totalGst = parseFloat(group.totalGst.toFixed(2));
-      const sgstAmount = parseFloat((totalGst / 2).toFixed(2));
-      const cgstAmount = parseFloat((totalGst / 2).toFixed(2));
-      const sgstRate = parseFloat((group.percentage / 2).toFixed(2));
-      const cgstRate = sgstRate;
+      const halfAmount = parseFloat((totalGst / 2).toFixed(2));
+      const halfRate = parseFloat((group.percentage / 2).toFixed(2));
       
       return {
         gstPercentage: group.percentage,
-        sgstRate,
-        cgstRate,
-        sgstAmount,
-        cgstAmount,
+        igstRate: halfRate,
+        cgstRate: halfRate,
+        igstAmount: halfAmount,
+        cgstAmount: halfAmount,
         totalGst
       };
     });
@@ -958,25 +955,24 @@ const Checkout = () => {
                     <span>Cart Total (Excl. of all taxes)</span>
                     <span className="font-medium">₹{cartTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-700">
-                    <span>GST</span>
-                    <span className="font-medium">₹{gstAmount.toFixed(2)}</span>
-                  </div>
-                  {/* SGST/CGST Breakdown */}
-                  {sgstCgstBreakdown.length > 0 && (
-                    <div className="pl-2 border-l-2 border-gray-200 space-y-1">
-                      {sgstCgstBreakdown.map((group, index) => (
-                        <div key={`gst-group-${index}`} className="space-y-0.5">
-                          <div className="flex justify-between text-xs text-gray-600">
-                            <span>SGST ({group.sgstRate}%):</span>
-                            <span>₹{group.sgstAmount.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-xs text-gray-600">
-                            <span>CGST ({group.cgstRate}%):</span>
-                            <span>₹{group.cgstAmount.toFixed(2)}</span>
-                          </div>
+                  {/* IGST / CGST only (no per-item GST, no combined GST row) */}
+                  {igstCgstBreakdown.length > 0 ? (
+                    igstCgstBreakdown.map((group, index) => (
+                      <div key={`gst-group-${index}`} className="space-y-2">
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>IGST ({group.igstRate}%)</span>
+                          <span className="font-medium">₹{group.igstAmount.toFixed(2)}</span>
                         </div>
-                      ))}
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>CGST ({group.cgstRate}%)</span>
+                          <span className="font-medium">₹{group.cgstAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex justify-between text-sm text-gray-700">
+                      <span>GST</span>
+                      <span className="font-medium">₹0.00</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm text-gray-700">

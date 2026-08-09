@@ -1058,167 +1058,155 @@ const ProductDetail = () => {
                 </div>
               </div>
 
-              {/* Quantity & Add to Cart */}
-              {product.availableStock > 0 && (
+              {/* Quantity & Add to Cart — after add, only ± cart stepper (no Add More) */}
+              {(product.availableStock == null || product.availableStock > 0) && (() => {
+                const inCart = Boolean(cartItemInfo?.isInCart);
+                const displayQty = inCart ? cartItemInfo.quantity : quantity;
+                const maxStock =
+                  product.availableStock == null
+                    ? Infinity
+                    : roundToMultiple(product.availableStock, minOrderQty);
+
+                const applyMainQtyChange = (delta) => {
+                  const current = inCart ? cartItemInfo.quantity : quantity;
+                  let next = roundToMultiple(current + delta, minOrderQty);
+                  if (next < minOrderQty) next = minOrderQty;
+                  if (Number.isFinite(maxStock) && next > maxStock) next = maxStock;
+                  if (next === current) return;
+
+                  if (inCart && cartItemInfo.cartItem) {
+                    dispatch(
+                      updateQuantity({
+                        itemId: cartItemInfo.cartItem.id,
+                        quantity: next,
+                      }),
+                    );
+                    setQuantity(next);
+                  } else {
+                    setQuantity(next);
+                    setQuantityError('');
+                  }
+                };
+
+                const unitForTotal = (() => {
+                  if (product.priceType === 'single') {
+                    return product.pricing?.single?.price;
+                  }
+                  const slab = findBestMatchingSlab(product.pricing?.bulk || [], displayQty);
+                  return slab?.price;
+                })();
+                const lineTotal =
+                  unitForTotal != null ? unitForTotal * displayQty : totalPrice;
+
+                return (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Quantity (Min: {minOrderQty}, Step: {minOrderQty})
+                      {inCart
+                        ? `Quantity in cart (Min: ${minOrderQty})`
+                        : `Quantity (Min: ${minOrderQty}, Step: ${minOrderQty})`}
                     </label>
-                    <div className="flex items-center gap-3">
+                    <div className="w-full bg-gray-50 border border-black rounded-lg flex items-stretch overflow-hidden" style={{ minHeight: '44px' }}>
                       <button
-                        onClick={() => {
-                          const newQty = Math.max(minOrderQty, quantity - minOrderQty);
-                          setQuantity(newQty);
-                          setQuantityError('');
-                        }}
-                        disabled={quantity <= minOrderQty}
-                        className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
+                        onClick={() => applyMainQtyChange(-minOrderQty)}
+                        disabled={displayQty <= minOrderQty}
+                        className="w-12 bg-gray-200 hover:bg-gray-300 transition-colors flex items-center justify-center border-r border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         title={`Decrease by ${minOrderQty}`}
                       >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M20 12H4"
-                          />
+                        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
                         </svg>
                       </button>
-                      <div className="flex flex-col">
-                        <input
-                          type="number"
-                          value={quantity}
-                          onChange={handleQuantityChange}
-                          onBlur={(e) => {
-                            // Validate and round on blur
-                            const inputValue = parseInt(e.target.value) || minOrderQty;
-                            const validQty = validateAndSetQuantity(
-                              inputValue,
-                              minOrderQty,
-                              product.availableStock
-                            );
-                            setQuantity(validQty);
-                            setQuantityError('');
-                          }}
-                          min={minOrderQty}
-                          max={product.availableStock}
-                          step={minOrderQty}
-                          className={`w-20 text-center border rounded-lg py-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                            quantityError ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                        />
-                        {quantityError && (
-                          <span className="text-xs text-red-600 mt-1 text-center">
-                            {quantityError}
-                          </span>
+                      <div className="flex-1 bg-white flex items-center justify-center border-x border-gray-300">
+                        {inCart ? (
+                          <span className="text-base font-bold text-black">{displayQty}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={quantity}
+                            onChange={handleQuantityChange}
+                            onBlur={(e) => {
+                              const inputValue = parseInt(e.target.value) || minOrderQty;
+                              const validQty = validateAndSetQuantity(
+                                inputValue,
+                                minOrderQty,
+                                product.availableStock,
+                              );
+                              setQuantity(validQty);
+                              setQuantityError('');
+                            }}
+                            min={minOrderQty}
+                            max={product.availableStock ?? undefined}
+                            step={minOrderQty}
+                            className={`w-full text-center border-0 py-2 focus:ring-0 ${
+                              quantityError ? 'text-red-600' : 'text-black'
+                            } font-bold`}
+                          />
                         )}
                       </div>
                       <button
-                        onClick={() => {
-                          const newQty = Math.min(
-                            roundToMultiple(product.availableStock, minOrderQty),
-                            quantity + minOrderQty
-                          );
-                          setQuantity(newQty);
-                          setQuantityError('');
-                        }}
-                        disabled={quantity >= roundToMultiple(product.availableStock, minOrderQty)}
-                        className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
+                        onClick={() => applyMainQtyChange(minOrderQty)}
+                        disabled={Number.isFinite(maxStock) && displayQty >= maxStock}
+                        className="w-12 bg-gray-200 hover:bg-gray-300 transition-colors flex items-center justify-center border-l border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         title={`Increase by ${minOrderQty}`}
                       >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
+                        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 text-[10px]">
-                      Quantity must be in multiples of {minOrderQty}
+                      {inCart
+                        ? `Use + / − to update cart quantity (steps of ${minOrderQty})`
+                        : `Quantity must be in multiples of ${minOrderQty}`}
                     </p>
+                    {quantityError && !inCart && (
+                      <span className="text-xs text-red-600 mt-1 block">{quantityError}</span>
+                    )}
                   </div>
 
-                  {totalPrice != null && (
+                  {lineTotal != null && (
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
                       <div className="flex justify-between items-center flex-wrap gap-1">
                         <span className="text-xs text-gray-700">Total Price</span>
                         <div className="flex items-baseline gap-2">
                           {(showDiscountedPriceSingle || showDiscountedPriceBulk) && originalPrice > 0 && (
                             <span className="text-sm text-gray-400 line-through">
-                              ₹{(quantity * originalPrice).toLocaleString('en-IN')}
+                              ₹{(displayQty * originalPrice).toLocaleString('en-IN')}
                             </span>
                           )}
                           <span className="text-lg font-bold text-red-600">
-                            ₹{totalPrice.toLocaleString('en-IN')}
+                            ₹{lineTotal.toLocaleString('en-IN')}
                           </span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Already in Cart Indicator */}
-                  {cartItemInfo?.isInCart && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-                      <svg
-                        className="w-5 h-5 text-green-600 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-green-800">
-                          Already in Cart
-                        </p>
-                        <p className="text-xs text-green-700">
-                          {cartItemInfo.differentPrice 
-                            ? `This product is already in your cart with ${cartItemInfo.quantity} item(s) at a different price.`
-                            : `This product is already in your cart with ${cartItemInfo.quantity} item(s).`
-                          }
-                        </p>
-                      </div>
-                    </div>
+                  {!inCart && (
+                    <button
+                      onClick={(e) => handleAddToCart(e)}
+                      disabled={addingToCart || quantityError !== ''}
+                      className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {addingToCart ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Adding...
+                        </>
+                      ) : (
+                        'Add to Cart'
+                      )}
+                    </button>
                   )}
-
-                  <button
-                    onClick={(e) => handleAddToCart(e)}
-                    disabled={addingToCart || quantityError !== ''}
-                    className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {addingToCart ? (
-                      <>
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Adding...
-                      </>
-                    ) : (
-                      cartItemInfo?.isInCart ? 'Add More to Cart' : 'Add to Cart'
-                    )}
-                  </button>
                 </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Vendor Information */}

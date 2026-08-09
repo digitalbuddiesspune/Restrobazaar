@@ -6,6 +6,7 @@ class OrderModel {
     required this.id,
     required this.status,
     required this.totalAmount,
+    this.orderNumber,
     this.createdAt,
     this.items = const [],
     this.paymentMethod,
@@ -17,6 +18,8 @@ class OrderModel {
   });
 
   final String id;
+  /// Human-facing order number from API (e.g. `ORD-...`), preferred for display.
+  final String? orderNumber;
   final String status;
   final double totalAmount;
   final DateTime? createdAt;
@@ -27,6 +30,13 @@ class OrderModel {
   final double? gstAmount;
   final double? shippingCharges;
   final AddressModel? deliveryAddress;
+
+  /// Same priority as web: `orderNumber || _id`.
+  String get displayId {
+    final number = orderNumber?.trim();
+    if (number != null && number.isNotEmpty) return number;
+    return id;
+  }
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final billing = json['billingDetails'] is Map<String, dynamic>
@@ -78,6 +88,7 @@ class OrderModel {
 
     return OrderModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
+      orderNumber: json['orderNumber']?.toString(),
       status: (json['orderStatus'] ?? json['status'] ?? 'created').toString(),
       totalAmount: _toDouble(json['totalAmount']) ??
           _toDouble(billing['totalAmount']) ??

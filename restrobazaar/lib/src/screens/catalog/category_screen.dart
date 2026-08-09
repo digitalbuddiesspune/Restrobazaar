@@ -35,10 +35,6 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
             onPressed: () => context.push('/search'),
             icon: const Icon(Icons.search),
           ),
-          IconButton(
-            onPressed: () => context.go('/cart'),
-            icon: const Icon(Icons.shopping_cart_outlined),
-          ),
         ],
       ),
       body: categoryAsync.when(
@@ -82,7 +78,9 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                 cityId: cityId,
                 categoryId: category.id,
                 page: 1,
-                limit: 200,
+                // Fetch enough products so subcategory filter + sequence sort
+                // match the web category page behavior.
+                limit: 1000,
               ),
             ),
           );
@@ -91,19 +89,27 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => Center(child: Text(error.toString())),
             data: (products) {
-              final filtered = _selectedSubCategory == 'all'
-                  ? products
-                  : products.where((p) {
-                      final sub =
-                          p.subCategory ?? p.product?.subCategory ?? '';
-                      return sub.trim().toLowerCase() ==
-                          _selectedSubCategory.trim().toLowerCase();
-                    }).toList();
+              // Mirror web Category.jsx: filter by subcategory, then
+              // sort by sequenceNumber ascending (missing sequences last).
+              final filtered = <VendorProductModel>[
+                ...(_selectedSubCategory == 'all'
+                    ? products
+                    : products.where((p) {
+                        final sub =
+                            p.subCategory ?? p.product?.subCategory ?? '';
+                        return sub.trim() == _selectedSubCategory.trim();
+                      })),
+              ]..sort((a, b) {
+                  final seqA =
+                      a.sequenceNumber ?? 0x7fffffffffffffff; // MAX_SAFE int
+                  final seqB = b.sequenceNumber ?? 0x7fffffffffffffff;
+                  return seqA.compareTo(seqB);
+                });
 
               return Container(
                 color: Colors.grey.shade50,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -115,7 +121,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                           setState(() => _selectedSubCategory = value);
                         },
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       if (filtered.isEmpty)
                         _EmptyProducts(
                           title: 'No products found',
@@ -323,17 +329,23 @@ class _ProductGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const crossAxisCount = 2;
-        const spacing = 12.0;
-        final totalWidth = constraints.maxWidth;
+        // Mobile mirrors web `grid-cols-2` with tight gaps.
+        final width = constraints.maxWidth;
+        final crossAxisCount = width >= 900
+            ? 5
+            : width >= 600
+                ? 3
+                : 2;
+        const spacing = 6.0;
         final itemWidth =
-            (totalWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
-        final itemHeight = itemWidth + 170;
+            (width - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+        // Square image + compact info (name, price, CTA) like web cards.
+        final itemHeight = itemWidth + 96;
 
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(4),
+          padding: EdgeInsets.zero,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             mainAxisSpacing: spacing,

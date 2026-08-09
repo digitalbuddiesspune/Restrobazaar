@@ -327,7 +327,6 @@ const SignUpModal = ({ onClose, onSwitchToSignIn }) => {
                 onChange={handleChange}
               />
             </div>
-            <p className="text-xs text-gray-500">10-digit mobile number starting with 6, 7, 8, or 9</p>
           </div>
 
           {/* Restaurant Name Input (Optional) */}

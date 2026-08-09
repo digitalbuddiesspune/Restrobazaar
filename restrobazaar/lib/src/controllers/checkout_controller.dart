@@ -4,6 +4,7 @@ import '../models/address.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
 import '../core/notifications/notification_service.dart';
+import '../core/order_id_formatter.dart';
 import '../repositories/address_repository.dart';
 import '../repositories/order_repository.dart';
 import '../repositories/repository_providers.dart';
@@ -155,7 +156,8 @@ class CheckoutController extends StateNotifier<CheckoutState> {
       if (order != null) {
         await NotificationService.instance.showLocalNotification(
           title: 'Order placed',
-          body: 'Your order #${order.id} has been placed successfully.',
+          body:
+              'Your order ${formatOrderId(order.displayId)} has been placed successfully.',
           payload: {'orderId': order.id},
         );
       }

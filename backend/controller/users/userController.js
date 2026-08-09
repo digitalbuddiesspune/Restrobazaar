@@ -744,6 +744,50 @@ export const userSignin = async (req, res) => {
   });
 };
 
+/** Format a populated wishlist item for API clients (web + Flutter). */
+const formatWishlistProduct = (item) => {
+  const vendorProduct = item.vendorProduct;
+  if (!vendorProduct) return null;
+
+  const product = vendorProduct.productId;
+  const price =
+    vendorProduct.priceType === "single"
+      ? vendorProduct.pricing?.single?.price
+      : vendorProduct.pricing?.bulk?.[vendorProduct.pricing?.bulk?.length - 1]
+          ?.price ||
+        vendorProduct.pricing?.bulk?.[0]?.price ||
+        0;
+  const originalPrice = product?.originalPrice || price;
+
+  return {
+    _id: vendorProduct._id,
+    name: product?.productName || "Product",
+    productName: product?.productName || "Product",
+    slug: product?.slug || vendorProduct._id.toString(),
+    price: price,
+    originalPrice: originalPrice,
+    images: product?.images?.map((img) => img.url || img) || [],
+    vendorName: vendorProduct.vendorId?.businessName || "Vendor",
+    addedAt: item.addedAt,
+    availableStock: vendorProduct.availableStock,
+    priceType: vendorProduct.priceType,
+    pricing: vendorProduct.pricing,
+    gst: vendorProduct.gst,
+    minimumOrderQuantity:
+      vendorProduct.minimumOrderQuantity ?? product?.minimumOrderQuantity,
+    productId: product
+      ? {
+          _id: product._id,
+          productName: product.productName,
+          images: product.images,
+          shortDescription: product.shortDescription,
+          slug: product.slug,
+          originalPrice: product.originalPrice,
+        }
+      : undefined,
+  };
+};
+
 // @desc    Get user wishlist
 // @route   GET /api/v1/users/wishlist
 // @access  Private
@@ -780,28 +824,9 @@ export const getWishlist = async (req, res) => {
       await User.findByIdAndUpdate(userId, { wishlist: wishlist._id });
     }
 
-    // Format response to match frontend expectations
-    const formattedProducts = wishlist.products.map((item) => {
-      const vendorProduct = item.vendorProduct;
-      if (!vendorProduct) return null;
-      
-      const product = vendorProduct.productId;
-      const price = vendorProduct.priceType === 'single' 
-        ? vendorProduct.pricing?.single?.price 
-        : vendorProduct.pricing?.bulk?.[0]?.price || 0;
-      const originalPrice = product?.originalPrice || price;
-
-      return {
-        _id: vendorProduct._id,
-        name: product?.productName || 'Product',
-        slug: product?.slug || vendorProduct._id.toString(),
-        price: price,
-        originalPrice: originalPrice,
-        images: product?.images?.map(img => img.url || img) || [],
-        vendorName: vendorProduct.vendorId?.businessName || 'Vendor',
-        addedAt: item.addedAt,
-      };
-    }).filter(Boolean);
+    const formattedProducts = wishlist.products
+      .map(formatWishlistProduct)
+      .filter(Boolean);
 
     res.status(200).json({
       success: true,
@@ -886,28 +911,9 @@ export const addToWishlist = async (req, res) => {
       ],
     });
 
-    // Format response
-    const formattedProducts = updatedWishlist.products.map((item) => {
-      const vendorProduct = item.vendorProduct;
-      if (!vendorProduct) return null;
-      
-      const product = vendorProduct.productId;
-      const price = vendorProduct.priceType === 'single' 
-        ? vendorProduct.pricing?.single?.price 
-        : vendorProduct.pricing?.bulk?.[0]?.price || 0;
-      const originalPrice = product?.originalPrice || price;
-
-      return {
-        _id: vendorProduct._id,
-        name: product?.productName || 'Product',
-        slug: product?.slug || vendorProduct._id.toString(),
-        price: price,
-        originalPrice: originalPrice,
-        images: product?.images?.map(img => img.url || img) || [],
-        vendorName: vendorProduct.vendorId?.businessName || 'Vendor',
-        addedAt: item.addedAt,
-      };
-    }).filter(Boolean);
+    const formattedProducts = updatedWishlist.products
+      .map(formatWishlistProduct)
+      .filter(Boolean);
 
     res.status(200).json({
       success: true,
@@ -971,28 +977,9 @@ export const removeFromWishlist = async (req, res) => {
       ],
     });
 
-    // Format response
-    const formattedProducts = updatedWishlist.products.map((item) => {
-      const vendorProduct = item.vendorProduct;
-      if (!vendorProduct) return null;
-      
-      const product = vendorProduct.productId;
-      const price = vendorProduct.priceType === 'single' 
-        ? vendorProduct.pricing?.single?.price 
-        : vendorProduct.pricing?.bulk?.[0]?.price || 0;
-      const originalPrice = product?.originalPrice || price;
-
-      return {
-        _id: vendorProduct._id,
-        name: product?.productName || 'Product',
-        slug: product?.slug || vendorProduct._id.toString(),
-        price: price,
-        originalPrice: originalPrice,
-        images: product?.images?.map(img => img.url || img) || [],
-        vendorName: vendorProduct.vendorId?.businessName || 'Vendor',
-        addedAt: item.addedAt,
-      };
-    }).filter(Boolean);
+    const formattedProducts = updatedWishlist.products
+      .map(formatWishlistProduct)
+      .filter(Boolean);
 
     res.status(200).json({
       success: true,

@@ -165,6 +165,57 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> sendOtpSignup({required String phone}) async {
+    try {
+      state = state.copyWith(loading: true, error: null);
+      await _repository.sendOtpForSignup(phone: phone);
+      state = state.copyWith(loading: false);
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        loading: false,
+        error: error is ApiException ? error.message : error.toString(),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtpSignup({
+    required String name,
+    required String phone,
+    required String otp,
+    String? restaurantName,
+    String? gstNumber,
+  }) async {
+    try {
+      state = state.copyWith(loading: true, error: null);
+      final result = await _repository.verifyOtpAndSignup(
+        name: name,
+        phone: phone,
+        otp: otp,
+        restaurantName: restaurantName,
+        gstNumber: gstNumber,
+      );
+      await _storage.setJson(userInfoKey, result.user.toJson());
+      if (result.token != null && result.token!.isNotEmpty) {
+        await _storage.setString(authTokenKey, result.token!);
+        _apiClient.setBearerToken(result.token);
+      } else {
+        await _storage.remove(authTokenKey);
+        _apiClient.setBearerToken(null);
+      }
+      state = state.copyWith(user: result.user, loading: false);
+      await _registerDeviceToken();
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        loading: false,
+        error: error is ApiException ? error.message : error.toString(),
+      );
+      return false;
+    }
+  }
+
   Future<bool> signUp({
     required String name,
     required String email,

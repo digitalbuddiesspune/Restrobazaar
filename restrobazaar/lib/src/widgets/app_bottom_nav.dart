@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class AppBottomNav extends StatelessWidget {
+import '../controllers/cart_controller.dart';
+import '../controllers/wishlist_controller.dart';
+import 'cart_badge_icon.dart';
+
+class AppBottomNav extends ConsumerWidget {
   const AppBottomNav({super.key});
 
   int _indexForLocation(String location) {
@@ -34,9 +39,12 @@ class AppBottomNav extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
     final selectedIndex = _indexForLocation(location);
+    final cartCount = ref.watch(cartControllerProvider).totalItems;
+    final wishlistCount =
+        ref.watch(wishlistControllerProvider).items.length;
 
     const selectedColor = Color(0xFFE11D48); // red tone from web
     final unselectedColor = Colors.grey.shade700;
@@ -61,23 +69,39 @@ class AppBottomNav extends StatelessWidget {
         fontWeight: FontWeight.w600,
         fontSize: 13,
       ),
-      items: const [
-        BottomNavigationBarItem(
+      items: [
+        const BottomNavigationBarItem(
           icon: Icon(Icons.home_outlined),
           activeIcon: Icon(Icons.home),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.favorite_border),
-          activeIcon: Icon(Icons.favorite),
+          icon: NavCountBadgeIcon(
+            count: wishlistCount,
+            icon: Icons.favorite_border,
+            color: unselectedColor,
+          ),
+          activeIcon: NavCountBadgeIcon(
+            count: wishlistCount,
+            icon: Icons.favorite,
+            color: selectedColor,
+          ),
           label: 'Wishlist',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart_outlined),
-          activeIcon: Icon(Icons.shopping_cart),
+          icon: CartBadgeIcon(
+            count: cartCount,
+            outlined: true,
+            color: unselectedColor,
+          ),
+          activeIcon: CartBadgeIcon(
+            count: cartCount,
+            outlined: false,
+            color: selectedColor,
+          ),
           label: 'Cart',
         ),
-        BottomNavigationBarItem(
+        const BottomNavigationBarItem(
           icon: Icon(Icons.person_outline),
           activeIcon: Icon(Icons.person),
           label: 'Account',

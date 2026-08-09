@@ -286,22 +286,36 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     _scheduleCouponRefresh(cartState);
 
-    final gstBreakdownLines = cartState.items
-        .where((item) => item.gstPercentage > 0)
-        .map((item) {
-          final itemTotal =
-              item.unitPriceForQuantity(item.quantity) * item.quantity;
-          final gstAmount = (itemTotal * item.gstPercentage) / 100;
-          return _GstBreakdownLine(
-            name: item.productName,
-            percentage: item.gstPercentage,
-            amount: double.parse(gstAmount.toStringAsFixed(2)),
-          );
-        })
-        .toList();
-    final gst = gstBreakdownLines.fold<double>(
+    // Group GST by rate and split into IGST + CGST (no per-item GST lines)
+    final gstByRate = <double, double>{};
+    for (final item in cartState.items) {
+      if (item.gstPercentage <= 0) continue;
+      final itemTotal =
+          item.unitPriceForQuantity(item.quantity) * item.quantity;
+      final gstAmount = (itemTotal * item.gstPercentage) / 100;
+      gstByRate[item.gstPercentage] =
+          (gstByRate[item.gstPercentage] ?? 0) + gstAmount;
+    }
+    final rates = gstByRate.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+    final igstCgstLines = <_IgstCgstLine>[];
+    for (final rate in rates) {
+      final totalGst = double.parse(gstByRate[rate]!.toStringAsFixed(2));
+      if (totalGst <= 0) continue;
+      final halfAmount = double.parse((totalGst / 2).toStringAsFixed(2));
+      final halfRate = double.parse((rate / 2).toStringAsFixed(2));
+      igstCgstLines.add(
+        _IgstCgstLine(
+          igstRate: halfRate,
+          cgstRate: halfRate,
+          igstAmount: halfAmount,
+          cgstAmount: halfAmount,
+        ),
+      );
+    }
+    final gst = igstCgstLines.fold<double>(
       0,
-      (sum, line) => sum + line.amount,
+      (sum, line) => sum + line.igstAmount + line.cgstAmount,
     );
     final shipping = calculateShippingCharges(cartState.subtotal);
     final totalBeforeCoupon = cartState.subtotal + gst + shipping;
@@ -339,7 +353,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             _BillingDetailsCard(
               cartState: cartState,
               gst: gst,
-              gstBreakdown: gstBreakdownLines,
+              igstCgstLines: igstCgstLines,
               shipping: shipping,
               totalAmount: totalAmount,
               coupons: _availableCoupons,
@@ -1100,23 +1114,25 @@ class _PaymentTile extends StatelessWidget {
   }
 }
 
-class _GstBreakdownLine {
-  const _GstBreakdownLine({
-    required this.name,
-    required this.percentage,
-    required this.amount,
+class _IgstCgstLine {
+  const _IgstCgstLine({
+    required this.igstRate,
+    required this.cgstRate,
+    required this.igstAmount,
+    required this.cgstAmount,
   });
 
-  final String name;
-  final double percentage;
-  final double amount;
+  final double igstRate;
+  final double cgstRate;
+  final double igstAmount;
+  final double cgstAmount;
 }
 
 class _BillingDetailsCard extends StatelessWidget {
   const _BillingDetailsCard({
     required this.cartState,
     required this.gst,
-    required this.gstBreakdown,
+    required this.igstCgstLines,
     required this.shipping,
     required this.totalAmount,
     required this.coupons,
@@ -1140,7 +1156,7 @@ class _BillingDetailsCard extends StatelessWidget {
 
   final CartState cartState;
   final double gst;
-  final List<_GstBreakdownLine> gstBreakdown;
+  final List<_IgstCgstLine> igstCgstLines;
   final double shipping;
   final double totalAmount;
   final List<CouponModel> coupons;
@@ -1408,39 +1424,20 @@ class _BillingDetailsCard extends StatelessWidget {
             label: 'Cart Total (Excl. of all taxes)',
             value: formatCurrency(cartState.subtotal),
           ),
-          _SummaryRow(label: 'GST', value: formatCurrency(gst)),
-          if (gstBreakdown.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 8, top: 4, bottom: 4),
-              child: Column(
-                children: gstBreakdown
-                    .map(
-                      (line) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${line.name} (${_formatPercentage(line.percentage)}%):',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF6b7280),
-                                ),
-                              ),
-                            ),
-                            Text(
-                              formatCurrency(line.amount),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF6b7280),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
+          if (igstCgstLines.isEmpty)
+            _SummaryRow(label: 'GST', value: formatCurrency(0))
+          else
+            ...igstCgstLines.expand(
+              (line) => [
+                _SummaryRow(
+                  label: 'IGST (${_formatPercentage(line.igstRate)}%)',
+                  value: formatCurrency(line.igstAmount),
+                ),
+                _SummaryRow(
+                  label: 'CGST (${_formatPercentage(line.cgstRate)}%)',
+                  value: formatCurrency(line.cgstAmount),
+                ),
+              ],
             ),
           _SummaryRow(
             label: 'Shipping Charges',
