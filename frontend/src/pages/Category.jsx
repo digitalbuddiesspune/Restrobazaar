@@ -8,6 +8,7 @@ import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { useCategories, useCategoryBySlug, useVendorProductsByCityAndCategory, useWishlist, useAddToWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
 import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
+import metaPixel from '../utils/metaPixel';
 
 const Category = () => {
   const { slug } = useParams();
@@ -162,8 +163,9 @@ const Category = () => {
     if (selectedCategory) {
       setSelectedSubcategory('all');
       setPage(1); // Reset to first page when category changes
+      metaPixel.viewCategory(selectedCategory, products);
     }
-  }, [selectedCategory?._id]); // Only when category ID changes
+  }, [selectedCategory?._id, products]); // Track when category or products load
 
   // Initialize quantities and show quantity selector for products in cart
   useEffect(() => {
@@ -305,9 +307,11 @@ const Category = () => {
     try {
       if (isInWishlist) {
         await removeFromWishlistMutation.mutateAsync(product._id);
+        metaPixel.removeFromWishlist(product);
         // React Query will automatically refetch and update wishlistItems via cache invalidation
       } else {
         await addToWishlistMutation.mutateAsync(product._id);
+        metaPixel.addToWishlist(product);
         // React Query will automatically refetch and update wishlistItems via cache invalidation
       }
     } catch (err) {
@@ -434,6 +438,7 @@ const Category = () => {
             quantity: minQty,
             selectedPrice: selectedPrice,
           }));
+          metaPixel.addToCart(product, minQty, selectedPrice);
         }
       } catch (error) {
         console.error('Error adding to cart:', error);
@@ -448,6 +453,7 @@ const Category = () => {
             quantity: minQty,
             selectedPrice: selectedPrice,
           }));
+          metaPixel.addToCart(product, minQty, selectedPrice);
         }
       } catch (error) {
         console.error('Error adding to cart:', error);
@@ -496,6 +502,7 @@ const Category = () => {
         // Update quantity if item exists - use minimum orderable quantity
         const minQty = product.minimumOrderQuantity || 1;
         dispatch(updateQuantity({ itemId: cartItemId, quantity: existingCartItem.quantity + minQty }));
+        metaPixel.addToCart(product, minQty, selectedPrice);
         alert(`Added ${minQty} more item(s) to cart!`);
       } else {
         // Add new item to cart
@@ -504,6 +511,7 @@ const Category = () => {
           quantity: quantity,
           selectedPrice: selectedPrice,
         }));
+        metaPixel.addToCart(product, quantity, selectedPrice);
         alert(`Added ${quantity} item(s) to cart!`);
       }
       

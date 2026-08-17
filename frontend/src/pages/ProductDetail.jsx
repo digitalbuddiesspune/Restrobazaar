@@ -8,6 +8,7 @@ import { selectCartItems } from '../store/slices/cartSlice';
 import { isAuthenticated } from '../utils/auth';
 import { useWishlist, useAddToWishlist, useRemoveFromWishlist, useVendorProducts } from '../hooks/useApiQueries';
 import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
+import metaPixel from '../utils/metaPixel';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
@@ -228,6 +229,13 @@ const ProductDetail = () => {
     fetchProduct();
   }, [productId]);
 
+  // Track product view in Meta Pixel
+  useEffect(() => {
+    if (product) {
+      metaPixel.viewProduct(product, category?.name || categorySlug || '');
+    }
+  }, [product, category, categorySlug]);
+
   const getProductImages = () => {
     if (product?.productId?.images && product.productId.images.length > 0) {
       return product.productId.images.map(img => img.url || img);
@@ -389,11 +397,13 @@ const ProductDetail = () => {
       const minQty = product.minimumOrderQuantity || 1;
       
       // Dispatch add to cart action
+      const addedQuantity = existingCartItem ? minQty : quantity;
       dispatch(addToCart({
         vendorProduct: product,
-        quantity: existingCartItem ? minQty : quantity,
+        quantity: addedQuantity,
         selectedPrice: selectedPrice,
       }));
+      metaPixel.addToCart(product, addedQuantity, selectedPrice);
       
       // Show success message
       if (existingCartItem) {
@@ -492,8 +502,10 @@ const ProductDetail = () => {
     try {
       if (isInWishlist) {
         await removeFromWishlistMutation.mutateAsync(productIdToUse);
+        metaPixel.removeFromWishlist(product);
       } else {
         await addToWishlistMutation.mutateAsync(productIdToUse);
+        metaPixel.addToWishlist(product);
       }
       // React Query will automatically refetch and update isInWishlist via cache invalidation
     } catch (err) {
@@ -530,8 +542,10 @@ const ProductDetail = () => {
     try {
       if (isInWishlistSuggested) {
         await removeFromWishlistMutation.mutateAsync(suggestedProduct._id);
+        metaPixel.removeFromWishlist(suggestedProduct);
       } else {
         await addToWishlistMutation.mutateAsync(suggestedProduct._id);
+        metaPixel.addToWishlist(suggestedProduct);
       }
     } catch (err) {
       console.error('Error updating wishlist:', err);
@@ -667,6 +681,7 @@ const ProductDetail = () => {
             quantity: minQty,
             selectedPrice: selectedPrice,
           }));
+          metaPixel.addToCart(suggestedProduct, minQty, selectedPrice);
         }
       } catch (error) {
         console.error('Error adding to cart:', error);
@@ -681,6 +696,7 @@ const ProductDetail = () => {
             quantity: minQty,
             selectedPrice: selectedPrice,
           }));
+          metaPixel.addToCart(suggestedProduct, minQty, selectedPrice);
         }
       } catch (error) {
         console.error('Error adding to cart:', error);

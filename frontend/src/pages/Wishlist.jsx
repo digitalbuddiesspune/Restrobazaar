@@ -7,6 +7,7 @@ import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { useWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
 import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
+import metaPixel from '../utils/metaPixel';
 
 const Wishlist = () => {
   const navigate = useNavigate();
@@ -96,10 +97,21 @@ const Wishlist = () => {
 
   const products = enrichedProducts.length ? enrichedProducts : wishlistProducts;
 
+  // Track Wishlist view in Meta Pixel
+  useEffect(() => {
+    if (products.length > 0) {
+      metaPixel.viewWishlist(products);
+    }
+  }, [products]);
+
   const handleRemoveFromWishlist = async (productId) => {
+    const productToRemove = products.find((p) => productKey(p) === String(productId));
     setRemoving({ ...removing, [productId]: true });
     try {
       await removeFromWishlistMutation.mutateAsync(productId);
+      if (productToRemove) {
+        metaPixel.removeFromWishlist(productToRemove);
+      }
     } catch (err) {
       console.error('Failed to remove from wishlist:', err);
       alert('Failed to remove from wishlist. Please try again.');
@@ -233,6 +245,7 @@ const Wishlist = () => {
           selectedPrice,
         }),
       );
+      metaPixel.addToCart(vendorProduct, minQty, selectedPrice);
     } else {
       dispatch(
         updateQuantity({
@@ -240,6 +253,7 @@ const Wishlist = () => {
           quantity: cartItem.quantity + minQty,
         }),
       );
+      metaPixel.addToCart(vendorProduct, minQty, selectedPrice);
     }
 
     setShowQuantitySelector((prev) => ({ ...prev, [productId]: true }));

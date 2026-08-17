@@ -1,5 +1,6 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import metaPixel from "./utils/metaPixel";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
@@ -41,6 +42,11 @@ function App() {
   const navigate = useNavigate();
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isVendorAdminRoute = location.pathname.startsWith("/vendor");
+
+  // Track PageView on route change with Meta Pixel
+  useEffect(() => {
+    metaPixel.pageView();
+  }, [location.pathname, location.search]);
 
   // Modal state management
   const [showSignIn, setShowSignIn] = useState(false);

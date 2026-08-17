@@ -12,6 +12,7 @@ import NotDeliverablePopup from '../components/NotDeliverablePopup';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '../components/Button';
 import { formatOrderId } from '../utils/orderIdFormatter';
+import metaPixel from '../utils/metaPixel';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -394,6 +395,12 @@ const Checkout = () => {
       const response = await orderAPI.createOrder(orderPayload);
       
       if (response.success) {
+        // Track Purchase in Meta Pixel
+        metaPixel.purchase({
+          ...orderPayload,
+          _id: response.data?._id || response.data?.orderId,
+        });
+
         // Store order data for success modal
         setOrderData(response.data);
         
@@ -478,6 +485,7 @@ const Checkout = () => {
     if (cartItems && cartItems.length > 0) {
       fetchVendorDetails();
       fetchAvailableCoupons();
+      metaPixel.initiateCheckout(cartItems, totalAmount);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);

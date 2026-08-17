@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import {
@@ -11,6 +11,7 @@ import {
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { calculateShippingCharges } from '../utils/shipping';
 import Button from '../components/Button';
+import metaPixel from '../utils/metaPixel';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -19,12 +20,23 @@ const Cart = () => {
   const cartTotal = useAppSelector(selectCartTotal);
   const [selectedCity] = useState(localStorage.getItem(CITY_STORAGE_KEY) || 'Select City');
 
+  // Track ViewCart in Meta Pixel
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      metaPixel.viewCart(cartItems, cartTotal);
+    }
+  }, [cartItems, cartTotal]);
+
   // Calculate shipping charges based on cart total
   const shippingCharges = calculateShippingCharges(cartTotal);
   const grandTotal = cartTotal + shippingCharges;
 
   const handleRemoveItem = (itemId) => {
+    const item = cartItems.find(item => item.id === itemId);
     if (window.confirm('Are you sure you want to remove this item from cart?')) {
+      if (item) {
+        metaPixel.removeFromCart(item);
+      }
       dispatch(removeFromCart(itemId));
     }
   };
@@ -62,6 +74,7 @@ const Cart = () => {
   };
 
   const handleCheckout = () => {
+    metaPixel.initiateCheckout(cartItems, grandTotal || cartTotal);
     // Navigate to checkout page (you can create this later)
     navigate('/checkout');
   };
