@@ -988,6 +988,7 @@ export const getVendorProductsByCityAndCategory = async (req, res) => {
     let vendorProducts = await VendorProduct.find(query)
       .populate({
         path: "productId",
+        select: "productName subCategory category images hsnCode status",
         populate: {
           path: "category",
           select: "name slug"

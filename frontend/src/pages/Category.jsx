@@ -57,6 +57,7 @@ const Category = () => {
     limit: selectedSubcategory === 'all' ? 20 : 1000, // Fetch all when filtering by subcategory
     sortBy: 'createdAt',
     sortOrder: 'desc',
+    ...(selectedSubcategory !== 'all' && { subCategory: selectedSubcategory }),
   }), [cityId, page, selectedSubcategory]);
 
   const { 
@@ -85,9 +86,10 @@ const Category = () => {
     if (selectedSubcategory === 'all') {
       filteredProducts = allProducts;
     } else {
+      const selected = selectedSubcategory.trim().toLowerCase();
       filteredProducts = allProducts.filter((product) => {
-        const productSubCategory = product.productId?.subCategory || product.subCategory;
-        return productSubCategory?.trim() === selectedSubcategory.trim();
+        const productSubCategory = product.productId?.subCategory || product.subCategory || '';
+        return productSubCategory.trim().toLowerCase() === selected;
       });
     }
     
@@ -158,14 +160,19 @@ const Category = () => {
     }
   }, [productsError, cityId, selectedCategory]);
 
-  // Reset subcategory when category changes
+  // Reset subcategory when category changes (not when products list updates)
   useEffect(() => {
     if (selectedCategory) {
       setSelectedSubcategory('all');
-      setPage(1); // Reset to first page when category changes
-      metaPixel.viewCategory(selectedCategory, products);
+      setPage(1);
     }
-  }, [selectedCategory?._id, products]); // Track when category or products load
+  }, [selectedCategory?._id]);
+
+  useEffect(() => {
+    if (selectedCategory && allProducts.length >= 0) {
+      metaPixel.viewCategory(selectedCategory, allProducts);
+    }
+  }, [selectedCategory?._id, allProducts]);
 
   // Initialize quantities and show quantity selector for products in cart
   useEffect(() => {

@@ -327,6 +327,7 @@ export const vendorProductAPI = {
     if (filters.limit) queryParams.append('limit', filters.limit);
     if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
     if (filters.sortOrder) queryParams.append('sortOrder', filters.sortOrder);
+    if (filters.subCategory) queryParams.append('subCategory', filters.subCategory);
     
     const queryString = queryParams.toString();
     return apiRequest(`/vendor-products/city/${cityId}/category/${categoryId}${queryString ? `?${queryString}` : ''}`, {
