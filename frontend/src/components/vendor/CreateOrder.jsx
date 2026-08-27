@@ -599,7 +599,10 @@ const CreateOrder = () => {
           cgstAmount: half,
         };
       });
-    const shippingCharges = calculateShippingCharges(cartTotal);
+    const shippingCharges = calculateShippingCharges(
+      cartTotal,
+      vendor?.shippingSettings
+    );
     const totalAmount = cartTotal + gstAmount + shippingCharges;
     
     return {
@@ -610,7 +613,7 @@ const CreateOrder = () => {
       shippingCharges,
       totalAmount: parseFloat(totalAmount.toFixed(2)),
     };
-  }, [cartItems]);
+  }, [cartItems, vendor?.shippingSettings]);
 
   const handlePlaceOrder = async () => {
     if (!selectedUser) {

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../controllers/cart_controller.dart';
 import '../../controllers/city_controller.dart';
+import '../../controllers/shipping_providers.dart';
 import '../../core/formatters.dart';
 import '../../core/shipping.dart';
 
@@ -96,8 +97,13 @@ class CartScreen extends ConsumerWidget {
         })
         .fold<double>(0, (sum, value) => sum + value);
     final gstTotal = double.parse(gst.toStringAsFixed(2));
-    final shipping = calculateShippingCharges(cartState.subtotal);
+    final shippingSettings =
+        ref.watch(cartShippingSettingsProvider).valueOrNull ??
+            ShippingSettings.defaults;
+    final shipping =
+        calculateShippingCharges(cartState.subtotal, shippingSettings);
     final itemCount = cartState.totalItems;
+    final cartInclGst = cartState.subtotal + gstTotal;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Cart')),
@@ -167,8 +173,8 @@ class CartScreen extends ConsumerWidget {
                   ...cartState.items.asMap().entries.map((entry) {
                     final index = entry.key;
                     final item = entry.value;
-                    final unitPrice = item.unitPriceForQuantity(item.quantity);
-                    final total = unitPrice * item.quantity;
+                    final unitPrice = item.unitPriceIncludingGst(item.quantity);
+                    final total = item.lineTotalIncludingGst;
                     final minQty =
                         item.minimumOrderQuantity > 0 ? item.minimumOrderQuantity : 1;
                     int? maxValidQty;
@@ -397,10 +403,9 @@ class CartScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
                   _SummaryRow(
-                    label: 'Subtotal ($itemCount items)',
-                    value: formatCurrency(cartState.subtotal),
+                    label: 'Subtotal ($itemCount items, incl. GST)',
+                    value: formatCurrency(cartInclGst),
                   ),
-                  _SummaryRow(label: 'GST', value: formatCurrency(gstTotal)),
                   _SummaryRow(
                     label: 'Shipping Charges',
                     value: shipping == 0 ? 'Free' : formatCurrency(shipping),
@@ -410,7 +415,7 @@ class CartScreen extends ConsumerWidget {
                   const Divider(height: 20),
                   _SummaryRow(
                     label: 'Total',
-                    value: formatCurrency(cartState.subtotal + gstTotal + shipping),
+                    value: formatCurrency(cartInclGst + shipping),
                     isBold: true,
                     valueColor: const Color(0xFFdc2626),
                   ),

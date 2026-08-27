@@ -51,32 +51,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/account',
             builder: (context, state) => const AccountScreen(),
           ),
+          GoRoute(
+            path: '/categories',
+            builder: (context, state) => const CategoriesScreen(),
+          ),
+          GoRoute(
+            path: '/category/:slug',
+            builder: (context, state) {
+              final slug = state.pathParameters['slug'] ?? '';
+              return CategoryScreen(slug: slug);
+            },
+          ),
+          GoRoute(
+            path: '/product/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id'] ?? '';
+              return ProductDetailScreen(productId: id);
+            },
+          ),
+          GoRoute(
+            path: '/search',
+            builder: (context, state) {
+              final query = state.uri.queryParameters['q'];
+              return SearchScreen(initialQuery: query);
+            },
+          ),
         ],
-      ),
-      GoRoute(
-        path: '/categories',
-        builder: (context, state) => const CategoriesScreen(),
-      ),
-      GoRoute(
-        path: '/category/:slug',
-        builder: (context, state) {
-          final slug = state.pathParameters['slug'] ?? '';
-          return CategoryScreen(slug: slug);
-        },
-      ),
-      GoRoute(
-        path: '/product/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          return ProductDetailScreen(productId: id);
-        },
-      ),
-      GoRoute(
-        path: '/search',
-        builder: (context, state) {
-          final query = state.uri.queryParameters['q'];
-          return SearchScreen(initialQuery: query);
-        },
       ),
       GoRoute(
         path: '/checkout',
@@ -141,8 +141,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!loggedIn &&
           (state.matchedLocation == '/checkout' ||
               state.matchedLocation == '/orders' ||
-              state.matchedLocation == '/account')) {
-        return '/signin';
+              state.matchedLocation == '/account' ||
+              state.matchedLocation == '/wishlist')) {
+        // Keep destination so after login popup / full sign-in user can continue.
+        return '/signin?from=${Uri.encodeComponent(state.matchedLocation)}';
       }
 
       if (loggedIn && loggingIn) {

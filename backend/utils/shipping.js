@@ -86,9 +86,9 @@ export const normalizeShippingSettings = (raw = {}) => {
 };
 
 /**
- * Calculate shipping charges from order amount + optional vendor settings.
- * @param {number} orderAmount
- * @param {object} [settings]
+ * Calculate shipping from order amount + vendor settings.
+ * @param {number} orderAmount - typically cart total (excl. GST)
+ * @param {object} [settings] - vendor.shippingSettings
  * @returns {number}
  */
 export const calculateShippingCharges = (orderAmount, settings) => {
@@ -104,6 +104,7 @@ export const calculateShippingCharges = (orderAmount, settings) => {
 
   if (match) return match.charge;
 
+  // Fallback: use last tier if amount is above all ranges
   const last = cfg.tiers[cfg.tiers.length - 1];
   return last ? last.charge : 0;
 };

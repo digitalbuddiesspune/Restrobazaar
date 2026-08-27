@@ -10,6 +10,7 @@ import '../../controllers/city_controller.dart';
 import '../../controllers/wishlist_controller.dart';
 import '../../core/formatters.dart';
 import '../../models/product.dart';
+import '../../widgets/auth_gate.dart';
 import '../../widgets/product_card.dart';
 
 /// Product detail — structure mirrors web `ProductDetail.jsx`.
@@ -84,8 +85,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 
   double? _unitPrice(VendorProductModel product, int qty) {
-    if (product.priceType == 'single') return product.pricing.singlePrice;
-    return _findBestMatchingSlab(product.pricing.bulk, qty)?.price;
+    double? base;
+    if (product.priceType == 'single') {
+      base = product.pricing.singlePrice;
+    } else {
+      base = _findBestMatchingSlab(product.pricing.bulk, qty)?.price;
+    }
+    if (base == null) return null;
+    return product.priceWithGst(base);
   }
 
   double? _totalPrice(VendorProductModel product, int qty) {
@@ -95,7 +102,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 
   double? _originalUnitPrice(VendorProductModel product) {
-    return product.defaultPrice ?? product.originalPrice;
+    return product.displayDefaultPrice;
   }
 
   bool _showStrike(VendorProductModel product, double? sellPrice) {
@@ -161,6 +168,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 
   Future<void> _toggleWishlist(VendorProductModel product) async {
+    final ok = await ensureLoggedIn(context, ref);
+    if (!ok || !mounted) return;
     setState(() => _wishlistLoading = true);
     await ref.read(wishlistControllerProvider.notifier).toggleWishlist(product);
     if (mounted) setState(() => _wishlistLoading = false);
@@ -306,15 +315,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           // Treat missing stock as available (same as previous app behavior).
           final inStock = product.availableStock == null ||
               (product.availableStock ?? 0) > 0;
-          final headerPrice = product.priceType == 'single'
-              ? product.pricing.singlePrice
-              : (product.pricing.bulk.isNotEmpty
-                  ? product.pricing.bulk.last.price
-                  : null);
+          final headerPrice = product.displayPrice;
           final original = _originalUnitPrice(product);
           final showHeaderStrike = _showStrike(product, headerPrice);
           final showBoxStrike = product.priceType == 'single' &&
-              _showStrike(product, product.pricing.singlePrice);
+              _showStrike(product, product.displayPrice);
           final cartMatches = cartState.items
               .where(
                 (i) => i.vendorProductId.toString() == product.id.toString(),
@@ -689,7 +694,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             const SizedBox(width: 8),
                           ],
                           Text(
-                            formatCurrency(product.pricing.singlePrice!),
+                            formatCurrency(
+                              product.priceWithGst(product.pricing.singlePrice!),
+                            ),
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
@@ -697,9 +704,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'per piece',
-                            style: TextStyle(
+                          Text(
+                            product.gstRate > 0
+                                ? 'per piece (incl. GST)'
+                                : 'per piece',
+                            style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF6b7280),
                             ),
@@ -758,7 +767,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                     ),
                                   ),
                                   Text(
-                                    '${formatCurrency(slab.price)}/piece',
+                                    '${formatCurrency(product.priceWithGst(slab.price))}/piece',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,

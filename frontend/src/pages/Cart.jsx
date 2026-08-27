@@ -12,6 +12,8 @@ import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { calculateShippingCharges } from '../utils/shipping';
 import Button from '../components/Button';
 import metaPixel from '../utils/metaPixel';
+import { withGst } from '../utils/pricing';
+import { vendorAPI } from '../utils/api';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -19,6 +21,32 @@ const Cart = () => {
   const cartItems = useAppSelector(selectCartItems);
   const cartTotal = useAppSelector(selectCartTotal);
   const [selectedCity] = useState(localStorage.getItem(CITY_STORAGE_KEY) || 'Select City');
+  const [shippingSettings, setShippingSettings] = useState(null);
+
+  const primaryVendorId = cartItems[0]?.vendorId || null;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadShipping = async () => {
+      if (!primaryVendorId) {
+        setShippingSettings(null);
+        return;
+      }
+      try {
+        const res = await vendorAPI.getVendorShippingSettings(primaryVendorId);
+        if (!cancelled && res?.success) {
+          setShippingSettings(res.data?.shippingSettings || null);
+        }
+      } catch (err) {
+        console.warn('Could not load vendor shipping settings:', err);
+        if (!cancelled) setShippingSettings(null);
+      }
+    };
+    loadShipping();
+    return () => {
+      cancelled = true;
+    };
+  }, [primaryVendorId]);
 
   // Track ViewCart in Meta Pixel
   useEffect(() => {
@@ -27,9 +55,13 @@ const Cart = () => {
     }
   }, [cartItems, cartTotal]);
 
-  // Calculate shipping charges based on cart total
-  const shippingCharges = calculateShippingCharges(cartTotal);
-  const grandTotal = cartTotal + shippingCharges;
+  const itemUnitInclGst = (item) => withGst(item.price, item.gst || 0);
+  const itemLineInclGst = (item) => itemUnitInclGst(item) * item.quantity;
+  const cartInclGst = cartItems.reduce((sum, item) => sum + itemLineInclGst(item), 0);
+
+  // Shipping from vendor Store Settings (fallback to defaults)
+  const shippingCharges = calculateShippingCharges(cartTotal, shippingSettings);
+  const grandTotal = cartInclGst + shippingCharges;
 
   const handleRemoveItem = (itemId) => {
     const item = cartItems.find(item => item.id === itemId);
@@ -199,11 +231,15 @@ const Cart = () => {
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2">
                             <div>
                               <p className="text-sm font-bold text-red-600">
-                                ₹{item.price.toFixed(2)} / {item.unit}
+                                ₹{itemUnitInclGst(item).toFixed(2)} / {item.unit}
                               </p>
-                              {item.priceType === 'bulk' && item.selectedPrice && (
+                              {item.priceType === 'bulk' &&
+                                (item.selectedPrice?.slab?.minQty != null ||
+                                  item.selectedPrice?.minQty != null) && (
                                 <p className="text-sm text-gray-500 mt-0.5">
-                                  {item.selectedPrice.display}
+                                  {(item.selectedPrice.slab?.minQty ??
+                                    item.selectedPrice.minQty)}
+                                  + pieces
                                 </p>
                               )}
                             </div>
@@ -270,7 +306,7 @@ const Cart = () => {
                               </div>
                               <div className="text-right">
                                 <p className="text-base font-bold text-gray-900">
-                                  ₹{(item.price * item.quantity).toFixed(2)}
+                                  ₹{itemLineInclGst(item).toFixed(2)}
                                 </p>
                                 {item.availableStock < 10 && item.availableStock > 0 && (
                                   <p className="text-sm text-orange-600 mt-0.5">
@@ -298,8 +334,8 @@ const Cart = () => {
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm text-gray-700">
-                    <span>Subtotal ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
-                    <span className="font-medium">₹{cartTotal.toFixed(2)}</span>
+                    <span>Subtotal ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} items, incl. GST)</span>
+                    <span className="font-medium">₹{cartInclGst.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-700">
                     <span>Shipping Charges</span>
@@ -331,7 +367,7 @@ const Cart = () => {
 
 
                 <p className="text-sm text-left text-gray-600">
-                  Prices are exclusive of GST. Applicable GST will be calculated at checkout.
+                  Prices shown include applicable GST.
                 </p>
 
               </div>

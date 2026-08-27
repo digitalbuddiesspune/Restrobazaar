@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getSelectedCityId } from '../utils/api';
 import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import { isAuthenticated } from '../utils/auth';
+import { requireAuth } from '../utils/requireAuth';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { useCategories, useCategoryBySlug, useVendorProductsByCityAndCategory, useWishlist, useAddToWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
 import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
 import metaPixel from '../utils/metaPixel';
+import { productDefaultPriceInclGst, productDisplayPrice } from '../utils/pricing';
 
 const Category = () => {
   const { slug } = useParams();
@@ -295,7 +297,7 @@ const Category = () => {
     if (!isAuthenticated()) {
       // Store product ID to add to wishlist after login
       localStorage.setItem('pendingWishlistProduct', product._id);
-      navigate('/sign-in');
+      requireAuth();
       return;
     }
     
@@ -914,45 +916,29 @@ const Category = () => {
 
                             <div className="flex items-center justify-between">
                               <div className="flex items-baseline gap-2 whitespace-nowrap">
-                                {product.priceType === 'single' && product.pricing?.single?.price ? (
-                                  <>
-                                    {product.defaultPrice && product.defaultPrice > product.pricing.single.price ? (
-                                      <>
-                                        <span className="text-xs lg:text-sm font-normal text-gray-400 line-through">
-                                          ₹{product.defaultPrice}
-                                        </span>
-                                        <span className="text-sm lg:text-base text-gray-900 font-bold">
-                                          ₹{product.pricing.single.price}
-                                        </span>
-                                      </>
-                                    ) : (
+                                {(() => {
+                                  const sell = productDisplayPrice(product);
+                                  const compare = productDefaultPriceInclGst(product);
+                                  if (sell == null) {
+                                    return (
                                       <span className="text-sm lg:text-base text-gray-900 font-bold">
-                                        ₹{product.pricing.single.price}
+                                        Price on request
                                       </span>
-                                    )}
-                                  </>
-                                ) : product.priceType === 'bulk' && product.pricing?.bulk?.length > 0 ? (
-                                  <>
-                                    {product.defaultPrice && product.defaultPrice > product.pricing.bulk[product.pricing.bulk.length - 1].price ? (
-                                      <>
+                                    );
+                                  }
+                                  return (
+                                    <>
+                                      {compare != null && compare > sell && (
                                         <span className="text-xs lg:text-sm font-normal text-gray-400 line-through">
-                                          ₹{product.defaultPrice}
+                                          ₹{compare}
                                         </span>
-                                        <span className="text-sm lg:text-base text-gray-900 font-bold">
-                                          ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}
-                                        </span>
-                                      </>
-                                    ) : (
+                                      )}
                                       <span className="text-sm lg:text-base text-gray-900 font-bold">
-                                        ₹{product.pricing.bulk[product.pricing.bulk.length - 1].price}
+                                        ₹{sell}
                                       </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-sm lg:text-base text-gray-900 font-bold">
-                                    Price on request
-                                  </span>
-                                )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
 

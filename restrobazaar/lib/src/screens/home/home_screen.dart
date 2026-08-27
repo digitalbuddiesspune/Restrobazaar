@@ -7,9 +7,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../controllers/auth_controller.dart';
 import '../../controllers/catalog_providers.dart';
 import '../../controllers/city_controller.dart';
 import '../../models/category.dart';
+import '../../widgets/auth_gate.dart';
 import '../../widgets/restrobazaar_logo.dart';
 import '../../widgets/city_selector_sheet.dart';
 
@@ -34,43 +36,54 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _didPromptLogin = false;
   bool _didPromptCity = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybePromptLoginThenCity();
+    });
+  }
+
+  void _maybePromptCity() {
+    if (_didPromptCity || !mounted) return;
+    final cityState = ref.read(cityControllerProvider);
+    if (cityState.selected != null || cityState.available.isEmpty) return;
+    _didPromptCity = true;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const CitySelectorSheet(),
+    );
+  }
+
+  Future<void> _maybePromptLoginThenCity() async {
+    if (_didPromptLogin || !mounted) return;
+    _didPromptLogin = true;
+
+    final loggedIn = ref.read(authControllerProvider).isAuthenticated;
+    if (!loggedIn) {
+      // Login popup first when user is not signed in.
+      await showLoginPopup(context);
+      if (!mounted) return;
+    }
+    _maybePromptCity();
+  }
 
   @override
   Widget build(BuildContext context) {
     ref.listen<CityState>(cityControllerProvider, (previous, next) {
-      if (_didPromptCity || !mounted) return;
-      final hasSelection = next.selected != null;
-      final hasCities = next.available.isNotEmpty;
-      if (!hasSelection && hasCities) {
-        _didPromptCity = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          showModalBottomSheet<void>(
-            context: context,
-            isScrollControlled: true,
-            builder: (_) => const CitySelectorSheet(),
-          );
-        });
+      if (!_didPromptLogin || _didPromptCity || !mounted) return;
+      if (next.selected == null && next.available.isNotEmpty) {
+        _maybePromptCity();
       }
     });
 
     final categoriesAsync = ref.watch(categoriesProvider);
     final cityState = ref.watch(cityControllerProvider);
-
-    if (!_didPromptCity &&
-        cityState.selected == null &&
-        cityState.available.isNotEmpty) {
-      _didPromptCity = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          builder: (_) => const CitySelectorSheet(),
-        );
-      });
-    }
+    ref.watch(authControllerProvider);
 
     return Scaffold(
       appBar: AppBar(

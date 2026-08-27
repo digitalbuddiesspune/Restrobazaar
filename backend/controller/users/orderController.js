@@ -9,6 +9,7 @@ import {
   sendNotificationToUser,
   sendNotificationToVendor,
 } from '../../services/notificationService.js';
+import { calculateShippingCharges } from '../../utils/shipping.js';
 
 // @desc    Create a new order
 // @route   POST /api/v1/orders
@@ -196,10 +197,18 @@ export const createOrder = async (req, res) => {
     // Calculate total GST from all order items
     const totalGstAmount = orderItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
 
-    // Calculate final amounts with coupon discount
-    // GST calculated per product, shipping calculated on original cart total, then discount applied
-    const finalGstAmount = totalGstAmount; // GST calculated per product (before coupon)
-    const finalShippingCharges = shippingCharges || 0;
+    // Shipping from vendor Store Settings (prefer server calc over client)
+    let vendorShippingSettings = null;
+    if (vendorId) {
+      const vendorDoc = await Vendor.findById(vendorId).select('shippingSettings');
+      vendorShippingSettings = vendorDoc?.shippingSettings || null;
+    }
+    const computedShipping = calculateShippingCharges(
+      cartTotal || 0,
+      vendorShippingSettings
+    );
+    const finalGstAmount = totalGstAmount;
+    const finalShippingCharges = computedShipping;
     const totalBeforeCoupon = (cartTotal || 0) + finalGstAmount + finalShippingCharges;
     const finalTotalAmount = Math.max(0, totalBeforeCoupon - couponAmount);
 

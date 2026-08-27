@@ -37,12 +37,7 @@ class CartController extends StateNotifier<CartState> {
   LocalStorage get _storage => _ref.read(localStorageProvider);
 
   PriceSlab? _slabForQuantity(PricingModel? pricing, int qty) {
-    if (pricing == null || pricing.bulk.isEmpty) return null;
-    for (final slab in pricing.bulk) {
-      final max = slab.maxQty ?? 1000000000;
-      if (qty >= slab.minQty && qty <= max) return slab;
-    }
-    return pricing.bulk.last;
+    return pricing?.bestSlabForQuantity(qty);
   }
 
   Future<void> loadCart() async {

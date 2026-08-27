@@ -1,22 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectCartItems, selectCartTotal, clearCart } from '../store/slices/cartSlice';
 import { addressAPI, orderAPI, userAPI, userCouponAPI, vendorAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
+import { requireAuth } from '../utils/requireAuth';
 import { calculateShippingCharges } from '../utils/shipping';
-import { verifyDeliveryForSelectedCity } from '../utils/location';
-import { CITY_STORAGE_KEY } from '../components/CitySelectionPopup';
 import Modal from '../components/Modal';
-import NotDeliverablePopup from '../components/NotDeliverablePopup';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '../components/Button';
 import { formatOrderId } from '../utils/orderIdFormatter';
 import metaPixel from '../utils/metaPixel';
+import { queryKeys } from '../hooks/useApiQueries';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const cartItems = useAppSelector(selectCartItems);
   const cartTotal = useAppSelector(selectCartTotal);
   
@@ -40,13 +41,6 @@ const Checkout = () => {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [vendorDetails, setVendorDetails] = useState(null);
   const [currentUser, setCurrentUser] = useState(null); // User profile (gstNumber, restaurantName from model)
-  const [showNotDeliverable, setShowNotDeliverable] = useState(false);
-  const [locationCity, setLocationCity] = useState('');
-  const [selectedCityName] = useState(
-    () => localStorage.getItem(CITY_STORAGE_KEY) || ''
-  );
-  const [verifyingLocation, setVerifyingLocation] = useState(false);
-  const [locationGateError, setLocationGateError] = useState('');
   const [addressForm, setAddressForm] = useState({
     name: '',
     phone: '',
@@ -58,31 +52,6 @@ const Checkout = () => {
     landmark: '',
     addressType: 'home', // home, work, other
   });
-
-  const ensureDeliverableLocation = async ({ forceRefresh = false } = {}) => {
-    setVerifyingLocation(true);
-    setLocationGateError('');
-    try {
-      const result = await verifyDeliveryForSelectedCity(selectedCityName, {
-        forceRefresh,
-      });
-
-      if (!result.ok) {
-        if (result.reason === 'city_mismatch') {
-          setLocationCity(result.locationCity || '');
-          setShowNotDeliverable(true);
-        } else {
-          setLocationGateError(result.message);
-        }
-        return false;
-      }
-
-      setLocationCity(result.locationCity || '');
-      return true;
-    } finally {
-      setVerifyingLocation(false);
-    }
-  };
 
   // Fetch vendor details
   const fetchVendorDetails = async () => {
@@ -290,9 +259,6 @@ const Checkout = () => {
       return;
     }
 
-    const canDeliver = await ensureDeliverableLocation({ forceRefresh: true });
-    if (!canDeliver) return;
-
     // Show payment section
     setShowPaymentSection(true);
     // Scroll to top to show payment section prominently
@@ -317,42 +283,13 @@ const Checkout = () => {
   });
   
   const gstAmount = gstBreakdown.reduce((sum, item) => sum + item.gstAmount, 0);
-  
-  // Group by GST rate and split into IGST + CGST (half each) — no per-item GST lines
-  const gstGroups = {};
-  gstBreakdown.forEach(item => {
-    if (item.gstPercentage > 0 && item.gstAmount > 0) {
-      const gstKey = item.gstPercentage.toFixed(2);
-      if (!gstGroups[gstKey]) {
-        gstGroups[gstKey] = {
-          percentage: item.gstPercentage,
-          totalGst: 0
-        };
-      }
-      gstGroups[gstKey].totalGst += item.gstAmount;
-    }
-  });
-  
-  const igstCgstBreakdown = Object.keys(gstGroups)
-    .sort((a, b) => parseFloat(b) - parseFloat(a))
-    .map(gstKey => {
-      const group = gstGroups[gstKey];
-      const totalGst = parseFloat(group.totalGst.toFixed(2));
-      const halfAmount = parseFloat((totalGst / 2).toFixed(2));
-      const halfRate = parseFloat((group.percentage / 2).toFixed(2));
-      
-      return {
-        gstPercentage: group.percentage,
-        igstRate: halfRate,
-        cgstRate: halfRate,
-        igstAmount: halfAmount,
-        cgstAmount: halfAmount,
-        totalGst
-      };
-    });
-  const shippingCharges = calculateShippingCharges(cartTotal);
-  // Apply coupon discount to final total
-  const totalBeforeCoupon = cartTotal + gstAmount + shippingCharges;
+  const cartInclGst = parseFloat((cartTotal + gstAmount).toFixed(2));
+  const shippingCharges = calculateShippingCharges(
+    cartTotal,
+    vendorDetails?.shippingSettings
+  );
+  // Apply coupon discount to final total (GST already included in cartInclGst)
+  const totalBeforeCoupon = cartInclGst + shippingCharges;
   const totalAmount = Math.max(0, totalBeforeCoupon - couponDiscount);
 
   const handleConfirmOrder = async () => {
@@ -370,9 +307,6 @@ const Checkout = () => {
       }, 100);
       return;
     }
-
-    const canDeliver = await ensureDeliverableLocation({ forceRefresh: true });
-    if (!canDeliver) return;
 
     setPlacingOrder(true);
     try {
@@ -406,6 +340,9 @@ const Checkout = () => {
         
         // Clear cart
         dispatch(clearCart());
+
+        // Force Your Orders to refetch so the new order appears
+        await queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
         
         // Show success modal
         setShowSuccessModal(true);
@@ -420,9 +357,9 @@ const Checkout = () => {
     }
   };
 
-  const handleSuccessModalClose = () => {
+  const handleSuccessModalClose = async () => {
     setShowSuccessModal(false);
-    // Redirect to orders page
+    await queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
     navigate('/orders');
   };
 
@@ -473,7 +410,8 @@ const Checkout = () => {
   useEffect(() => {
     // Check authentication first
     if (!isAuthenticated()) {
-      navigate('/signin');
+      navigate('/');
+      requireAuth();
       return;
     }
 
@@ -960,29 +898,9 @@ const Checkout = () => {
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm text-gray-700">
-                    <span>Cart Total (Excl. of all taxes)</span>
-                    <span className="font-medium">₹{cartTotal.toFixed(2)}</span>
+                    <span>Cart Total (Incl. of GST)</span>
+                    <span className="font-medium">₹{cartInclGst.toFixed(2)}</span>
                   </div>
-                  {/* IGST / CGST only (no per-item GST, no combined GST row) */}
-                  {igstCgstBreakdown.length > 0 ? (
-                    igstCgstBreakdown.map((group, index) => (
-                      <div key={`gst-group-${index}`} className="space-y-2">
-                        <div className="flex justify-between text-sm text-gray-700">
-                          <span>IGST ({group.igstRate}%)</span>
-                          <span className="font-medium">₹{group.igstAmount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-700">
-                          <span>CGST ({group.cgstRate}%)</span>
-                          <span className="font-medium">₹{group.cgstAmount.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex justify-between text-sm text-gray-700">
-                      <span>GST</span>
-                      <span className="font-medium">₹0.00</span>
-                    </div>
-                  )}
                   <div className="flex justify-between text-sm text-gray-700">
                     <span>Shipping Charges</span>
                     <div className="text-right">
@@ -1007,21 +925,16 @@ const Checkout = () => {
                   </div>
                 </div>
 
-                {locationGateError && (
-                  <p className="mb-3 text-sm text-red-600 text-center">{locationGateError}</p>
-                )}
-
                 {!showPaymentSection ? (
                   <Button
                     variant="primary"
                     size="md"
                     fullWidth
                     onClick={handleContinueToPayment}
-                    disabled={!selectedAddress || verifyingLocation}
-                    loading={verifyingLocation}
+                    disabled={!selectedAddress}
                     className="mb-3"
                   >
-                    {verifyingLocation ? 'CHECKING LOCATION…' : 'CONTINUE TO PAYMENT'}
+                    CONTINUE TO PAYMENT
                   </Button>
                 ) : (
                   <Button
@@ -1029,11 +942,11 @@ const Checkout = () => {
                     size="md"
                     fullWidth
                     onClick={handleConfirmOrder}
-                    disabled={!paymentMethod || placingOrder || verifyingLocation}
-                    loading={placingOrder || verifyingLocation}
+                    disabled={!paymentMethod || placingOrder}
+                    loading={placingOrder}
                     className="mb-3"
                   >
-                    {verifyingLocation ? 'CHECKING LOCATION…' : 'CONFIRM ORDER'}
+                    CONFIRM ORDER
                   </Button>
                 )}
 
@@ -1259,13 +1172,6 @@ const Checkout = () => {
           </Button>
         </div>
       </Modal>
-
-      <NotDeliverablePopup
-        isOpen={showNotDeliverable}
-        onClose={() => setShowNotDeliverable(false)}
-        selectedCity={selectedCityName}
-        locationCity={locationCity}
-      />
     </div>
   );
 };

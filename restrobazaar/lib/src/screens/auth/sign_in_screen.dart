@@ -13,7 +13,10 @@ const _navy = Color(0xFF0f172a);
 
 /// OTP-only sign in — mirrors the RestroBazaar mobile login mock.
 class SignInScreen extends ConsumerStatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({super.key, this.asPopup = false});
+
+  /// When true, closes the modal after successful login instead of routing to home.
+  final bool asPopup;
 
   @override
   ConsumerState<SignInScreen> createState() => _SignInScreenState();
@@ -119,7 +122,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     if (!mounted) return;
     final latest = ref.read(authControllerProvider);
     if (success) {
-      context.go('/home');
+      if (widget.asPopup) {
+        Navigator.of(context).pop(true);
+      } else {
+        final from = GoRouterState.of(context).uri.queryParameters['from'];
+        if (from != null && from.isNotEmpty) {
+          context.go(from);
+        } else {
+          context.go('/home');
+        }
+      }
     } else {
       setState(() => _errorMessage = latest.error ?? 'Invalid OTP');
     }
@@ -201,7 +213,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       child: InkWell(
                         customBorder: const CircleBorder(),
                         onTap: () {
-                          if (context.canPop()) {
+                          if (widget.asPopup) {
+                            Navigator.of(context).pop(false);
+                          } else if (context.canPop()) {
                             context.pop();
                           } else {
                             context.go('/home');

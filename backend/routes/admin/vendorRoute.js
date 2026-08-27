@@ -18,6 +18,8 @@ import {
   vendorLogout,
   getVendorProfile,
   getVendorBankDetails,
+  getVendorShippingSettings,
+  updateVendorShippingSettings,
 } from "../../controller/admin/vendorController.js";
 import { authenticate, authorize } from "../../middleware/authMiddleware.js";
 
@@ -39,11 +41,13 @@ vendorRouter.patch("/vendors/:id/update-last-login", authenticate, authorize("ad
 
 // Vendor routes - Vendors can access their own profile
 vendorRouter.get("/vendor/me", authenticate, authorize("vendor"), getVendorProfile);
+vendorRouter.put("/vendor/me/shipping-settings", authenticate, authorize("vendor"), updateVendorShippingSettings);
 vendorRouter.post("/vendor/logout", authenticate, authorize("vendor"), vendorLogout);
 
 // Public routes - No authentication required
 vendorRouter.post("/vendors/login", vendorLogin);
 vendorRouter.get("/vendors/:id/bank-details", getVendorBankDetails);
+vendorRouter.get("/vendors/:id/shipping-settings", getVendorShippingSettings);
 
 export default vendorRouter;
 

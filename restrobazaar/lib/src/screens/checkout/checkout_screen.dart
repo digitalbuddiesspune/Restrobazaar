@@ -6,7 +6,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/checkout_controller.dart';
-import '../../controllers/city_controller.dart';
+import '../../controllers/order_providers.dart';
+import '../../controllers/shipping_providers.dart';
 import '../../core/api_client.dart';
 import '../../core/formatters.dart';
 import '../../core/shipping.dart';
@@ -14,7 +15,6 @@ import '../../models/address.dart';
 import '../../models/cart_item.dart';
 import '../../models/coupon.dart';
 import '../../repositories/repository_providers.dart';
-import '../../services/location_service.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -39,7 +39,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   double _lastCartTotal = -1;
   String? _lastVendorKey;
   bool _pendingCouponRefresh = false;
-  bool _verifyingLocation = false;
 
   @override
   void initState() {
@@ -48,44 +47,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ref.read(checkoutControllerProvider.notifier).loadAddresses();
       _refreshCoupons(ref.read(cartControllerProvider));
     });
-  }
-
-  Future<bool> _ensureDeliverableLocation() async {
-    final selectedCity = ref.read(cityControllerProvider).selected?.displayName;
-    setState(() => _verifyingLocation = true);
-    final result = await LocationService.instance.verifyDeliveryForSelectedCity(
-      selectedCity,
-    );
-    if (!mounted) return false;
-    setState(() => _verifyingLocation = false);
-
-    if (result.ok) return true;
-
-    if (result.reason == 'city_mismatch') {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Not deliverable in your current location'),
-          content: Text(
-            result.locationCity != null && result.selectedCity != null
-                ? 'You are currently in ${result.locationCity}, but shopping for ${result.selectedCity}. Please change your city or move to a deliverable area.'
-                : result.message,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return false;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.message)),
-    );
-    return false;
   }
 
   String? _singleVendorId(List<CartItem> items) {
@@ -221,8 +182,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Future<void> _continueToPayment() async {
-    final canDeliver = await _ensureDeliverableLocation();
-    if (!canDeliver || !mounted) return;
     setState(() {
       _showPaymentSection = true;
     });
@@ -286,39 +245,22 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     _scheduleCouponRefresh(cartState);
 
-    // Group GST by rate and split into IGST + CGST (no per-item GST lines)
-    final gstByRate = <double, double>{};
+    // GST still calculated for order payload; UI shows inclusive cart total only.
+    var gst = 0.0;
     for (final item in cartState.items) {
       if (item.gstPercentage <= 0) continue;
       final itemTotal =
           item.unitPriceForQuantity(item.quantity) * item.quantity;
-      final gstAmount = (itemTotal * item.gstPercentage) / 100;
-      gstByRate[item.gstPercentage] =
-          (gstByRate[item.gstPercentage] ?? 0) + gstAmount;
+      gst += (itemTotal * item.gstPercentage) / 100;
     }
-    final rates = gstByRate.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
-    final igstCgstLines = <_IgstCgstLine>[];
-    for (final rate in rates) {
-      final totalGst = double.parse(gstByRate[rate]!.toStringAsFixed(2));
-      if (totalGst <= 0) continue;
-      final halfAmount = double.parse((totalGst / 2).toStringAsFixed(2));
-      final halfRate = double.parse((rate / 2).toStringAsFixed(2));
-      igstCgstLines.add(
-        _IgstCgstLine(
-          igstRate: halfRate,
-          cgstRate: halfRate,
-          igstAmount: halfAmount,
-          cgstAmount: halfAmount,
-        ),
-      );
-    }
-    final gst = igstCgstLines.fold<double>(
-      0,
-      (sum, line) => sum + line.igstAmount + line.cgstAmount,
-    );
-    final shipping = calculateShippingCharges(cartState.subtotal);
-    final totalBeforeCoupon = cartState.subtotal + gst + shipping;
+    gst = double.parse(gst.toStringAsFixed(2));
+    final shippingSettings =
+        ref.watch(cartShippingSettingsProvider).valueOrNull ??
+            ShippingSettings.defaults;
+    final shipping =
+        calculateShippingCharges(cartState.subtotal, shippingSettings);
+    final cartInclGst = cartState.subtotal + gst;
+    final totalBeforeCoupon = cartInclGst + shipping;
     final discountedTotal = totalBeforeCoupon - _couponDiscount;
     final double totalAmount =
         (discountedTotal < 0 ? 0 : discountedTotal).toDouble();
@@ -352,8 +294,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(height: 12),
             _BillingDetailsCard(
               cartState: cartState,
-              gst: gst,
-              igstCgstLines: igstCgstLines,
+              cartInclGst: cartInclGst,
               shipping: shipping,
               totalAmount: totalAmount,
               coupons: _availableCoupons,
@@ -374,16 +315,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 _applyCoupon(cartState, overrideCode: coupon.code);
               },
               showPaymentSection: _showPaymentSection,
-              placingOrder: checkoutState.placingOrder || _verifyingLocation,
+              placingOrder: checkoutState.placingOrder,
               errorMessage: checkoutState.error,
               onPrimaryAction: () async {
                 if (!_showPaymentSection) {
                   await _continueToPayment();
                   return;
                 }
-
-                final canDeliver = await _ensureDeliverableLocation();
-                if (!canDeliver || !mounted) return;
 
                 final order = await checkoutNotifier.placeOrder(
                   cartItems: cartState.items,
@@ -393,11 +331,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   totalAmount: totalAmount,
                   couponCode: _appliedCoupon?.code,
                   paymentMethod: _paymentMethod,
+                  gstNumber: authState.user?.gstNumber,
                 );
                 if (!mounted) return;
                 if (order != null) {
                   await ref.read(cartControllerProvider.notifier).clear();
                   if (!mounted) return;
+                  // Force Your Orders to refetch so the new order appears.
+                  ref.invalidate(ordersProvider);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Order placed!')),
                   );
@@ -405,7 +346,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 }
               },
               primaryDisabled:
-                  _verifyingLocation ||
                   (!_showPaymentSection &&
                       checkoutState.selectedAddressId == null),
             ),
@@ -800,13 +740,18 @@ class _AddressCard extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  address.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
+                                Expanded(
+                                  child: Text(
+                                    address.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Text(
                                   address.addressType,
                                   style: const TextStyle(
@@ -1114,25 +1059,10 @@ class _PaymentTile extends StatelessWidget {
   }
 }
 
-class _IgstCgstLine {
-  const _IgstCgstLine({
-    required this.igstRate,
-    required this.cgstRate,
-    required this.igstAmount,
-    required this.cgstAmount,
-  });
-
-  final double igstRate;
-  final double cgstRate;
-  final double igstAmount;
-  final double cgstAmount;
-}
-
 class _BillingDetailsCard extends StatelessWidget {
   const _BillingDetailsCard({
     required this.cartState,
-    required this.gst,
-    required this.igstCgstLines,
+    required this.cartInclGst,
     required this.shipping,
     required this.totalAmount,
     required this.coupons,
@@ -1155,8 +1085,7 @@ class _BillingDetailsCard extends StatelessWidget {
   });
 
   final CartState cartState;
-  final double gst;
-  final List<_IgstCgstLine> igstCgstLines;
+  final double cartInclGst;
   final double shipping;
   final double totalAmount;
   final List<CouponModel> coupons;
@@ -1183,11 +1112,6 @@ class _BillingDetailsCard extends StatelessWidget {
         ? '${coupon.discountValue.toStringAsFixed(0)}% OFF'
         : '${formatCurrency(coupon.discountValue)} OFF';
     return '$valueLabel • Min. ${formatCurrency(coupon.minimumOrderAmount)}';
-  }
-
-  String _formatPercentage(double value) {
-    final isWhole = value == value.roundToDouble();
-    return isWhole ? value.toStringAsFixed(0) : value.toStringAsFixed(2);
   }
 
   @override
@@ -1421,24 +1345,9 @@ class _BillingDetailsCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _SummaryRow(
-            label: 'Cart Total (Excl. of all taxes)',
-            value: formatCurrency(cartState.subtotal),
+            label: 'Cart Total (Incl. of GST)',
+            value: formatCurrency(cartInclGst),
           ),
-          if (igstCgstLines.isEmpty)
-            _SummaryRow(label: 'GST', value: formatCurrency(0))
-          else
-            ...igstCgstLines.expand(
-              (line) => [
-                _SummaryRow(
-                  label: 'IGST (${_formatPercentage(line.igstRate)}%)',
-                  value: formatCurrency(line.igstAmount),
-                ),
-                _SummaryRow(
-                  label: 'CGST (${_formatPercentage(line.cgstRate)}%)',
-                  value: formatCurrency(line.cgstAmount),
-                ),
-              ],
-            ),
           _SummaryRow(
             label: 'Shipping Charges',
             value: shipping == 0 ? 'Free' : formatCurrency(shipping),

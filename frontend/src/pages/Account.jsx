@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userAPI } from '../utils/api';
 import { logout, isAuthenticated, setUserInfo, removeUserInfo } from '../utils/auth';
+import { requireAuth } from '../utils/requireAuth';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 const Account = () => {
@@ -14,7 +15,8 @@ const Account = () => {
     // ProtectedRoute already handles authentication check
     // But we still need to verify the user is authenticated before fetching data
     if (!isAuthenticated()) {
-      navigate('/signin');
+      requireAuth();
+      navigate('/');
       return;
     }
     fetchUserData();
@@ -45,7 +47,8 @@ const Account = () => {
       // If unauthorized, clear user info and redirect
       if (err.response?.status === 401) {
         removeUserInfo();
-        navigate('/signin');
+        requireAuth();
+        navigate('/');
       }
     } finally {
       setLoading(false);
@@ -55,7 +58,8 @@ const Account = () => {
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       await logout();
-      navigate('/signin');
+      requireAuth();
+      navigate('/');
     }
   };
 

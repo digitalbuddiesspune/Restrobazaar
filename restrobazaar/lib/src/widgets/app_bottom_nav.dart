@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../controllers/auth_controller.dart';
 import '../controllers/cart_controller.dart';
 import '../controllers/wishlist_controller.dart';
+import 'auth_gate.dart';
 import 'cart_badge_icon.dart';
 
 class AppBottomNav extends ConsumerWidget {
@@ -21,6 +23,7 @@ class AppBottomNav extends ConsumerWidget {
         location.startsWith('/signup')) {
       return 3;
     }
+    // Home, category, product, search, categories → Home tab selected
     return 0;
   }
 
@@ -51,9 +54,15 @@ class AppBottomNav extends ConsumerWidget {
 
     return BottomNavigationBar(
       currentIndex: selectedIndex,
-      onTap: (index) {
+      onTap: (index) async {
         final target = _pathForIndex(index);
-        if (target != location) {
+        // Wishlist & Account require login — show popup first.
+        if ((index == 1 || index == 3) &&
+            !ref.read(authControllerProvider).isAuthenticated) {
+          final ok = await ensureLoggedIn(context, ref);
+          if (!ok || !context.mounted) return;
+        }
+        if (target != GoRouterState.of(context).uri.path) {
           context.go(target);
         }
       },

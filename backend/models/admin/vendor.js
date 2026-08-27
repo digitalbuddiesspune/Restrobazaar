@@ -118,6 +118,29 @@ const vendorSchema = new mongoose.Schema(
     },
 
     /* ============================
+       STORE / SHIPPING SETTINGS
+    ============================ */
+    shippingSettings: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+      // Order amount ranges → shipping price
+      tiers: [
+        {
+          minAmount: { type: Number, default: 0, min: 0 },
+          maxAmount: { type: Number, default: null }, // null = no upper limit
+          charge: { type: Number, default: 0, min: 0 },
+        },
+      ],
+      // Legacy fields (kept for older documents; prefer tiers)
+      baseCharge: { type: Number, default: 250, min: 0 },
+      midTierThreshold: { type: Number, default: 3000, min: 0 },
+      midTierCharge: { type: Number, default: 150, min: 0 },
+      freeShippingThreshold: { type: Number, default: 6000, min: 0 },
+    },
+
+    /* ============================
        STATUS FLAGS
     ============================ */
     isActive: {

@@ -15,6 +15,9 @@ class OrderModel {
     this.gstAmount,
     this.shippingCharges,
     this.deliveryAddress,
+    this.customerGstNumber,
+    this.customerName,
+    this.restaurantName,
   });
 
   final String id;
@@ -30,12 +33,23 @@ class OrderModel {
   final double? gstAmount;
   final double? shippingCharges;
   final AddressModel? deliveryAddress;
+  final String? customerGstNumber;
+  final String? customerName;
+  final String? restaurantName;
 
   /// Same priority as web: `orderNumber || _id`.
   String get displayId {
     final number = orderNumber?.trim();
     if (number != null && number.isNotEmpty) return number;
     return id;
+  }
+
+  /// True when the customer provided a GSTIN (signup / checkout).
+  bool get isGstInvoice {
+    final gst = (customerGstNumber ?? '').trim();
+    if (gst.isEmpty) return false;
+    final normalized = gst.toUpperCase();
+    return normalized != 'URP' && normalized != 'N/A' && normalized != '-';
   }
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -86,6 +100,24 @@ class OrderModel {
       }
     }
 
+    final deliveryAddress = json['deliveryAddress'] is Map<String, dynamic>
+        ? AddressModel.fromJson(
+            json['deliveryAddress'] as Map<String, dynamic>,
+          )
+        : null;
+
+    final userId = json['userId'];
+    final userMap = userId is Map<String, dynamic> ? userId : null;
+
+    final fromAddress = deliveryAddress?.gstNumber?.trim();
+    final fromUser = userMap?['gstNumber']?.toString().trim();
+    final fromOrder = json['gstNumber']?.toString().trim();
+    final customerGst = (fromAddress != null && fromAddress.isNotEmpty)
+        ? fromAddress
+        : (fromUser != null && fromUser.isNotEmpty)
+            ? fromUser
+            : (fromOrder != null && fromOrder.isNotEmpty ? fromOrder : null);
+
     return OrderModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       orderNumber: json['orderNumber']?.toString(),
@@ -103,12 +135,10 @@ class OrderModel {
       gstAmount: _toDouble(json['gstAmount']) ?? _toDouble(billing['gstAmount']),
       shippingCharges: _toDouble(json['shippingCharges']) ??
           _toDouble(billing['shippingCharges']),
-      deliveryAddress:
-          json['deliveryAddress'] is Map<String, dynamic>
-              ? AddressModel.fromJson(
-                  json['deliveryAddress'] as Map<String, dynamic>,
-                )
-              : null,
+      deliveryAddress: deliveryAddress,
+      customerGstNumber: customerGst,
+      customerName: userMap?['name']?.toString() ?? deliveryAddress?.name,
+      restaurantName: userMap?['restaurantName']?.toString(),
     );
   }
 }

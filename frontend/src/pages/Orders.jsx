@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
+import { requireAuth } from '../utils/requireAuth';
 import Modal from '../components/Modal';
 import { useOrders, useCancelOrder } from '../hooks/useApiQueries';
 import Button from '../components/Button';
@@ -35,11 +36,13 @@ const Orders = () => {
   }, []);
 
   // React Query hooks for orders with caching - filter by selected city
-  const { data: ordersResponse, isLoading: loading, error: ordersError } = useOrders(
+  const { data: ordersResponse, isLoading: loading, error: ordersError, refetch } = useOrders(
     selectedCityId ? { cityId: selectedCityId } : {},
     {
       enabled: isAuthenticated(),
       retry: false,
+      refetchOnMount: 'always',
+      staleTime: 0,
     }
   );
 
@@ -47,10 +50,13 @@ const Orders = () => {
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      navigate('/signin');
+      requireAuth();
+      navigate('/');
       return;
     }
-  }, [navigate]);
+    // Ensure latest orders after checkout redirect
+    refetch();
+  }, [navigate, refetch]);
 
   const orders = ordersResponse?.success && ordersResponse?.data ? ordersResponse.data : [];
   const error = ordersError ? (ordersError.response?.data?.message || 'Failed to load orders') : '';
@@ -136,6 +142,7 @@ const Orders = () => {
         }
       }
       
+      // Auto: GST tax invoice if customer has GSTIN; else Non-GST invoice
       await generateInvoicePDF(order, vendor);
     } catch (error) {
       console.error('Error generating invoice:', error);

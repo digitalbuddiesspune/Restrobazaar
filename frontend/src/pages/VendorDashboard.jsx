@@ -28,6 +28,7 @@ function useVendorRoute() {
       return 'coupons';
     }
     if (segments[0] === 'account') return 'account';
+    if (segments[0] === 'store-settings') return 'store-settings';
     return 'overview';
   }, [path, segments]);
 
@@ -57,6 +58,7 @@ import ProductForm from '../components/vendor/ProductForm';
 import OrdersTable from '../components/vendor/OrdersTable';
 import OrderDetails from '../components/vendor/OrderDetails';
 import VendorAccount from '../components/vendor/VendorAccount';
+import StoreSettings from '../components/vendor/StoreSettings';
 import OrderRecords from '../components/vendor/OrderRecords';
 import CouponForm from '../components/vendor/CouponForm';
 import CouponsTable from '../components/vendor/CouponsTable';
@@ -64,6 +66,7 @@ import UserForm from '../components/vendor/UserForm';
 import CreateOrder from '../components/vendor/CreateOrder';
 import UnpaidCustomersTable from '../components/vendor/UnpaidCustomersTable';
 import OrdersGraph from '../components/super_admin/OrdersGraph';
+import CategoryPieChart from '../components/vendor/CategoryPieChart';
 import { formatOrderId } from '../utils/orderIdFormatter';
 import {
   useMyVendorProducts,
@@ -76,6 +79,7 @@ import {
   useVendorOrders,
   useOrderStats,
   useUpdateOrderStatus,
+  useDeleteVendorOrder,
 } from '../hooks/useVendorQueries';
 import { useCategories } from '../hooks/useApiQueries';
 import { couponAPI } from '../utils/api';
@@ -91,6 +95,8 @@ const VendorDashboard = () => {
   const [catalogPage, setCatalogPage] = useState(1);
   const [myProductsPage, setMyProductsPage] = useState(1);
   const [ordersPage, setOrdersPage] = useState(1);
+  const [orderSearchInput, setOrderSearchInput] = useState('');
+  const [orderSearch, setOrderSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
@@ -116,6 +122,7 @@ const VendorDashboard = () => {
     else if (tab === 'coupons') navigate(`${VENDOR_BASE}/coupons`);
     else if (tab === 'add-coupon') navigate(`${VENDOR_BASE}/coupons/add`);
     else if (tab === 'account') navigate(`${VENDOR_BASE}/account`);
+    else if (tab === 'store-settings') navigate(`${VENDOR_BASE}/store-settings`);
     else navigate(VENDOR_BASE);
   };
   const [coupons, setCoupons] = useState([]);
@@ -160,12 +167,25 @@ const VendorDashboard = () => {
   const { data: citiesData } = useCities();
   const { data: categoriesData } = useCategories();
 
+  // Debounce order search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setOrderSearch(orderSearchInput.trim());
+      setOrdersPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [orderSearchInput]);
+
   // Orders
   const {
     data: ordersData,
     isLoading: ordersLoading,
   } = useVendorOrders(
-    { page: ordersPage, limit: itemsPerPage },
+    {
+      page: ordersPage,
+      limit: itemsPerPage,
+      ...(orderSearch ? { search: orderSearch } : {}),
+    },
     { enabled: activeTab === 'orders' }
   );
 
@@ -196,6 +216,7 @@ const VendorDashboard = () => {
   const deleteMutation = useDeleteVendorProduct();
   const toggleMutation = useToggleStatus();
   const updateOrderStatusMutation = useUpdateOrderStatus();
+  const deleteOrderMutation = useDeleteVendorOrder();
 
   const vendorProducts = vendorProductsData?.data || [];
   const globalProducts = globalProductsData?.data || [];
@@ -260,6 +281,31 @@ const VendorDashboard = () => {
       totalPending: countAgedPendingOrders(allOrders, AGED_PENDING_DAYS),
     };
   }, [allOrders]);
+
+  // Total revenue for selected year (from monthly sales, excludes cancelled)
+  const totalRevenue = useMemo(() => {
+    return (monthlyOrdersData || []).reduce(
+      (sum, month) => sum + (Number(month.sales) || 0),
+      0
+    );
+  }, [monthlyOrdersData]);
+
+  // Products grouped by category for pie chart
+  const categoryBreakdown = useMemo(() => {
+    const counts = {};
+    (vendorProducts || []).forEach((vp) => {
+      const cat =
+        vp.productId?.category?.name ||
+        vp.productId?.category?.displayName ||
+        vp.category?.name ||
+        vp.categoryName ||
+        (typeof vp.productId?.category === 'string' ? vp.productId.category : null) ||
+        'Uncategorized';
+      const key = String(cat).trim() || 'Uncategorized';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [vendorProducts]);
 
   // Get subcategories for selected category (My Products)
   const subCategories = useMemo(() => {
@@ -575,6 +621,16 @@ const VendorDashboard = () => {
     }
   };
 
+  const handleDeleteOrder = async (orderId) => {
+    try {
+      await deleteOrderMutation.mutateAsync(orderId);
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert(error?.response?.data?.message || 'Failed to delete order');
+      throw error;
+    }
+  };
+
   // Fetch coupons
   const fetchCoupons = async () => {
     setCouponsLoading(true);
@@ -623,6 +679,10 @@ const VendorDashboard = () => {
           const isCorrectYear = !isNaN(orderDate) && orderDate.getFullYear() === targetYear;
 
           if (isCorrectYear) {
+            // Skip cancelled orders for sales/revenue
+            const status = (order.orderStatus || order.Order_status || '').toLowerCase();
+            if (status === 'cancelled') return;
+
             const monthIndex = orderDate.getMonth();
             monthlyData[monthIndex].orders += 1;
             
@@ -632,7 +692,7 @@ const VendorDashboard = () => {
                                order.totalAmount || 
                                order.amount || 
                                0;
-            monthlyData[monthIndex].sales += totalAmount || 0;
+            monthlyData[monthIndex].sales += Number(totalAmount) || 0;
           }
         });
 
@@ -762,8 +822,36 @@ const VendorDashboard = () => {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 p-4 bg-gray-100 rounded-lg">
                 <h1 className="text-base font-bold text-gray-900">Dashboard Overview</h1>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <label className="text-xs text-gray-600 font-medium">Year</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                  >
+                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(
+                      (year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      )
+                    )}
+                  </select>
+                  <div className="px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+                      Total Revenue ({selectedYear})
+                    </p>
+                    <p className="text-lg font-bold text-gray-900">
+                      ₹
+                      {totalRevenue.toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Stats Cards */}
@@ -854,17 +942,28 @@ const VendorDashboard = () => {
                 />
               </div>
 
-              {/* Monthly Orders Graph */}
-              <OrdersGraph
-                ordersData={monthlyOrdersData}
-                selectedYear={selectedYear}
-                onYearChange={setSelectedYear}
-                cities={[]}
-                selectedCity=""
-                onCityChange={() => {}}
-                yAxisTicks={[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]}
-                yAxisDomain={[0, 50]}
-              />
+              {/* Monthly Orders Graph + Category breakdown */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+                <div className="xl:col-span-2 min-h-[420px]">
+                  <OrdersGraph
+                    ordersData={monthlyOrdersData}
+                    selectedYear={selectedYear}
+                    onYearChange={setSelectedYear}
+                    cities={[]}
+                    selectedCity=""
+                    onCityChange={() => {}}
+                    yAxisTicks={[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]}
+                    yAxisDomain={[0, 50]}
+                    className="mt-0"
+                  />
+                </div>
+                <div className="min-h-[420px]">
+                  <CategoryPieChart
+                    data={categoryBreakdown}
+                    title="Products by Category"
+                  />
+                </div>
+              </div>
 
               {/* Unpaid Orders Table - all orders in DB with payment status unpaid */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
@@ -909,6 +1008,12 @@ const VendorDashboard = () => {
                           // Use _id for API calls (MongoDB ObjectId), orderNumber is just for display
                           const orderId = order._id || order.order_id || order.id;
                           const displayOrderId = order.orderNumber || order._id || order.order_id;
+                          const amount = Number(
+                            order.Net_total ||
+                              order.totalAmount ||
+                              order.billingDetails?.totalAmount ||
+                              0
+                          );
                           return (
                             <tr key={orderId} className="hover:bg-gray-50 transition-colors cursor-pointer even:bg-gray-50" onClick={() => {
                               navigateToTab('orders', { orderId });
@@ -943,7 +1048,13 @@ const VendorDashboard = () => {
                               </div>
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap">
-                              <span className="text-sm font-medium text-gray-900 leading-tight">₹{order.Net_total || order.totalAmount || order.billingDetails?.totalAmount || 0}</span>
+                              <span className="text-sm font-medium text-gray-900 leading-tight">
+                                ₹
+                                {amount.toLocaleString('en-IN', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 leading-tight">
                               {new Date(order.createdAt || order.order_date_and_time || order.orderDate).toLocaleDateString()}
@@ -1326,12 +1437,15 @@ const VendorDashboard = () => {
                   })()}
                   isLoading={ordersLoading}
                   onUpdateStatus={handleUpdateOrderStatus}
+                  onDeleteOrder={handleDeleteOrder}
                   currentPage={ordersPage}
                   totalPages={ordersTotalPages}
                   onPageChange={setOrdersPage}
                   onOrderClick={(id) => navigateToTab('orders', { orderId: id })}
                   allOrders={allOrders}
                   highlightAgedPending
+                  searchValue={orderSearchInput}
+                  onSearchChange={setOrderSearchInput}
                 />
               )}
             </div>
@@ -1485,6 +1599,13 @@ const VendorDashboard = () => {
           {activeTab === 'account' && (
             <div className="space-y-4">
               <VendorAccount />
+            </div>
+          )}
+
+          {/* Store Settings Tab */}
+          {activeTab === 'store-settings' && (
+            <div className="space-y-4">
+              <StoreSettings />
             </div>
           )}
 

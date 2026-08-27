@@ -127,6 +127,7 @@ class CheckoutController extends StateNotifier<CheckoutState> {
     String? couponCode,
     String? paymentId,
     String? transactionId,
+    String? gstNumber,
   }) async {
     if (state.selectedAddressId == null) {
       state = state.copyWith(error: 'Please select an address');
@@ -138,7 +139,7 @@ class CheckoutController extends StateNotifier<CheckoutState> {
     try {
       final resolvedTotalAmount =
           totalAmount ?? (cartTotal + gstAmount + shippingCharges);
-      final payload = {
+      final payload = <String, dynamic>{
         'addressId': state.selectedAddressId,
         'paymentMethod': paymentMethod,
         'cartItems': cartItems.map((item) => item.toJson()).toList(),
@@ -150,6 +151,10 @@ class CheckoutController extends StateNotifier<CheckoutState> {
         'paymentId': paymentId,
         'transactionId': transactionId,
       };
+      final trimmedGst = gstNumber?.trim();
+      if (trimmedGst != null && trimmedGst.isNotEmpty) {
+        payload['gstNumber'] = trimmedGst;
+      }
 
       final order = await _orderRepository.createOrder(payload);
       state = state.copyWith(placingOrder: false, lastOrder: order);

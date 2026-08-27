@@ -45,14 +45,21 @@ class CartItem {
 
   double unitPriceForQuantity(int qty) {
     if (priceType == 'bulk' && pricing?.bulk.isNotEmpty == true) {
-      for (final slab in pricing!.bulk) {
-        final max = slab.maxQty ?? 1000000000;
-        if (qty >= slab.minQty && qty <= max) return slab.price;
-      }
+      final slab = pricing!.bestSlabForQuantity(qty);
+      if (slab != null) return slab.price;
       return pricing!.bulk.last.price;
     }
     return price;
   }
+
+  double unitPriceIncludingGst(int qty) {
+    final base = unitPriceForQuantity(qty);
+    final rate = gstPercentage > 0 ? gstPercentage : 0;
+    return double.parse((base * (1 + rate / 100)).toStringAsFixed(2));
+  }
+
+  double get lineTotalIncludingGst =>
+      unitPriceIncludingGst(quantity) * quantity;
 
   CartItem copyWith({
     String? id,

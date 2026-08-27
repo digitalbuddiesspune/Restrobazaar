@@ -8,6 +8,8 @@ class UserModel {
     this.createdAt,
     this.updatedAt,
     this.role = 'user',
+    this.gstNumber,
+    this.restaurantName,
   });
 
   final String id;
@@ -18,6 +20,8 @@ class UserModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String role;
+  final String? gstNumber;
+  final String? restaurantName;
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
@@ -33,6 +37,8 @@ class UserModel {
           ? DateTime.tryParse(json['updatedAt'].toString())
           : null,
       role: (json['role'] ?? 'user').toString(),
+      gstNumber: json['gstNumber']?.toString(),
+      restaurantName: json['restaurantName']?.toString(),
     );
   }
 
@@ -46,6 +52,8 @@ class UserModel {
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'role': role,
+      if (gstNumber != null) 'gstNumber': gstNumber,
+      if (restaurantName != null) 'restaurantName': restaurantName,
     };
   }
 }

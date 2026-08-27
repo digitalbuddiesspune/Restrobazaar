@@ -19,7 +19,8 @@ const OrdersGraph = ({
     selectedCity, 
     onCityChange,
     yAxisTicks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-    yAxisDomain = [0, 100]
+    yAxisDomain = [0, 100],
+    className = 'mt-8',
 }) => {
     // Generate last 5 years
     const currentYear = new Date().getFullYear();
@@ -42,12 +43,12 @@ const OrdersGraph = ({
     ];
 
     return (
-        <div className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 p-6 rounded-2xl shadow-lg border border-gray-200/50 backdrop-blur-sm transition-all duration-300 hover:shadow-xl mt-8 relative overflow-hidden">
+        <div className={`bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 p-6 rounded-2xl shadow-lg border border-gray-200/50 backdrop-blur-sm transition-all duration-300 hover:shadow-xl relative overflow-hidden h-full flex flex-col ${className}`}>
             {/* Premium decorative elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/20 to-indigo-100/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-indigo-100/20 to-purple-100/10 rounded-full blur-3xl -ml-24 -mb-24"></div>
             
-            <div className="relative z-10">
+            <div className="relative z-10 shrink-0">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
                         <h2 className="text-lg font-bold text-gray-800">City-wise Order Statistics</h2>
@@ -89,7 +90,7 @@ const OrdersGraph = ({
                 </div>
             </div>
             </div>
-            <div className="relative z-10 h-[350px] w-full bg-gradient-to-b from-white/50 via-transparent to-white/30 rounded-xl p-4 backdrop-blur-sm">
+            <div className="relative z-10 flex-1 min-h-[350px] w-full bg-gradient-to-b from-white/50 via-transparent to-white/30 rounded-xl p-4 backdrop-blur-sm">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                         data={ordersData}

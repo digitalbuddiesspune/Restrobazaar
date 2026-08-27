@@ -2,12 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { vendorProductAPI } from '../utils/api';
 import { isAuthenticated } from '../utils/auth';
+import { requireAuth } from '../utils/requireAuth';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { useWishlist, useRemoveFromWishlist } from '../hooks/useApiQueries';
 import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
 import metaPixel from '../utils/metaPixel';
+import { productDefaultPriceInclGst, productDisplayPrice } from '../utils/pricing';
 
 const Wishlist = () => {
   const navigate = useNavigate();
@@ -31,7 +33,8 @@ const Wishlist = () => {
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      navigate('/sign-in');
+      requireAuth();
+      navigate('/');
     }
   }, [navigate]);
 
@@ -120,15 +123,7 @@ const Wishlist = () => {
     }
   };
 
-  const getDisplayPrice = (product) => {
-    if (product.priceType === 'single' && product.pricing?.single?.price != null) {
-      return product.pricing.single.price;
-    }
-    if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
-      return product.pricing.bulk[product.pricing.bulk.length - 1].price;
-    }
-    return product.price;
-  };
+  const getDisplayPrice = (product) => productDisplayPrice(product);
 
   const getProductImage = (product) => {
     if (Array.isArray(product.images) && product.images.length > 0) {
@@ -375,7 +370,7 @@ const Wishlist = () => {
               if (!product) return null;
 
               const displayPrice = getDisplayPrice(product);
-              const originalPrice = product.originalPrice ?? product.defaultPrice;
+              const originalPrice = productDefaultPriceInclGst(product);
               const discount =
                 originalPrice && displayPrice && originalPrice > displayPrice
                   ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)

@@ -267,6 +267,21 @@ export const useUpdateOrderItems = () => {
   });
 };
 
+/**
+ * Delete order mutation
+ */
+export const useDeleteVendorOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) => orderService.deleteOrder(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendor', 'orders'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor', 'orders', 'stats'] });
+    },
+  });
+};
+
 // ==================== VENDOR PROFILE QUERIES ====================
 
 /**

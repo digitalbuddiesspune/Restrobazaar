@@ -45,9 +45,5 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>RestroBazaar needs your location to confirm delivery is available in your selected city.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>RestroBazaar needs your location to confirm delivery is available in your selected city.</string>
 </dict>
 </plist>

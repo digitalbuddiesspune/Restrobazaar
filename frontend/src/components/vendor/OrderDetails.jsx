@@ -3,6 +3,7 @@ import { formatOrderId } from '../../utils/orderIdFormatter';
 import { useState, useEffect } from 'react';
 import { generateInvoicePDF } from '../../utils/invoiceGenerator';
 import { invoiceAPI } from '../../utils/api';
+import { calculateShippingCharges } from '../../utils/shipping';
 
 const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const { data: orderData, isLoading, isError, error, refetch } = useVendorOrder(orderId);
@@ -346,7 +347,11 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
         };
       });
     
-    const shippingCharges = 0; // Free shipping
+    // Recalculate shipping from vendor Store Settings (same as cart/checkout)
+    const shippingCharges = calculateShippingCharges(
+      cartTotal,
+      vendor?.shippingSettings
+    );
     const totalAmount = cartTotal + gstAmount + shippingCharges;
 
     return {
@@ -462,6 +467,35 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       minute: '2-digit',
       hour12: true,
     });
+  };
+
+  const handleDownloadInvoice = async (isGstInvoice) => {
+    try {
+      if (!order || Object.keys(order).length === 0) {
+        alert('Order data is not available. Please refresh the page.');
+        return;
+      }
+
+      let orderWithInvoice = { ...order };
+      if (!order.invoiceNumber && order._id) {
+        try {
+          const response = await invoiceAPI.generateInvoiceForVendorOrder(order._id);
+          if (response.success && response.data.invoiceNumber) {
+            orderWithInvoice.invoiceNumber = response.data.invoiceNumber;
+            await refetch();
+          }
+        } catch (invoiceError) {
+          console.warn('Could not generate invoice number, using fallback:', invoiceError);
+        }
+      }
+
+      await generateInvoicePDF(orderWithInvoice, vendor, { isGstInvoice });
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+      alert(
+        `Failed to generate ${isGstInvoice ? 'GST' : 'Non-GST'} invoice: ${error.message || 'Unknown error'}. Please check the console for details.`
+      );
+    }
   };
 
   if (isLoading) {
@@ -1156,51 +1190,27 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
             </div>
           ) : null}
 
-          {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
+          {/* Actions — vendor can download both invoice types */}
+          <div className="flex flex-wrap justify-end gap-2 pt-3 border-t border-gray-200">
             <button
-              onClick={async () => {
-                try {
-                  if (!order || Object.keys(order).length === 0) {
-                    alert('Order data is not available. Please refresh the page.');
-                    return;
-                  }
-
-                  // If order doesn't have an invoice number, generate one first
-                  let orderWithInvoice = { ...order };
-                  if (!order.invoiceNumber && order._id) {
-                    try {
-                      // Use vendor endpoint for generating invoice numbers
-                      const response = await invoiceAPI.generateInvoiceForVendorOrder(order._id);
-                      if (response.success && response.data.invoiceNumber) {
-                        orderWithInvoice.invoiceNumber = response.data.invoiceNumber;
-                        // Refetch order to get updated data
-                        await refetch();
-                      }
-                    } catch (invoiceError) {
-                      console.warn('Could not generate invoice number, using fallback:', invoiceError);
-                      // Continue with invoice generation using fallback format
-                    }
-                  }
-
-                  await generateInvoicePDF(orderWithInvoice, vendor);
-                } catch (error) {
-                  console.error('Error generating invoice:', error);
-                  console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack,
-                    order: order,
-                    vendor: vendor
-                  });
-                  alert(`Failed to generate invoice: ${error.message || 'Unknown error'}. Please check the console for details.`);
-                }
-              }}
+              type="button"
+              onClick={() => handleDownloadInvoice(true)}
               className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1.5 text-xs"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span>Download Invoice</span>
+              <span>Download GST Invoice</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDownloadInvoice(false)}
+              className="px-4 py-1.5 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center space-x-1.5 text-xs"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Download Non-GST Invoice</span>
             </button>
           </div>
         </div>

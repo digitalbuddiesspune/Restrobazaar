@@ -165,6 +165,22 @@ class PricingModel {
   final double? singlePrice;
   final List<PriceSlab> bulk;
 
+  /// Best bulk slab for [quantity]: highest `minQty` among qualifying slabs
+  /// (same rule as web `findBestMatchingSlab`). Optional `maxQty` is respected
+  /// when present; API slabs typically only set `minQty`.
+  PriceSlab? bestSlabForQuantity(int quantity) {
+    if (bulk.isEmpty) return null;
+    final matching = bulk.where((slab) {
+      if (quantity < slab.minQty) return false;
+      final max = slab.maxQty;
+      if (max != null && quantity > max) return false;
+      return true;
+    }).toList();
+    if (matching.isEmpty) return null;
+    matching.sort((a, b) => b.minQty.compareTo(a.minQty));
+    return matching.first;
+  }
+
   factory PricingModel.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const PricingModel();
     final bulk = <PriceSlab>[];
@@ -180,7 +196,7 @@ class PricingModel {
     final single = json['single'];
     final singlePrice = single is Map<String, dynamic>
         ? single['price']
-        : json['price'];
+        : (json['singlePrice'] ?? json['price']);
 
     return PricingModel(
       singlePrice: singlePrice != null ? _toDouble(singlePrice) : null,
@@ -189,6 +205,7 @@ class PricingModel {
   }
 
   Map<String, dynamic> toJson() => {
+    'single': singlePrice != null ? {'price': singlePrice} : null,
     'singlePrice': singlePrice,
     'bulk': bulk.map((e) => e.toJson()).toList(),
   };
@@ -288,7 +305,15 @@ class VendorProductModel {
   }
 
   /// Listing price — matches web category cards (bulk shows last slab).
+  /// Includes GST when the product has a GST rate.
   double? get displayPrice {
+    final base = displayPriceExclusive;
+    if (base == null) return null;
+    return priceWithGst(base);
+  }
+
+  /// Base catalog price before GST.
+  double? get displayPriceExclusive {
     if (priceType == 'single' && pricing.singlePrice != null) {
       return pricing.singlePrice;
     }
@@ -296,6 +321,20 @@ class VendorProductModel {
       return pricing.bulk.last.price;
     }
     return null;
+  }
+
+  double get gstRate => (gst != null && gst! > 0) ? gst! : 0;
+
+  double priceWithGst(double base) {
+    final inclusive = base * (1 + gstRate / 100);
+    return double.parse(inclusive.toStringAsFixed(2));
+  }
+
+  /// MRP / compare-at with the same GST treatment as sell price.
+  double? get displayDefaultPrice {
+    final base = defaultPrice ?? originalPrice;
+    if (base == null) return null;
+    return priceWithGst(base);
   }
 
   Map<String, dynamic> toJson() {

@@ -7,6 +7,7 @@ import '../controllers/wishlist_controller.dart';
 import '../core/formatters.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
+import 'auth_gate.dart';
 
 /// Storefront product card — mirrors web `/category/:slug` layout.
 /// When the product is in the cart, shows quantity stepper instead of Add to Cart.
@@ -66,7 +67,7 @@ class ProductCard extends ConsumerWidget {
     final cartState = ref.watch(cartControllerProvider);
     final inWishlist = wishlistState.contains(product.id);
     final price = product.displayPrice;
-    final defaultPrice = product.defaultPrice ?? product.originalPrice;
+    final defaultPrice = product.displayDefaultPrice;
     final showStrike =
         defaultPrice != null && price != null && defaultPrice > price;
     final imageUrl = product.product?.images.isNotEmpty == true
@@ -202,6 +203,8 @@ class ProductCard extends ConsumerWidget {
                       child: InkWell(
                         customBorder: const CircleBorder(),
                         onTap: () async {
+                          final ok = await ensureLoggedIn(context, ref);
+                          if (!ok || !context.mounted) return;
                           await ref
                               .read(wishlistControllerProvider.notifier)
                               .toggleWishlist(product);

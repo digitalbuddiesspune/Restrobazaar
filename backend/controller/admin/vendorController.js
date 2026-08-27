@@ -842,7 +842,7 @@ export const getVendorBankDetails = async (req, res) => {
     const { id } = req.params;
     
     const vendor = await Vendor.findById(id)
-      .select("businessName bankDetails");
+      .select("businessName bankDetails shippingSettings");
     
     if (!vendor) {
       return res.status(404).json({
@@ -859,12 +859,109 @@ export const getVendorBankDetails = async (req, res) => {
           accountHolderName: vendor.bankDetails?.accountHolderName || null,
           upiId: vendor.bankDetails?.upiId || null,
         },
+        shippingSettings: vendor.shippingSettings || undefined,
       },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error fetching vendor bank details",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Public shipping settings for a vendor (cart/checkout)
+// @route   GET /api/v1/vendors/:id/shipping-settings
+// @access  Public
+export const getVendorShippingSettings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const vendor = await Vendor.findById(id).select("shippingSettings businessName");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    const { normalizeShippingSettings } = await import("../../utils/shipping.js");
+    res.status(200).json({
+      success: true,
+      data: {
+        vendorId: vendor._id,
+        businessName: vendor.businessName,
+        shippingSettings: normalizeShippingSettings(vendor.shippingSettings || {}),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching shipping settings",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update own store shipping settings
+// @route   PUT /api/v1/vendor/me/shipping-settings
+// @access  Vendor
+export const updateVendorShippingSettings = async (req, res) => {
+  try {
+    const vendorId = req.user.userId;
+
+    if (req.user.role !== "vendor") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden - Vendor access only",
+      });
+    }
+
+    const { normalizeShippingSettings } = await import("../../utils/shipping.js");
+    const next = normalizeShippingSettings({
+      ...(req.body || {}),
+      enabled: req.body?.enabled !== undefined ? Boolean(req.body.enabled) : true,
+    });
+
+    if (!next.tiers || next.tiers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Add at least one order amount range",
+      });
+    }
+
+    for (const tier of next.tiers) {
+      if (tier.maxAmount != null && tier.maxAmount < tier.minAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid range: max amount must be ≥ min amount (₹${tier.minAmount})`,
+        });
+      }
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(
+      vendorId,
+      { $set: { shippingSettings: next } },
+      { new: true, runValidators: true }
+    ).select("-password -__v");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Shipping settings updated",
+      data: vendor.shippingSettings,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error updating shipping settings",
       error: error.message,
     });
   }

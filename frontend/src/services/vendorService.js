@@ -162,9 +162,8 @@ export const orderService = {
     if (filters.limit) params.append('limit', filters.limit);
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.search) params.append('search', filters.search);
     
-    // Assuming there's a vendor orders endpoint
-    // If not, this will need to be created in the backend
     const response = await vendorApi.get(`/vendor/orders?${params.toString()}`);
     return response.data;
   },
@@ -172,6 +171,12 @@ export const orderService = {
   // Get order by ID
   getOrderById: async (id) => {
     const response = await vendorApi.get(`/vendor/orders/${id}`);
+    return response.data;
+  },
+
+  // Delete order
+  deleteOrder: async (id) => {
+    const response = await vendorApi.delete(`/vendor/orders/${id}`);
     return response.data;
   },
 
@@ -205,6 +210,10 @@ export const vendorAccountService = {
   // Get vendor's own profile
   getVendorProfile: async () => {
     const response = await vendorApi.get('/vendor/me');
+    return response.data;
+  },
+  updateShippingSettings: async (shippingSettings) => {
+    const response = await vendorApi.put('/vendor/me/shipping-settings', shippingSettings);
     return response.data;
   },
 };

@@ -14,6 +14,7 @@ import NotificationProvider from "./components/NotificationProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
+import { isAuthenticated } from "./utils/auth";
 
 // Configure QueryClient with default caching options
 const queryClient = new QueryClient({
@@ -53,6 +54,14 @@ function App() {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showSuperAdminLogin, setShowSuperAdminLogin] = useState(false);
   const [showVendorLogin, setShowVendorLogin] = useState(false);
+
+  // Show login popup first when guest opens the storefront.
+  useEffect(() => {
+    if (isAdminRoute || isVendorAdminRoute) return;
+    if (!isAuthenticated()) {
+      setShowSignIn(true);
+    }
+  }, [isAdminRoute, isVendorAdminRoute]);
 
   // Check URL for modal routes
   useEffect(() => {

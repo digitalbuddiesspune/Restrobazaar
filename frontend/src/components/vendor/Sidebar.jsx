@@ -25,6 +25,7 @@ const Sidebar = ({ activeTab, navigateToTab, onLogout, isOpen, onClose, isCollap
   const menuItems = [
     { id: 'create-user', label: 'Create User', Icon: IconCreateUser },
     { id: 'coupons', label: 'Coupons', Icon: IconCoupons },
+    { id: 'store-settings', label: 'Store Settings', Icon: IconDashboard },
     { id: 'account', label: 'Account', Icon: IconUser },
   ];
 

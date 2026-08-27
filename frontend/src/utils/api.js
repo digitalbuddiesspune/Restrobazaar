@@ -111,6 +111,11 @@ export const vendorAPI = {
       method: 'GET',
     });
   },
+  getVendorShippingSettings: async (vendorId) => {
+    return apiRequest(`/vendors/${vendorId}/shipping-settings`, {
+      method: 'GET',
+    });
+  },
 };
 
 // City API

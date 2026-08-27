@@ -5,6 +5,15 @@ import Vendor from '../../models/admin/vendor.js';
 import Address from '../../models/users/address.js';
 import Coupon from '../../models/vendor/coupon.js';
 import { generateNextInvoiceNumber } from '../../services/invoiceNumberService.js';
+import { calculateShippingCharges } from '../../utils/shipping.js';
+
+/** Same display ID rule as frontend formatOrderId — last 6 digits with optional #. */
+const toDisplayOrderDigits = (orderId) => {
+  if (!orderId) return '';
+  const digitsOnly = String(orderId).replace(/\D/g, '');
+  if (!digitsOnly) return '';
+  return digitsOnly.length > 6 ? digitsOnly.slice(-6) : digitsOnly.padStart(6, '0');
+};
 
 // @desc    Get orders for a vendor (orders containing vendor's products)
 // @route   GET /api/v1/vendor/orders
@@ -20,6 +29,7 @@ export const getVendorOrders = async (req, res) => {
       limit = 10,
       startDate,
       endDate,
+      search,
     } = req.query;
 
     // Get vendor's service cities for display purposes
@@ -79,7 +89,6 @@ export const getVendorOrders = async (req, res) => {
     }
 
     // Build query using the new vendorId and vendorServiceCityId fields
-    // This is much more efficient than the previous approach
     const query = {
       vendorId: vendorId,
       vendorServiceCityId: { $in: vendorServiceCityIds },
@@ -107,21 +116,30 @@ export const getVendorOrders = async (req, res) => {
       }
     }
 
+    const searchTerm = search ? String(search).trim() : '';
+    const searchDigits = searchTerm.replace(/\D/g, '');
+
     // Pagination
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    // Find orders
-    const orders = await Order.find(query)
+    // When searching by short order ID (#937961) or phone, filter in memory after fetch
+    const needsInMemorySearch = Boolean(searchTerm);
+
+    let ordersQuery = Order.find(query)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
       .populate('userId', 'name email phone restaurantName gstNumber')
       .populate('vendorServiceCityId', 'name displayName');
 
-    // Filter order items to show only vendor's products
-    const filteredOrders = orders.map((order) => {
+    if (!needsInMemorySearch) {
+      ordersQuery = ordersQuery.skip(skip).limit(limitNum);
+    }
+
+    const orders = await ordersQuery;
+
+    // Filter order items to show only vendor's products + format
+    let filteredOrders = orders.map((order) => {
       const vendorOrderItems = order.items.filter((item) => {
         const productIdStr = item.productId.toString();
         return vendorProductIds.some(
@@ -129,7 +147,6 @@ export const getVendorOrders = async (req, res) => {
         );
       });
 
-      // Calculate vendor's portion of the order
       const vendorOrderTotal = vendorOrderItems.reduce(
         (sum, item) => sum + item.total,
         0
@@ -137,20 +154,17 @@ export const getVendorOrders = async (req, res) => {
 
       const orderObj = order.toObject();
       
-      // Get city info from the populated vendorServiceCityId
       const orderCityInfo = order.vendorServiceCityId ? {
         cityId: order.vendorServiceCityId._id?.toString() || order.vendorServiceCityId.toString(),
         cityName: order.vendorServiceCityId.displayName || order.vendorServiceCityId.name || 'N/A',
         cityData: order.vendorServiceCityId
       } : { cityName: 'N/A' };
       
-      // Format order with all required fields for records view
       return {
         ...orderObj,
         items: vendorOrderItems,
         vendorOrderTotal,
         totalItems: vendorOrderItems.length,
-        // Add formatted fields for records view
         order_id: orderObj._id.toString(),
         user_id: orderObj.userId?._id?.toString() || orderObj.userId?.toString() || '',
         Customer_Name: orderObj.deliveryAddress?.name || orderObj.userId?.name || 'N/A',
@@ -165,22 +179,48 @@ export const getVendorOrders = async (req, res) => {
         Payment_status: orderObj.paymentStatus || 'pending',
         delivery_date: orderObj.deliveryDate || null,
         Email: orderObj.userId?.email || 'N/A',
-        // Show vendor's service city instead of customer's delivery address city
         City: orderCityInfo.cityName || 'N/A',
       };
     });
 
-    // Get total count using the same query
-    const total = await Order.countDocuments(query);
+    if (needsInMemorySearch) {
+      const needle = searchTerm.replace(/^#/, '').toLowerCase();
+      filteredOrders = filteredOrders.filter((order) => {
+        const displayDigits = toDisplayOrderDigits(order.orderNumber || order._id);
+        const phone = String(
+          order.deliveryAddress?.phone || order.userId?.phone || ''
+        ).replace(/\D/g, '');
+        const name = String(
+          order.deliveryAddress?.name || order.userId?.name || ''
+        ).toLowerCase();
+        const orderNumber = String(order.orderNumber || '').toLowerCase();
+        const idStr = String(order._id || '').toLowerCase();
+
+        if (searchDigits && displayDigits.includes(searchDigits)) return true;
+        if (searchDigits && phone.includes(searchDigits)) return true;
+        if (needle && name.includes(needle)) return true;
+        if (needle && orderNumber.includes(needle)) return true;
+        if (needle && idStr.includes(needle)) return true;
+        return false;
+      });
+    }
+
+    const total = needsInMemorySearch
+      ? filteredOrders.length
+      : await Order.countDocuments(query);
+
+    const pagedOrders = needsInMemorySearch
+      ? filteredOrders.slice(skip, skip + limitNum)
+      : filteredOrders;
 
     res.status(200).json({
       success: true,
-      data: filteredOrders,
+      data: pagedOrders,
       pagination: {
         page: pageNum,
         limit: limitNum,
         total,
-        pages: Math.ceil(total / limitNum),
+        pages: Math.ceil(total / limitNum) || 0,
       },
     });
   } catch (error) {
@@ -271,6 +311,46 @@ export const getVendorOrderById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching vendor order',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Delete an order (vendor)
+// @route   DELETE /api/v1/vendor/orders/:id
+// @access  Vendor
+export const deleteVendorOrder = async (req, res) => {
+  try {
+    const vendorId = req.user.userId;
+    const orderId = req.params.id;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    const orderVendorId = order.vendorId?._id || order.vendorId;
+    if (!orderVendorId || orderVendorId.toString() !== vendorId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden - You can only delete your own orders',
+      });
+    }
+
+    await Order.findByIdAndDelete(orderId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Order deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting vendor order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting order',
       error: error.message,
     });
   }
@@ -590,28 +670,28 @@ export const updateVendorOrderItems = async (req, res) => {
 
     // Calculate total GST from all items
     const totalGstAmount = updatedItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+    const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
 
-    // Update billing details if provided, otherwise recalculate
-    if (billingDetails) {
-      // Recalculate GST from items even if billingDetails is provided
-      const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
-      order.billingDetails = {
-        cartTotal: cartTotal,
-        gstAmount: totalGstAmount, // Use calculated GST from items
-        shippingCharges: billingDetails.shippingCharges || 0,
-        totalAmount: cartTotal + totalGstAmount + (billingDetails.shippingCharges || 0),
-      };
-    } else {
-      // Recalculate billing details
-      const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
-      const shippingCharges = 0; // Free shipping
-      order.billingDetails = {
-        cartTotal: cartTotal,
-        gstAmount: totalGstAmount, // GST calculated per product
-        shippingCharges: shippingCharges,
-        totalAmount: cartTotal + totalGstAmount + shippingCharges,
-      };
-    }
+    // Shipping from vendor Store Settings (never force free on edit)
+    const vendorDoc = await Vendor.findById(vendorId).select('shippingSettings');
+    const shippingCharges = calculateShippingCharges(
+      cartTotal,
+      vendorDoc?.shippingSettings
+    );
+
+    // Update billing details — always recalculate cart/GST/shipping from items
+    const couponDiscount =
+      order.couponAmount ||
+      order.billingDetails?.couponDiscount ||
+      0;
+
+    order.billingDetails = {
+      cartTotal: cartTotal,
+      gstAmount: totalGstAmount,
+      shippingCharges: shippingCharges,
+      totalAmount: Math.max(0, cartTotal + totalGstAmount + shippingCharges - couponDiscount),
+      ...(couponDiscount > 0 ? { couponDiscount } : {}),
+    };
 
     await order.save();
 
@@ -934,15 +1014,20 @@ export const createOrderForUser = async (req, res) => {
     // Calculate total GST from all order items
     const totalGstAmount = orderItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
     
-    // Recalculate totals based on per-product GST
+    // Recalculate totals based on per-product GST + vendor shipping settings
     const calculatedCartTotal = orderItems.reduce((sum, item) => sum + item.total, 0);
-    const calculatedTotalAmount = calculatedCartTotal + totalGstAmount + (shippingCharges || 0);
+    const vendorDoc = await Vendor.findById(vendorId).select('shippingSettings');
+    const finalShippingCharges = calculateShippingCharges(
+      calculatedCartTotal,
+      vendorDoc?.shippingSettings
+    );
+    const calculatedTotalAmount = calculatedCartTotal + totalGstAmount + finalShippingCharges;
     
     // Prepare billing details (amounts)
     const billingDetails = {
       cartTotal: calculatedCartTotal,
       gstAmount: totalGstAmount, // Use calculated GST from items
-      shippingCharges: shippingCharges || 0,
+      shippingCharges: finalShippingCharges,
       totalAmount: calculatedTotalAmount,
     };    // Payment status
     const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'pending';

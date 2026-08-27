@@ -6,21 +6,36 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../controllers/order_providers.dart';
 import '../../core/formatters.dart';
 import '../../core/order_id_formatter.dart';
+import '../../core/save_to_downloads.dart';
 import '../../models/cart_item.dart';
 import '../../models/order.dart';
 
-class OrdersScreen extends ConsumerWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Always hit my-orders when this screen opens (e.g. after checkout).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(ordersProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
@@ -46,37 +61,48 @@ class OrdersScreen extends ConsumerWidget {
             );
           }
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-            children: [
-              const SizedBox(height: 4),
-              const Text(
-                'Your Orders',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
+          return RefreshIndicator(
+            color: Colors.red.shade600,
+            onRefresh: () async {
+              ref.invalidate(ordersProvider);
+              await ref.read(ordersProvider.future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              children: [
+                const SizedBox(height: 4),
+                const Text(
+                  'Your Orders',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              Text(
-                '${orders.length} order${orders.length == 1 ? '' : 's'} placed',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 13,
+                Text(
+                  '${orders.length} order${orders.length == 1 ? '' : 's'} placed',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              ...orders.map(
-                (order) => _OrderCard(
-                  order: order,
-                  onViewDetails: () => _showOrderDetails(context, order),
-                  onDownloadInvoice: () => _downloadInvoice(context, order),
+                const SizedBox(height: 12),
+                ...orders.map(
+                  (order) => _OrderCard(
+                    order: order,
+                    onViewDetails: () => _showOrderDetails(context, order),
+                    onDownloadInvoice: () => _downloadInvoice(context, order),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
         loading: () => const _LoadingOrders(),
-        error: (error, _) => _ErrorOrders(message: error.toString()),
+        error: (error, _) => _ErrorOrders(
+          message: error.toString(),
+          onRetry: () => ref.invalidate(ordersProvider),
+        ),
       ),
     );
   }
@@ -114,9 +140,10 @@ class _LoadingOrders extends StatelessWidget {
 }
 
 class _ErrorOrders extends StatelessWidget {
-  const _ErrorOrders({required this.message});
+  const _ErrorOrders({required this.message, this.onRetry});
 
   final String message;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +168,13 @@ class _ErrorOrders extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(color: Color(0xFF6b7280)),
             ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 14),
+              TextButton(
+                onPressed: onRetry,
+                child: const Text('Try again'),
+              ),
+            ],
           ],
         ),
       ),
@@ -688,13 +722,18 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     final bytes = await _buildInvoicePdf(order);
-    final dir = await getApplicationDocumentsDirectory();
     final filename = 'Invoice-${formatOrderId(order.displayId)}.pdf';
-    final file = File('${dir.path}/$filename');
-    await file.writeAsBytes(bytes, flush: true);
+    await savePdfToDownloads(
+      bytes: bytes,
+      fileName: filename,
+    );
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Invoice saved to ${file.path}'),
+        content: Text(
+          Platform.isAndroid
+              ? 'Invoice saved to Downloads ($filename)'
+              : 'Invoice ready — save it from the share sheet',
+        ),
         duration: const Duration(seconds: 4),
       ),
     );
@@ -712,16 +751,26 @@ const String _invoiceCompanyName = 'AK PACKAGING SOLUTIONS';
 Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
   final customer = order.deliveryAddress;
   final invoiceDate = order.createdAt ?? DateTime.now();
-  final subtotal = order.cartTotal ??
+  final isGstInvoice = order.isGstInvoice;
+  final exclusiveSubtotal = order.cartTotal ??
       order.items.fold<double>(0, (sum, item) => sum + item.lineTotal);
   final gstAmount =
       order.gstAmount ?? _calculateGstFromItems(order.items);
+  final inclusiveSubtotal = exclusiveSubtotal + gstAmount;
   final shipping = order.shippingCharges ?? 0;
   final totalAmount =
-      order.totalAmount != 0 ? order.totalAmount : subtotal + gstAmount + shipping;
+      order.totalAmount != 0 ? order.totalAmount : inclusiveSubtotal + shipping;
   final paymentStatus =
       order.paymentStatus?.isNotEmpty == true ? _titleCase(order.paymentStatus!) : 'Pending';
   final orderNumber = formatOrderId(order.displayId);
+  final billToName = () {
+    final restaurant = order.restaurantName?.trim();
+    if (restaurant != null && restaurant.isNotEmpty) return restaurant;
+    final name = order.customerName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    if (customer != null && customer.name.isNotEmpty) return customer.name;
+    return 'Not provided';
+  }();
 
   pw.MemoryImage? logoImage;
   try {
@@ -763,7 +812,9 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
               ),
               pw.SizedBox(height: 2),
               pw.Text(
-                'By: $_invoiceCompanyName | Email: support@restrobazaar.com',
+                isGstInvoice
+                    ? 'By: $_invoiceCompanyName | Email: support@restrobazaar.com | GST No: 27DJSPK2679K1ZB'
+                    : 'By: $_invoiceCompanyName | Email: support@restrobazaar.com',
                 style: pw.TextStyle(
                   fontSize: 10,
                   color: PdfColors.grey700,
@@ -775,7 +826,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
         pw.SizedBox(height: 10),
         pw.Center(
           child: pw.Text(
-            'TAX INVOICE',
+            isGstInvoice ? 'TAX INVOICE' : 'INVOICE',
             style: pw.TextStyle(
               fontSize: 16,
               fontWeight: pw.FontWeight.bold,
@@ -822,9 +873,7 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
                   ),
                   pw.SizedBox(height: 6),
                   pw.Text(
-                    customer != null && customer.name.isNotEmpty
-                        ? customer.name
-                        : 'Not provided',
+                    billToName,
                     style: const pw.TextStyle(fontSize: 12),
                   ),
                   if (customer != null && customer.addressLine1.isNotEmpty)
@@ -842,6 +891,12 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
                         style: const pw.TextStyle(fontSize: 12)),
                   if (customer != null && customer.phone.isNotEmpty)
                     pw.Text('Phone: ${customer.phone}', style: const pw.TextStyle(fontSize: 12)),
+                  if (isGstInvoice &&
+                      (order.customerGstNumber?.trim().isNotEmpty ?? false))
+                    pw.Text(
+                      'GST No: ${order.customerGstNumber!.trim()}',
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
                 ],
               ),
             ),
@@ -860,6 +915,62 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
           pw.Text(
             'No items found for this order.',
             style: pw.TextStyle(color: PdfColors.grey600),
+          )
+        else if (isGstInvoice)
+          pw.Table(
+            border: pw.TableBorder.all(
+              color: PdfColors.grey300,
+              width: 0.6,
+            ),
+            columnWidths: {
+              0: const pw.FixedColumnWidth(36),
+              1: const pw.FlexColumnWidth(2.6),
+              2: const pw.FlexColumnWidth(0.8),
+              3: const pw.FlexColumnWidth(1.0),
+              4: const pw.FlexColumnWidth(1.1),
+              5: const pw.FlexColumnWidth(0.8),
+              6: const pw.FlexColumnWidth(1.0),
+              7: const pw.FlexColumnWidth(1.1),
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                children: [
+                  _tableHeaderCell('Sr'),
+                  _tableHeaderCell('Item'),
+                  _tableHeaderCell('Qty'),
+                  _tableHeaderCell('Rate'),
+                  _tableHeaderCell('Taxable'),
+                  _tableHeaderCell('GST%'),
+                  _tableHeaderCell('GST Amt'),
+                  _tableHeaderCell('Amount'),
+                ],
+              ),
+              ...order.items.asMap().entries.map((entry) {
+                final item = entry.value;
+                final taxable = item.lineTotal;
+                final itemGst = item.gstPercentage > 0
+                    ? (taxable * item.gstPercentage) / 100
+                    : 0.0;
+                final amount = taxable + itemGst;
+                return pw.TableRow(
+                  children: [
+                    _tableCell('${entry.key + 1}'),
+                    _tableCell(item.productName),
+                    _tableCell(item.quantity.toString()),
+                    _tableCell(_rs(item.price)),
+                    _tableCell(_rs(taxable)),
+                    _tableCell(
+                      item.gstPercentage > 0
+                          ? item.gstPercentage.toStringAsFixed(0)
+                          : '-',
+                    ),
+                    _tableCell(_rs(itemGst)),
+                    _tableCell(_rs(amount)),
+                  ],
+                );
+              }),
+            ],
           )
         else
           pw.Table(
@@ -881,19 +992,21 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
                   _tableHeaderCell('S.No.'),
                   _tableHeaderCell('Item'),
                   _tableHeaderCell('Qty'),
-                  _tableHeaderCell('Unit Price'),
-                  _tableHeaderCell('Total'),
+                  _tableHeaderCell('Rate'),
+                  _tableHeaderCell('Amount'),
                 ],
               ),
               ...order.items.asMap().entries.map((entry) {
                 final item = entry.value;
+                final rateIncl = item.unitPriceIncludingGst(item.quantity);
+                final amount = item.lineTotalIncludingGst;
                 return pw.TableRow(
                   children: [
                     _tableCell('${entry.key + 1}'),
                     _tableCell(item.productName),
                     _tableCell(item.quantity.toString()),
-                    _tableCell(_rs(item.price)),
-                    _tableCell(_rs(item.lineTotal)),
+                    _tableCell(_rs(rateIncl)),
+                    _tableCell(_rs(amount)),
                   ],
                 );
               }),
@@ -905,9 +1018,15 @@ Future<Uint8List> _buildInvoicePdf(OrderModel order) async {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              _summaryLine('Subtotal (Excl. of all taxes):', _rs(subtotal)),
-              _summaryLine('GST:', _rs(gstAmount)),
-              _summaryLine('Shipping Charges:', _rs(shipping)),
+              if (isGstInvoice) ...[
+                _summaryLine('Sub Total:', _rs(exclusiveSubtotal)),
+                _summaryLine('GST:', _rs(gstAmount)),
+              ] else
+                _summaryLine('Sub Total:', _rs(inclusiveSubtotal)),
+              _summaryLine(
+                'Shipping Charges:',
+                shipping > 0 ? _rs(shipping) : 'Free',
+              ),
               pw.SizedBox(height: 6),
               pw.Row(
                 mainAxisSize: pw.MainAxisSize.min,
@@ -1049,7 +1168,7 @@ pw.Widget _summaryLine(String label, String value) {
         pw.SizedBox(width: 6),
         pw.Text(
           value,
-          style: const pw.TextStyle(
+          style: pw.TextStyle(
             fontSize: 12,
             fontWeight: pw.FontWeight.bold,
           ),

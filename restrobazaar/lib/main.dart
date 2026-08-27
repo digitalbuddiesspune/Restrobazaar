@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:media_store_plus/media_store_plus.dart';
 
 import 'src/app.dart';
 import 'src/config/constants.dart';
@@ -17,6 +18,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // isOptional: empty/missing .env must not block app startup (native splash hang).
   await dotenv.load(fileName: '.env', isOptional: true);
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    await MediaStore.ensureInitialized();
+    MediaStore.appFolder = 'RestroBazaar';
+  }
 
   final enableNotifications =
       !(defaultTargetPlatform == TargetPlatform.iOS || kIsWeb);

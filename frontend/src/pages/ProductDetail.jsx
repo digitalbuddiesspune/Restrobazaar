@@ -6,9 +6,11 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addToCart, updateQuantity } from '../store/slices/cartSlice';
 import { selectCartItems } from '../store/slices/cartSlice';
 import { isAuthenticated } from '../utils/auth';
+import { requireAuth } from '../utils/requireAuth';
 import { useWishlist, useAddToWishlist, useRemoveFromWishlist, useVendorProducts } from '../hooks/useApiQueries';
 import FlyingAnimation, { useFlyingAnimation } from '../components/FlyingAnimation';
 import metaPixel from '../utils/metaPixel';
+import { productDisplayPrice, withGst } from '../utils/pricing';
 
 const ProductDetail = () => {
   const { productId, categorySlug } = useParams();
@@ -261,17 +263,24 @@ const ProductDetail = () => {
 
   const getProductPrice = () => {
     if (!product) return null;
+    const gst = product.gst || 0;
 
     if (product.priceType === 'single' && product.pricing?.single?.price) {
+      const base = product.pricing.single.price;
+      const incl = withGst(base, gst);
       return {
         type: 'single',
-        price: product.pricing.single.price,
-        display: `₹${product.pricing.single.price}`,
+        price: incl,
+        basePrice: base,
+        display: `₹${incl}`,
       };
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
       return {
         type: 'bulk',
-        slabs: product.pricing.bulk,
+        slabs: product.pricing.bulk.map((slab) => ({
+          ...slab,
+          displayPrice: withGst(slab.price, gst),
+        })),
         display: 'Bulk pricing available',
       };
     }
@@ -280,13 +289,14 @@ const ProductDetail = () => {
 
   const getPriceForQuantity = (qty) => {
     if (!product) return null;
+    const gst = product.gst || 0;
 
     if (product.priceType === 'single' && product.pricing?.single?.price) {
-      return product.pricing.single.price * qty;
+      return withGst(product.pricing.single.price, gst) * qty;
     } else if (product.priceType === 'bulk' && product.pricing?.bulk?.length > 0) {
       const matchingSlab = findBestMatchingSlab(product.pricing.bulk, qty);
       if (matchingSlab) {
-        return matchingSlab.price * qty;
+        return withGst(matchingSlab.price, gst) * qty;
       }
       return null;
     }
@@ -482,7 +492,7 @@ const ProductDetail = () => {
     if (!isAuthenticated()) {
       // Store product ID to add to wishlist after login
       localStorage.setItem('pendingWishlistProduct', product?._id || productId);
-      navigate('/sign-in');
+      requireAuth();
       return;
     }
     
@@ -521,7 +531,7 @@ const ProductDetail = () => {
     
     if (!isAuthenticated()) {
       localStorage.setItem('pendingWishlistProduct', suggestedProduct._id);
-      navigate('/sign-in');
+      requireAuth();
       return;
     }
     
@@ -825,14 +835,14 @@ const ProductDetail = () => {
   const totalPrice = getPriceForQuantity(quantity);
   const minOrderQty = product?.minimumOrderQuantity || 1;
 
-  // Original price (MRP) for strikethrough - same source as Category page (defaultPrice first, then productId.originalPrice)
+  // Original price (MRP) for strikethrough — include GST like sell price
   const originalPrice = (() => {
     if (!product) return 0;
     const val = product.defaultPrice ?? product.productId?.originalPrice ?? 0;
-    return Math.max(0, Number(val) || 0);
+    return withGst(Math.max(0, Number(val) || 0), product.gst || 0);
   })();
   const showDiscountedPriceSingle = priceInfo?.type === 'single' && originalPrice > 0 && originalPrice > (priceInfo.price ?? 0);
-  const showDiscountedPriceBulk = priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 && originalPrice > 0 && originalPrice > (priceInfo.slabs[priceInfo.slabs.length - 1]?.price ?? 0);
+  const showDiscountedPriceBulk = priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 && originalPrice > 0 && originalPrice > (priceInfo.slabs[priceInfo.slabs.length - 1]?.displayPrice ?? 0);
 
   return (
     <div className="min-h-screen bg-gray-50 pt-4 pb-8 relative">
@@ -981,7 +991,7 @@ const ProductDetail = () => {
                       ₹{priceInfo.price}
                     </span>
                   )}
-                  <span className="text-gray-500 text-sm">per piece</span>
+                  <span className="text-gray-500 text-sm">per piece{product?.gst > 0 ? ' (incl. GST)' : ''}</span>
                 </div>
               ) : priceInfo?.type === 'bulk' && priceInfo.slabs?.length > 0 ? (
                 <div className="mb-2">
@@ -991,12 +1001,12 @@ const ProductDetail = () => {
                         ₹{originalPrice}
                       </span>
                       <span className="text-3xl font-bold text-black">
-                        ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
+                        ₹{priceInfo.slabs[priceInfo.slabs.length - 1].displayPrice}
                       </span>
                     </div>
                   ) : (
                     <span className="text-3xl font-bold text-black">
-                      ₹{priceInfo.slabs[priceInfo.slabs.length - 1].price}
+                      ₹{priceInfo.slabs[priceInfo.slabs.length - 1].displayPrice}
                     </span>
                   )}
                 </div>
@@ -1032,7 +1042,7 @@ const ProductDetail = () => {
                         ₹{priceInfo.price}
                       </span>
                     )}
-                    <span className="text-gray-500 text-xs">per piece</span>
+                    <span className="text-gray-500 text-xs">per piece{product?.gst > 0 ? ' (incl. GST)' : ''}</span>
                   </div>
                 ) : priceInfo?.type === 'bulk' ? (
                   <div>
@@ -1046,7 +1056,7 @@ const ProductDetail = () => {
                           <span className="text-gray-700">
                           Buy {slab.minQty} Pieces or more at 
                           </span>
-                          <span className="font-semibold text-gray-900">₹{slab.price}/piece</span>
+                          <span className="font-semibold text-gray-900">₹{slab.displayPrice}/piece</span>
                         </div>
                       ))}
                     </div>
@@ -1105,11 +1115,13 @@ const ProductDetail = () => {
                 };
 
                 const unitForTotal = (() => {
+                  const gst = product.gst || 0;
                   if (product.priceType === 'single') {
-                    return product.pricing?.single?.price;
+                    const base = product.pricing?.single?.price;
+                    return base != null ? withGst(base, gst) : null;
                   }
                   const slab = findBestMatchingSlab(product.pricing?.bulk || [], displayQty);
-                  return slab?.price;
+                  return slab ? withGst(slab.price, gst) : null;
                 })();
                 const lineTotal =
                   unitForTotal != null ? unitForTotal * displayQty : totalPrice;
@@ -1385,15 +1397,10 @@ const ProductDetail = () => {
 
                         <div className="flex items-center justify-between">
                           <span className="text-sm lg:text-base text-gray-900 font-bold whitespace-nowrap truncate">
-                            {suggestedProduct.priceType === 'single' && suggestedProduct.pricing?.single?.price ? (
-                              `₹${suggestedProduct.pricing.single.price}`
-                            ) : suggestedProduct.priceType === 'bulk' && suggestedProduct.pricing?.bulk?.length > 0 ? (
-                              <>
-                                ₹{suggestedProduct.pricing.bulk[suggestedProduct.pricing.bulk.length - 1].price}{' '}
-                              </>
-                            ) : (
-                              'Price on request'
-                            )}
+                            {(() => {
+                              const sell = productDisplayPrice(suggestedProduct);
+                              return sell != null ? `₹${sell}` : 'Price on request';
+                            })()}
                           </span>
                         </div>
 
