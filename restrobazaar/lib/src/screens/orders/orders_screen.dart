@@ -722,16 +722,18 @@ Future<void> _downloadInvoice(BuildContext context, OrderModel order) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     final bytes = await _buildInvoicePdf(order);
-    final filename = 'Invoice-${formatOrderId(order.displayId)}.pdf';
-    await savePdfToDownloads(
+    // Avoid '#' in the filename — MediaStore/Uri truncates at '#' and drops .pdf
+    final orderTag = formatOrderId(order.displayId).replaceAll('#', '');
+    final filename = 'Invoice-$orderTag.pdf';
+    final savedPath = await savePdfToDownloads(
       bytes: bytes,
       fileName: filename,
     );
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          Platform.isAndroid
-              ? 'Invoice saved to Downloads ($filename)'
+          Platform.isAndroid && savedPath.contains('Download')
+              ? 'Invoice saved to Downloads'
               : 'Invoice ready — save it from the share sheet',
         ),
         duration: const Duration(seconds: 4),

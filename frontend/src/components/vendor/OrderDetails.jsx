@@ -15,12 +15,20 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   const [paymentStatusValue, setPaymentStatusValue] = useState('unpaid');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedItems, setEditedItems] = useState([]);
+  const [editedShippingCharges, setEditedShippingCharges] = useState('0');
   const [newItemProductId, setNewItemProductId] = useState('');
+  const [newItemSearch, setNewItemSearch] = useState('');
+  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
   const updatePaymentStatusMutation = useUpdatePaymentStatus();
   const updateOrderItemsMutation = useUpdateOrderItems();
 
   const order = orderData?.data || {};
-  const vendorProducts = vendorProductsData?.data || [];
+  const vendorProductsRaw = vendorProductsData?.data;
+  const vendorProducts = Array.isArray(vendorProductsRaw)
+    ? vendorProductsRaw
+    : Array.isArray(vendorProductsData)
+      ? vendorProductsData
+      : [];
   const vendor = vendorProfileData?.data || {};
   const allOrders = allOrdersData?.data || [];
 
@@ -97,6 +105,10 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
   useEffect(() => {
     setIsEditMode(false);
     setEditedItems([]);
+    setEditedShippingCharges('0');
+    setNewItemProductId('');
+    setNewItemSearch('');
+    setShowProductSuggestions(false);
   }, [orderId]);
 
   const isDelivered = order.orderStatus === 'delivered';
@@ -195,6 +207,21 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       };
     });
     setEditedItems(itemsWithVendorProducts);
+    const currentShipping = Number(order.billingDetails?.shippingCharges);
+    if (Number.isFinite(currentShipping) && currentShipping >= 0) {
+      setEditedShippingCharges(String(currentShipping));
+    } else {
+      const cartTotal = (order.items || []).reduce(
+        (sum, item) => sum + (item.total || item.price * item.quantity || 0),
+        0
+      );
+      setEditedShippingCharges(
+        String(calculateShippingCharges(cartTotal, vendor?.shippingSettings))
+      );
+    }
+    setNewItemProductId('');
+    setNewItemSearch('');
+    setShowProductSuggestions(false);
     setIsEditMode(true);
   };
 
@@ -208,8 +235,13 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
       };
     });
     setEditedItems(itemsWithVendorProducts);
+    setEditedShippingCharges(
+      String(Number(order.billingDetails?.shippingCharges) || 0)
+    );
     setIsEditMode(false);
     setNewItemProductId('');
+    setNewItemSearch('');
+    setShowProductSuggestions(false);
   };
 
 
@@ -286,7 +318,79 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
 
     setEditedItems([...editedItems, newItem]);
     setNewItemProductId('');
+    setNewItemSearch('');
+    setShowProductSuggestions(false);
   };
+
+  const getVendorProductDisplayName = (vp) =>
+    vp?.productId?.productName ||
+    vp?.productName ||
+    vp?.name ||
+    'Product';
+
+  const getVendorProductSearchTags = (vp) => {
+    const tags =
+      vp?.productId?.searchTags ||
+      vp?.searchTags ||
+      vp?.productId?.tags ||
+      [];
+    if (Array.isArray(tags)) return tags.map((t) => String(t));
+    if (typeof tags === 'string') {
+      return tags.split(',').map((t) => t.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const getVendorProductPriceLabel = (vp) => {
+    if (!vp) return 0;
+    if (vp.priceType === 'single') {
+      return vp.pricing?.single?.price || vp.price || 0;
+    }
+    if (vp.priceType === 'bulk' && vp.pricing?.bulk?.length > 0) {
+      return vp.pricing.bulk[0].price || 0;
+    }
+    return vp.price || 0;
+  };
+
+  const availableProductsToAdd = (Array.isArray(vendorProducts) ? vendorProducts : []).filter(
+    (vp) => {
+      const productId = vp.productId?._id || vp.productId;
+      if (!productId) return false;
+      return !editedItems.some(
+        (item) =>
+          (item.productId?._id || item.productId)?.toString() ===
+          productId?.toString()
+      );
+    }
+  );
+
+  const filteredProductsToAdd = (() => {
+    const query = newItemSearch.trim().toLowerCase();
+    if (!query) return availableProductsToAdd.slice(0, 30);
+
+    return availableProductsToAdd.filter((vp) => {
+      const name = getVendorProductDisplayName(vp).toLowerCase();
+      const shortDesc = String(
+        vp?.productId?.shortDescription || vp?.shortDescription || ''
+      ).toLowerCase();
+      const tags = getVendorProductSearchTags(vp).map((tag) =>
+        String(tag).toLowerCase()
+      );
+      const haystack = [name, shortDesc, ...tags].join(' ');
+      return (
+        name.includes(query) ||
+        shortDesc.includes(query) ||
+        tags.some((tag) => tag.includes(query)) ||
+        haystack.includes(query)
+      );
+    });
+  })();
+
+  const selectedProductToAdd = (Array.isArray(vendorProducts) ? vendorProducts : []).find(
+    (vp) =>
+      vp._id === newItemProductId ||
+      vp._id?.toString() === String(newItemProductId)
+  );
 
   const calculateBillingDetails = () => {
     const cartTotal = editedItems.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -347,10 +451,10 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
         };
       });
     
-    // Recalculate shipping from vendor Store Settings (same as cart/checkout)
-    const shippingCharges = calculateShippingCharges(
-      cartTotal,
-      vendor?.shippingSettings
+    // Vendor can override shipping while editing (string input → number)
+    const shippingCharges = Math.max(
+      0,
+      parseFloat(Number(editedShippingCharges).toFixed(2)) || 0
     );
     const totalAmount = cartTotal + gstAmount + shippingCharges;
 
@@ -984,51 +1088,107 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                         )}
                       </tr>
                     ))}
-                    {isEditMode && (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-3 bg-gray-50">
-                          <div className="flex items-center space-x-3">
-                            <select
-                              value={newItemProductId}
-                              onChange={(e) => setNewItemProductId(e.target.value)}
-                              className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="">Select a product to add...</option>
-                              {vendorProducts
-                                .filter((vp) => {
-                                  const productId = vp.productId?._id || vp.productId;
-                                  return !editedItems.some(
-                                    (item) => (item.productId?._id || item.productId)?.toString() === productId?.toString()
-                                  );
-                                })
-                                .map((vp) => {
-                                  const productId = vp.productId?._id || vp.productId;
-                                  const productName = vp.productId?.productName || 'Product';
-                                  return (
-                                    <option key={vp._id} value={vp._id}>
-                                      {productName} - ₹{vp.price}
-                                    </option>
-                                  );
-                                })}
-                            </select>
-                            <button
-                              onClick={handleAddNewItem}
-                              disabled={!newItemProductId}
-                              className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors ${newItemProductId
-                                  ? 'bg-green-600 text-white hover:bg-green-700'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                }`}
-                            >
-                              Add Item
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
             </div>
+
+            {isEditMode && (
+              <div className="mt-3 p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50">
+                <p className="text-xs font-medium text-gray-700 mb-2">
+                  Add product
+                </p>
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={newItemSearch}
+                      onChange={(e) => {
+                        setNewItemSearch(e.target.value);
+                        setNewItemProductId('');
+                        setShowProductSuggestions(true);
+                      }}
+                      onFocus={() => setShowProductSuggestions(true)}
+                      onBlur={() => {
+                        setTimeout(() => setShowProductSuggestions(false), 200);
+                      }}
+                      placeholder="Search by product name or search tag..."
+                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      autoComplete="off"
+                    />
+                    {showProductSuggestions && (
+                      <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+                        {availableProductsToAdd.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-gray-500">
+                            No more products available to add
+                          </div>
+                        ) : filteredProductsToAdd.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-gray-500">
+                            No products match “{newItemSearch.trim()}”
+                          </div>
+                        ) : (
+                          filteredProductsToAdd.map((vp) => {
+                            const name = getVendorProductDisplayName(vp);
+                            const tags = getVendorProductSearchTags(vp);
+                            const price = getVendorProductPriceLabel(vp);
+                            const isSelected =
+                              String(newItemProductId) === String(vp._id);
+                            return (
+                              <button
+                                key={vp._id}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setNewItemProductId(String(vp._id));
+                                  setNewItemSearch(name);
+                                  setShowProductSuggestions(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 border-b border-gray-100 last:border-b-0 ${
+                                  isSelected
+                                    ? 'bg-blue-50'
+                                    : 'hover:bg-blue-50'
+                                }`}
+                              >
+                                <div className="text-xs font-medium text-gray-900">
+                                  {name}
+                                  <span className="ml-2 text-gray-500 font-normal">
+                                    ₹{price}
+                                  </span>
+                                </div>
+                                {tags.length > 0 && (
+                                  <div className="mt-0.5 text-[10px] text-gray-500 truncate">
+                                    Tags: {tags.slice(0, 6).join(', ')}
+                                    {tags.length > 6 ? '…' : ''}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                    {selectedProductToAdd && (
+                      <p className="mt-1 text-[10px] text-green-700">
+                        Selected: {getVendorProductDisplayName(selectedProductToAdd)}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddNewItem}
+                    disabled={!newItemProductId}
+                    className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors shrink-0 ${
+                      newItemProductId
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Add Item
+                  </button>
+                </div>
+              </div>
+            )}
+
             {isEditMode && (
               <div className="mt-4 flex justify-end space-x-3">
                 <button
@@ -1145,16 +1305,63 @@ const OrderDetails = ({ orderId, onBack, onUpdateStatus }) => {
                 }
                 return null;
               })()}
-              <div className="flex justify-between">
-                <span className="text-gray-600">Shipping Charges:</span>
-                <span className="font-medium text-gray-900">
-                  {(() => {
-                    const shippingCharges = isEditMode
-                      ? calculateBillingDetails().shippingCharges
-                      : order.billingDetails?.shippingCharges || 0;
-                    return shippingCharges > 0 ? `₹${shippingCharges.toLocaleString()}` : 'Free';
-                  })()}
-                </span>
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-gray-600 shrink-0">Shipping Charges:</span>
+                {isEditMode ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cartTotal = editedItems.reduce(
+                          (sum, item) => sum + (item.total || 0),
+                          0
+                        );
+                        setEditedShippingCharges(
+                          String(
+                            calculateShippingCharges(
+                              cartTotal,
+                              vendor?.shippingSettings
+                            )
+                          )
+                        );
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-800 underline whitespace-nowrap"
+                      title="Apply shipping from Store Settings"
+                    >
+                      Use store rate
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500 text-xs">₹</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={editedShippingCharges}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow empty, digits, and one decimal point while typing
+                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                            setEditedShippingCharges(value);
+                          }
+                        }}
+                        onBlur={() => {
+                          const num = parseFloat(editedShippingCharges);
+                          setEditedShippingCharges(
+                            Number.isFinite(num) && num >= 0
+                              ? String(parseFloat(num.toFixed(2)))
+                              : '0'
+                          );
+                        }}
+                        className="w-24 px-2 py-1 text-xs border border-gray-300 rounded-md text-right font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <span className="font-medium text-gray-900">
+                    {(order.billingDetails?.shippingCharges || 0) > 0
+                      ? `₹${Number(order.billingDetails.shippingCharges).toLocaleString()}`
+                      : 'Free'}
+                  </span>
+                )}
               </div>
               <div className="border-t border-gray-300 pt-1.5 mt-1.5 flex justify-between">
                 <span className="text-xs font-medium text-gray-900">Total Amount:</span>

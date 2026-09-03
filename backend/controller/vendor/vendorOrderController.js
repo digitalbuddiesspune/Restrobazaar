@@ -672,14 +672,18 @@ export const updateVendorOrderItems = async (req, res) => {
     const totalGstAmount = updatedItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
     const cartTotal = updatedItems.reduce((sum, item) => sum + item.total, 0);
 
-    // Shipping from vendor Store Settings (never force free on edit)
+    // Shipping: prefer vendor-provided override from edit form; else Store Settings
     const vendorDoc = await Vendor.findById(vendorId).select('shippingSettings');
-    const shippingCharges = calculateShippingCharges(
-      cartTotal,
-      vendorDoc?.shippingSettings
-    );
+    const requestedShipping = billingDetails?.shippingCharges;
+    const shippingCharges =
+      requestedShipping !== undefined &&
+      requestedShipping !== null &&
+      Number.isFinite(Number(requestedShipping)) &&
+      Number(requestedShipping) >= 0
+        ? parseFloat(Number(requestedShipping).toFixed(2))
+        : calculateShippingCharges(cartTotal, vendorDoc?.shippingSettings);
 
-    // Update billing details — always recalculate cart/GST/shipping from items
+    // Update billing details — always recalculate cart/GST; shipping may be vendor-edited
     const couponDiscount =
       order.couponAmount ||
       order.billingDetails?.couponDiscount ||
